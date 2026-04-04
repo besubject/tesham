@@ -243,3 +243,51 @@
 
 ---
 
+
+## [TASK-005] Middleware стек
+**Дата:** 2026-04-04 15:00
+**Статус:** done
+
+### Что сделано
+- `AppError(statusCode, message, code)` — типизированные ошибки
+- Глобальный error handler: AppError → JSON, ZodError → 400 VALIDATION_ERROR, generic → 500
+- morgan request logger (отключён в test-окружении)
+- CORS для config.cors.origins + https://mettig.ru с credentials: true
+- `globalRateLimit` — 100 запросов / 15 мин (express-rate-limit)
+- `authRateLimit` — 3 запроса / 10 мин (для /auth эндпоинтов)
+- `validate(schemas)` middleware — Zod-парсинг body/query/params, ошибки бросают ZodError
+- `requireAuth` — Bearer JWT → verify → req.user (401 без токена или при невалидном)
+- `requireRole(role)` — RBAC (403 при недостаточных правах)
+- Express.Request augmented: `user?: AuthUser` через `declare module 'express-serve-static-core'`
+- Jest + ts-jest настроены, 8 тестов: 401 no token, 401 invalid token, 200 valid, 403/200 role, 400 Zod, 200 valid body, 429 rate limit
+
+### Файлы затронуты
+- backend/src/middleware/error.ts — создан
+- backend/src/middleware/validate.ts — создан
+- backend/src/middleware/auth.ts — создан
+- backend/src/middleware/rate-limit.ts — создан
+- backend/src/types/express.d.ts — создан
+- backend/src/app.ts — изменён (CORS, morgan, rate-limit, error handler подключены)
+- backend/jest.config.ts — создан
+- backend/src/middleware/__tests__/middleware.test.ts — создан
+- backend/package.json — обновлён (morgan, cors, express-rate-limit, zod, jsonwebtoken + @types)
+- backend/tsconfig.json — не изменён
+
+### Тесты
+- [x] Запрос без токена → 401
+- [x] Запрос с невалидным токеном → 401
+- [x] Невалидное тело → 400 с Zod details
+- [x] Более лимита запросов → 429
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+- [x] npm test — 8/8 passed
+
+### Заметки для следующих агентов
+- TASK-006 разблокирована (зависит от TASK-004 ✓ + TASK-005 ✓): аутентификация SMS OTP + JWT
+- TASK-008 разблокирована (зависит от TASK-004 ✓): seed данные (не требует TASK-005)
+- authRateLimit экспортируется из middleware/rate-limit.ts — использовать на /auth роутах
+- validate(schemas) бросает ZodError, которую ловит errorHandler → 400 VALIDATION_ERROR
+- JWT_ACCESS_SECRET в .env = 'dev-access-secret-change-in-prod'
+
+---
+

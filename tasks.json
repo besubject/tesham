@@ -131,7 +131,7 @@
         "Более 100 запросов за 15 минут возвращают 429"
       ],
       "dependencies": ["TASK-002"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-006",
