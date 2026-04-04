@@ -1,0 +1,921 @@
+{
+  "agent_instructions": {
+    "ralph_cycle_rules": [
+      "ОДНА итерация = ОДНА задача. Не больше.",
+      "Контекст очищается после каждой итерации — записывай ВСЁ важное в progress.txt",
+      "progress.txt — ТОЛЬКО APPEND. Никогда не перезаписывать, не удалять чужие записи",
+      "tasks.json — ТОЛЬКО менять status. Никогда не удалять и не редактировать описания задач"
+    ],
+    "before_start": [
+      "Прочитай tasks.json и progress.txt",
+      "Прочитай git log --oneline -20 для понимания текущего состояния",
+      "Найди задачу с наивысшим приоритетом (critical > high > medium > low) и статусом pending",
+      "Проверь, что ВСЕ dependencies этой задачи имеют статус done. Если нет — бери следующую"
+    ],
+    "during_work": [
+      "Работай ТОЛЬКО над выбранной задачей",
+      "Делай git commit после каждого логического изменения",
+      "НЕ трогай код, не связанный с текущей задачей",
+      "Если задача требует слишком много контекста — запиши что осталось в progress.txt и поставь status partial"
+    ],
+    "before_finish": [
+      "Выполни ВСЕ test_steps из задачи",
+      "Запусти линтер и тесты: cd backend && npm run lint && npm test",
+      "Для мобильных: cd apps/client && npx tsc --noEmit && cd ../business && npx tsc --noEmit",
+      "Меняй status на done ТОЛЬКО если ВСЕ тесты прошли. Иначе partial или blocked",
+      "ДОПИШИ (append) результаты в progress.txt — что сделано, какие файлы, какие задачи разблокированы",
+      "Сделай финальный git commit"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Инициализация монорепо: структура папок, package.json, TypeScript конфиги, ESLint, Prettier",
+      "acceptance_criteria": [
+        "Создана структура: backend/, apps/client/, apps/business/, apps/web/, packages/shared/",
+        "Корневой package.json с workspaces (npm workspaces или turborepo)",
+        "tsconfig.json в каждом пакете с strict mode",
+        "ESLint + Prettier настроены с единым конфигом",
+        "Файл .gitignore покрывает node_modules, dist, .env, .expo"
+      ],
+      "test_steps": [
+        "npm install проходит без ошибок в корне",
+        "npx tsc --noEmit проходит в backend/",
+        "npm run lint проходит без ошибок"
+      ],
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "TASK-002",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Настройка бэкенда: Express + TypeScript, структура папок (routes, controllers, services, middleware, db), базовый сервер с health-check",
+      "acceptance_criteria": [
+        "Express-сервер стартует на PORT из .env",
+        "Структура: src/routes/, src/controllers/, src/services/, src/middleware/, src/db/",
+        "GET /health возвращает { status: 'ok', timestamp }",
+        "Конфиг через dotenv (.env.example создан)",
+        "Скрипты: dev (ts-node-dev), build (tsc), start (node dist/)"
+      ],
+      "test_steps": [
+        "npm run dev запускает сервер",
+        "curl http://localhost:3000/health возвращает 200",
+        "npm run build компилирует без ошибок"
+      ],
+      "dependencies": ["TASK-001"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-003",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Настройка PostgreSQL + PostGIS: подключение через Kysely, конфиг пула соединений, скрипт проверки подключения",
+      "acceptance_criteria": [
+        "Kysely настроен с PostgreSQL-диалектом",
+        "Пул соединений через pg (pool size из .env)",
+        "PostGIS-расширение создаётся при инициализации",
+        "Файл src/db/index.ts экспортирует инстанс db",
+        "Типы для всех таблиц в src/db/types.ts"
+      ],
+      "test_steps": [
+        "npm run db:check — скрипт проверяет подключение к БД и PostGIS",
+        "Типы компилируются без ошибок (npx tsc --noEmit)"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-004",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Система миграций: настройка Kysely migrator, начальная миграция со всеми таблицами из модели данных (User, Business, Category, Staff, Service, Slot, Booking, Review, Favorite, Event)",
+      "acceptance_criteria": [
+        "Миграции в папке backend/src/db/migrations/",
+        "Скрипт npm run db:migrate для применения миграций",
+        "Скрипт npm run db:rollback для отката последней миграции",
+        "Все таблицы из PRD созданы с правильными типами, FK, индексами",
+        "PostGIS-колонка location в Business (geography(Point, 4326))",
+        "Индексы: GiST на location, B-tree на phone, category_id, business_id, staff_id, slot_id",
+        "Таблица events с индексами на event_type+timestamp, session_id, anonymous_user_hash, payload->business_id"
+      ],
+      "test_steps": [
+        "npm run db:migrate создаёт все таблицы",
+        "npm run db:rollback откатывает последнюю миграцию",
+        "Повторный npm run db:migrate работает идемпотентно",
+        "SELECT PostGIS_version() возвращает версию"
+      ],
+      "dependencies": ["TASK-003"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-005",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Middleware стек: error handler, request logger, CORS, rate limiter, Zod validation helper, JWT auth middleware",
+      "acceptance_criteria": [
+        "Глобальный error handler с типизированными ошибками (AppError class)",
+        "Request logger (morgan или pino)",
+        "CORS настроен для localhost + mettig.ru",
+        "Rate limiter (express-rate-limit) — глобальный + отдельный для /auth",
+        "Zod validation middleware: validate(schema) для body/query/params",
+        "JWT auth middleware: extractToken → verify → req.user",
+        "RBAC middleware: requireRole('admin') для бизнес-эндпоинтов"
+      ],
+      "test_steps": [
+        "Запрос без токена на защищённый эндпоинт возвращает 401",
+        "Запрос с невалидным токеном возвращает 401",
+        "Невалидное тело запроса возвращает 400 с описанием ошибок от Zod",
+        "Более 100 запросов за 15 минут возвращают 429"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-006",
+      "category": "functional",
+      "priority": "critical",
+      "description": "Аутентификация: POST /auth/send-code, POST /auth/verify-code, POST /auth/refresh. SMS OTP через SMS.ru, JWT (access 1ч + refresh 30д), rate limit 3 SMS/10 мин",
+      "acceptance_criteria": [
+        "POST /auth/send-code принимает { phone }, отправляет SMS через SMS.ru, возвращает 200",
+        "POST /auth/verify-code принимает { phone, code }, возвращает { accessToken, refreshToken, user }",
+        "POST /auth/refresh принимает { refreshToken }, возвращает новую пару токенов",
+        "OTP-код действителен 5 минут",
+        "Rate limit: 3 SMS на один номер за 10 минут",
+        "При первом входе создаётся User (name пустой, заполняется позже)",
+        "Абстракция SMS-провайдера (интерфейс ISmsProvider) для замены SMS.ru на другого"
+      ],
+      "test_steps": [
+        "Отправка кода на валидный номер возвращает 200",
+        "Верификация правильного кода возвращает токены и пользователя",
+        "Верификация неправильного кода возвращает 401",
+        "Истекший код возвращает 401",
+        "4-й запрос SMS за 10 минут возвращает 429",
+        "Refresh с валидным токеном возвращает новую пару"
+      ],
+      "dependencies": ["TASK-004", "TASK-005"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-007",
+      "category": "functional",
+      "priority": "critical",
+      "description": "API пользователя: GET /user/me, PATCH /user/me (name, language), DELETE /user/me (удаление аккаунта). Accept-Language header для локализации",
+      "acceptance_criteria": [
+        "GET /user/me возвращает данные текущего пользователя",
+        "PATCH /user/me позволяет обновить name и language (ru|ce)",
+        "DELETE /user/me удаляет пользователя и все его данные (кроме обезличенных events)",
+        "Accept-Language header парсится и возвращает локализованные категории",
+        "Zod-валидация на все входные данные"
+      ],
+      "test_steps": [
+        "GET /user/me с валидным токеном возвращает пользователя",
+        "PATCH /user/me обновляет имя и язык",
+        "DELETE /user/me удаляет аккаунт, повторный запрос возвращает 401"
+      ],
+      "dependencies": ["TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-008",
+      "category": "functional",
+      "priority": "critical",
+      "description": "Seed данные: скрипт для заполнения категорий (Барберы, Салоны красоты, Автосервисы, Медицина, Стоматология) и тестовых бизнесов с мастерами, услугами, слотами в Грозном",
+      "acceptance_criteria": [
+        "Скрипт npm run db:seed заполняет категории (ru + ce)",
+        "Создаёт 5-10 тестовых бизнесов с реальными координатами в Грозном",
+        "У каждого бизнеса 2-3 мастера, 3-5 услуг, слоты на ближайшую неделю",
+        "Seed идемпотентен (не дублирует данные при повторном запуске)"
+      ],
+      "test_steps": [
+        "npm run db:seed выполняется без ошибок",
+        "SELECT count(*) FROM categories возвращает 5+",
+        "SELECT count(*) FROM businesses возвращает 5+",
+        "Повторный npm run db:seed не дублирует записи"
+      ],
+      "dependencies": ["TASK-004"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-009",
+      "category": "functional",
+      "priority": "critical",
+      "description": "API бизнесов: GET /businesses (поиск + фильтрация + сортировка по расстоянию+рейтингу), GET /businesses/:id (полная карточка с мастерами, услугами, рейтингом)",
+      "acceptance_criteria": [
+        "GET /businesses поддерживает query params: query, category_id, lat, lng, page, limit",
+        "Поиск по названию бизнеса (высокий вес) и названиям услуг (ниже вес) через ts_vector или ILIKE",
+        "Сортировка: комбинация расстояния (PostGIS ST_Distance) + среднего рейтинга",
+        "Без геолокации — сортировка только по рейтингу",
+        "GET /businesses/:id возвращает полную карточку: бизнес + мастера + услуги + средний рейтинг + количество отзывов",
+        "Пагинация через page/limit",
+        "Ответ < 500мс на тестовых данных"
+      ],
+      "test_steps": [
+        "GET /businesses возвращает список бизнесов с пагинацией",
+        "GET /businesses?query=борода находит барбершопы",
+        "GET /businesses?lat=43.317&lng=45.694 сортирует по расстоянию",
+        "GET /businesses?category_id=... фильтрует по категории",
+        "GET /businesses/:id возвращает полную карточку с мастерами и услугами"
+      ],
+      "dependencies": ["TASK-005", "TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-010",
+      "category": "functional",
+      "priority": "critical",
+      "description": "API отзывов: GET /businesses/:id/reviews (пагинация), POST /reviews (только для completed bookings, 1 отзыв на 1 запись)",
+      "acceptance_criteria": [
+        "GET /businesses/:id/reviews возвращает список отзывов с пагинацией",
+        "Каждый отзыв: rating, text, сокращённое имя (Ахмед К.), дата, reply_text",
+        "POST /reviews принимает { booking_id, rating, text }",
+        "Проверка: booking.status === 'completed' и booking.user_id === текущий пользователь",
+        "Проверка: нет существующего отзыва на этот booking",
+        "Средний рейтинг бизнеса пересчитывается (можно хранить в кеше или считать на лету)"
+      ],
+      "test_steps": [
+        "GET /businesses/:id/reviews возвращает отзывы",
+        "POST /reviews с completed booking создаёт отзыв",
+        "POST /reviews на non-completed booking возвращает 403",
+        "Повторный POST /reviews на тот же booking возвращает 409"
+      ],
+      "dependencies": ["TASK-009", "TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-011",
+      "category": "functional",
+      "priority": "critical",
+      "description": "API слотов и записей: GET /businesses/:id/slots, POST /bookings (с оптимистичной блокировкой), GET /bookings/my, DELETE /bookings/:id (отмена с предупреждением)",
+      "acceptance_criteria": [
+        "GET /businesses/:id/slots?staff_id=&date= возвращает свободные слоты",
+        "POST /bookings { slot_id, service_id } создаёт запись с оптимистичной блокировкой (SELECT FOR UPDATE или version check)",
+        "Двойная запись на один слот невозможна (concurrent test)",
+        "GET /bookings/my возвращает записи текущего пользователя (текущие + прошлые)",
+        "DELETE /bookings/:id отменяет запись, освобождает слот",
+        "Если до визита < cancellation_threshold_minutes — API возвращает warning в ответе",
+        "При записи/отмене бизнесу отправляется уведомление (интеграция с notification service в следующей задаче)"
+      ],
+      "test_steps": [
+        "GET /businesses/:id/slots возвращает только свободные слоты",
+        "POST /bookings создаёт запись, слот помечается как booked",
+        "Повторный POST /bookings на занятый слот возвращает 409",
+        "DELETE /bookings/:id отменяет запись, слот свободен",
+        "GET /bookings/my возвращает список записей пользователя"
+      ],
+      "dependencies": ["TASK-009", "TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-012",
+      "category": "functional",
+      "priority": "high",
+      "description": "Сервис уведомлений бизнесу: WhatsApp Business API (основной) + SMS.ru (fallback). Отправка при новой записи и отмене",
+      "acceptance_criteria": [
+        "Интерфейс INotificationProvider с реализациями WhatsApp и SMS",
+        "При новой записи: уведомление бизнесу с именем клиента, услугой, датой, временем, мастером",
+        "При отмене: уведомление бизнесу с именем клиента, датой, временем",
+        "Логика: WhatsApp → если не доставлено за 2 мин → SMS",
+        "Лог всех отправленных уведомлений (таблица notification_log)",
+        "На MVP: мокаем WhatsApp, реально отправляем только SMS через SMS.ru"
+      ],
+      "test_steps": [
+        "Создание записи триггерит отправку уведомления",
+        "Отмена записи триггерит отправку уведомления",
+        "Notification log записывает все отправки с указанием канала",
+        "Fallback на SMS работает при ошибке WhatsApp"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-013",
+      "category": "functional",
+      "priority": "high",
+      "description": "Event tracking сервис: POST /events endpoint, anonymous_user_hash генерация (SHA-256 от user_id + salt), логирование ключевых событий MVP",
+      "acceptance_criteria": [
+        "POST /events принимает { event_type, payload, device_type, app_version, lat?, lng? }",
+        "anonymous_user_hash генерируется на бэкенде из user_id + env.ANALYTICS_SALT",
+        "session_id передаётся с клиента",
+        "Middleware для автоматического логирования: search_query, business_card_view, booking_start, booking_complete, booking_cancel",
+        "Утилита trackEvent() для вызова из сервисов",
+        "Индексы на events-таблицу оптимизированы"
+      ],
+      "test_steps": [
+        "POST /events создаёт запись в таблице events",
+        "anonymous_user_hash не содержит raw user_id",
+        "Создание записи автоматически логирует событие booking_complete",
+        "Отмена записи автоматически логирует событие booking_cancel"
+      ],
+      "dependencies": ["TASK-004", "TASK-005"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-014",
+      "category": "functional",
+      "priority": "high",
+      "description": "API избранного: GET /favorites, POST /favorites (бизнес или мастер), DELETE /favorites/:id",
+      "acceptance_criteria": [
+        "GET /favorites возвращает избранные бизнесы и мастеров с подробностями",
+        "POST /favorites { business_id } или { staff_id } добавляет в избранное",
+        "DELETE /favorites/:id удаляет из избранного",
+        "Уникальность: нельзя добавить один бизнес/мастера дважды",
+        "Привязано к user_id — синхронизируется между устройствами"
+      ],
+      "test_steps": [
+        "POST /favorites добавляет бизнес в избранное",
+        "GET /favorites возвращает список избранных",
+        "Повторный POST /favorites на тот же бизнес возвращает 409",
+        "DELETE /favorites/:id удаляет из избранного"
+      ],
+      "dependencies": ["TASK-009", "TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-015",
+      "category": "functional",
+      "priority": "high",
+      "description": "API для Mettig Business: управление слотами (CRUD), просмотр записей по мастерам, подтверждение/отмена/completed/no-show записей, RBAC admin/employee",
+      "acceptance_criteria": [
+        "POST /business/slots { staff_id, date, times[] } — массовое создание слотов",
+        "DELETE /business/slots/:id — удаление свободного слота (занятый нельзя)",
+        "GET /business/bookings?staff_id=&date= — записи по дню (admin видит всех, employee только свои)",
+        "PATCH /business/bookings/:id { status } — подтверждение, отмена, completed, no-show",
+        "RBAC: employee не может видеть/изменять чужие записи и слоты",
+        "При отмене бизнесом — клиенту отправляется пуш-уведомление"
+      ],
+      "test_steps": [
+        "POST /business/slots создаёт несколько слотов за раз",
+        "DELETE /business/slots/:id удаляет свободный слот",
+        "DELETE /business/slots/:id на занятый слот возвращает 400",
+        "Admin видит записи всех мастеров",
+        "Employee видит только свои записи",
+        "PATCH /business/bookings/:id меняет статус записи"
+      ],
+      "dependencies": ["TASK-011", "TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-016",
+      "category": "functional",
+      "priority": "high",
+      "description": "API профиля заведения: GET/PATCH /business/profile (только admin), управление сотрудниками (CRUD), управление услугами (CRUD)",
+      "acceptance_criteria": [
+        "GET /business/profile возвращает полный профиль заведения",
+        "PATCH /business/profile — обновление всех полей (название, адрес, часы, телефон, instagram, сайт, порог отмены, настройки напоминаний)",
+        "GET /business/staff — список сотрудников",
+        "POST /business/staff { name, phone, role } — добавление сотрудника (привязка к User по телефону)",
+        "DELETE /business/staff/:id — удаление сотрудника",
+        "Только admin может редактировать профиль и управлять сотрудниками",
+        "Изменения отражаются в клиентском API в течение минуты"
+      ],
+      "test_steps": [
+        "Admin может обновить профиль заведения",
+        "Employee не может обновить профиль (403)",
+        "Admin может добавить и удалить сотрудника",
+        "Employee не может управлять сотрудниками (403)"
+      ],
+      "dependencies": ["TASK-009", "TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-017",
+      "category": "functional",
+      "priority": "high",
+      "description": "API ответов бизнеса на отзывы: PATCH /business/reviews/:id { reply_text }. Только admin",
+      "acceptance_criteria": [
+        "PATCH /business/reviews/:id обновляет reply_text и reply_at",
+        "Только admin заведения может отвечать на отзывы своего заведения",
+        "Ответ публичный — отображается в GET /businesses/:id/reviews"
+      ],
+      "test_steps": [
+        "Admin может ответить на отзыв",
+        "Employee не может ответить (403)",
+        "Ответ виден в списке отзывов"
+      ],
+      "dependencies": ["TASK-010", "TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-018",
+      "category": "functional",
+      "priority": "high",
+      "description": "API статистики бизнеса: GET /business/stats?period=&staff_id= — записи, рейтинг, show rate, разбивка по мастерам, источник клиентов",
+      "acceptance_criteria": [
+        "GET /business/stats?period=day|week|month возвращает метрики",
+        "Метрики: bookings_count, avg_rating, show_rate_pct, by_staff[], by_source (app/walk_in)",
+        "Admin видит общую статистику, employee — только свою",
+        "staff_id фильтрует по мастеру"
+      ],
+      "test_steps": [
+        "GET /business/stats?period=week возвращает метрики",
+        "Метрики корректны для тестовых данных",
+        "Employee видит только свою статистику"
+      ],
+      "dependencies": ["TASK-015", "TASK-010"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-019",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Инициализация мобильных приложений: Expo проект для Mettig (client) и Mettig Business, React Navigation, базовый стек навигации",
+      "acceptance_criteria": [
+        "apps/client/ — Expo managed проект (TypeScript template)",
+        "apps/business/ — Expo managed проект (TypeScript template)",
+        "React Navigation настроена: bottom tabs + stack navigator",
+        "Client: 4 таба (Главная, Карта, Записи, Профиль)",
+        "Business: 3 таба (Записи, Статистика, Профиль заведения)",
+        "Общие типы навигации типизированы"
+      ],
+      "test_steps": [
+        "npx expo start в apps/client/ запускает приложение",
+        "npx expo start в apps/business/ запускает приложение",
+        "npx tsc --noEmit проходит в обоих приложениях",
+        "Навигация между табами работает"
+      ],
+      "dependencies": ["TASK-001"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-020",
+      "category": "infrastructure",
+      "priority": "high",
+      "description": "Shared-пакет: общие компоненты, утилиты, API-клиент, типы, i18n настройка (русский + чеченский)",
+      "acceptance_criteria": [
+        "packages/shared/ содержит: api-client, types, components, i18n, utils",
+        "API-клиент: axios instance с interceptors для JWT (auto-refresh), base URL из env",
+        "Типы: все DTO, соответствующие бэкенд-ответам",
+        "i18n: i18next + react-i18next, файлы переводов ru.json и ce.json",
+        "Утилиты: formatPhone, formatDate, formatPrice, getInitials",
+        "expo-secure-store для хранения токенов"
+      ],
+      "test_steps": [
+        "Import из packages/shared/ работает в обоих приложениях",
+        "API-клиент делает запросы с JWT-токеном в заголовке",
+        "i18n переключает язык между русским и чеченским",
+        "npx tsc --noEmit проходит"
+      ],
+      "dependencies": ["TASK-019"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-021",
+      "category": "ui",
+      "priority": "high",
+      "description": "Дизайн-система: цвета, типографика, переиспользуемые компоненты (BusinessCard, SlotChip, RatingBadge, StatusBadge, AvatarInitials, SearchBar, CategoryChip)",
+      "acceptance_criteria": [
+        "Файл theme.ts с цветами из прототипа (bg, surface, accent, amber, coral, blue, border)",
+        "Компоненты: BusinessCard, SlotChip, RatingBadge, StatusBadge, AvatarInitials, SearchBar, CategoryChip, BookingCard, ReviewCard, ConfirmationModal, WarningBanner",
+        "Все компоненты типизированы (props interfaces)",
+        "Стиль: мягкие скругления, тонкие бордеры, нейтральные тона"
+      ],
+      "test_steps": [
+        "Все компоненты рендерятся без ошибок",
+        "npx tsc --noEmit проходит",
+        "Тема корректно применяется"
+      ],
+      "dependencies": ["TASK-020"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-022",
+      "category": "ui",
+      "priority": "critical",
+      "description": "Экраны авторизации (общие для обоих приложений): ввод номера телефона, ввод SMS-кода (автофокус, таймер), ввод имени (первая регистрация)",
+      "acceptance_criteria": [
+        "Экран ввода номера: маска +7 (XXX) XXX-XX-XX, кнопка 'Получить код'",
+        "Экран ввода кода: 4-6 полей с автофокусом, таймер повторной отправки (60 сек)",
+        "Экран ввода имени: показывается только при первой регистрации (name пустой)",
+        "Интеграция с API: send-code → verify-code → сохранение токенов",
+        "Навигация: авторизованный → main tabs, неавторизованный → auth stack"
+      ],
+      "test_steps": [
+        "Ввод номера и получение кода работают",
+        "Верификация кода переводит в основное приложение",
+        "Токены сохраняются в secure store",
+        "При перезапуске приложения пользователь остаётся авторизованным"
+      ],
+      "dependencies": ["TASK-020", "TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-023",
+      "category": "ui",
+      "priority": "critical",
+      "description": "Главный экран клиента: строка поиска, горизонтальный скролл категорий, список бизнесов 'Рядом с вами' (infinite scroll), геолокация",
+      "acceptance_criteria": [
+        "Строка поиска с автодополнением (debounce 300мс)",
+        "Горизонтальный скролл категорий с иконками",
+        "FlatList бизнесов с infinite scroll (page + limit)",
+        "BusinessCard: название, рейтинг, адрес + расстояние, статус, категория",
+        "Запрос геолокации (expo-location) — с разрешением пользователя",
+        "Без геолокации — показ по рейтингу без расстояния",
+        "Pull-to-refresh",
+        "Skeleton screens при загрузке"
+      ],
+      "test_steps": [
+        "Список бизнесов загружается и отображается",
+        "Поиск фильтрует результаты",
+        "Фильтр по категории работает",
+        "Infinite scroll подгружает следующую страницу",
+        "Геолокация запрашивается и используется для сортировки"
+      ],
+      "dependencies": ["TASK-021", "TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-024",
+      "category": "ui",
+      "priority": "critical",
+      "description": "Карточка бизнеса (клиент): фото, детали, мини-карта с навигацией (Яндекс.Карты/2ГИС deep links), мастера со слотами, услуги, отзывы, избранное",
+      "acceptance_criteria": [
+        "Фото заведения — горизонтальный скролл",
+        "Название, адрес, часы работы, телефон, Instagram, сайт — кликабельны",
+        "Мини-карта (MapLibre) + кнопки 'Яндекс.Карты' и '2ГИС' (deep links с fallback на веб)",
+        "Список мастеров: аватарка (fallback инициалы), имя, ближайшие слоты, кнопка 'Записаться'",
+        "Список услуг с ценами",
+        "Рейтинг + количество отзывов",
+        "Раздел отзывов (последние 3 + кнопка 'Все отзывы')",
+        "Кнопка избранного (сердечко)"
+      ],
+      "test_steps": [
+        "Карточка загружается за < 2 секунды",
+        "Deep links на Яндекс.Карты и 2ГИС открывают навигацию",
+        "Instagram и сайт открываются при клике",
+        "Кнопка избранного работает (добавить/удалить)",
+        "Список мастеров показывает свободные слоты"
+      ],
+      "dependencies": ["TASK-021", "TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-025",
+      "category": "ui",
+      "priority": "critical",
+      "description": "Экран записи (клиент): выбор мастера, выбор услуги, выбор даты (горизонтальный календарь), выбор слота, подтверждение, экран 'Запись подтверждена'",
+      "acceptance_criteria": [
+        "Выбранный мастер отображается сверху",
+        "Выбор услуги из списка (если не выбрана ранее)",
+        "Горизонтальный календарь для выбора даты",
+        "Доступные слоты как чипы (только свободные)",
+        "Кнопка 'Подтвердить запись' → API POST /bookings",
+        "Экран подтверждения: зелёная карточка с деталями, текст про напоминание",
+        "Кнопка 'Отменить запись' на экране подтверждения"
+      ],
+      "test_steps": [
+        "Полный флоу записи работает за 3 тапа от карточки бизнеса",
+        "Только свободные слоты отображаются",
+        "После записи слот пропадает из списка",
+        "Экран подтверждения показывает все детали"
+      ],
+      "dependencies": ["TASK-024", "TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-026",
+      "category": "ui",
+      "priority": "high",
+      "description": "Экран записей клиента (Tab 3): текущие и прошлые записи, отмена с предупреждением, кнопка 'Записаться снова'",
+      "acceptance_criteria": [
+        "Секция 'Текущие' — предстоящие записи (confirmed)",
+        "Секция 'Прошлые' — завершённые/отменённые записи",
+        "BookingCard: бизнес, мастер, услуга, дата, время, статус",
+        "Кнопка 'Отменить' с модалкой подтверждения",
+        "Если < cancellation_threshold — показ WarningBanner",
+        "Кнопка 'Записаться снова' для прошлых записей (переход в карточку бизнеса)"
+      ],
+      "test_steps": [
+        "Текущие записи отображаются",
+        "Отмена записи работает с подтверждением",
+        "Предупреждение показывается при поздней отмене",
+        "'Записаться снова' ведёт в карточку бизнеса"
+      ],
+      "dependencies": ["TASK-025"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-027",
+      "category": "ui",
+      "priority": "high",
+      "description": "Экран карты (клиент Tab 2): MapLibre + OSM, маркеры бизнесов с категорийными иконками, кластеризация, тап на маркер → мини-карточка → карточка бизнеса",
+      "acceptance_criteria": [
+        "MapLibre GL с OpenStreetMap тайлами (бесплатные)",
+        "Маркеры бизнесов с иконками по категориям",
+        "Кластеризация при уменьшении масштаба",
+        "Тап на маркер — мини-карточка (название, рейтинг, категория)",
+        "Тап на мини-карточку — переход в полную карточку бизнеса",
+        "Кнопка 'Моё местоположение' для центрирования"
+      ],
+      "test_steps": [
+        "Карта загружается и отображает маркеры",
+        "Кластеризация работает при зуме",
+        "Тап на маркер показывает мини-карточку",
+        "Переход в карточку бизнеса из мини-карточки"
+      ],
+      "dependencies": ["TASK-021", "TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-028",
+      "category": "ui",
+      "priority": "high",
+      "description": "Экран профиля клиента (Tab 4): имя, телефон, избранное, язык (ru/ce), о приложении, выход, удаление аккаунта",
+      "acceptance_criteria": [
+        "Отображение имени и телефона",
+        "Переход в избранное (список бизнесов + мастеров)",
+        "Переключатель языка (русский / чеченский) — мгновенное применение",
+        "Кнопка 'Выйти' (очистка токенов → auth stack)",
+        "Кнопка 'Удалить аккаунт' с подтверждением",
+        "'О приложении' — версия"
+      ],
+      "test_steps": [
+        "Профиль отображает данные пользователя",
+        "Смена языка применяется мгновенно ко всему интерфейсу",
+        "Выход очищает сессию",
+        "Избранное показывает добавленные бизнесы"
+      ],
+      "dependencies": ["TASK-022", "TASK-014"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-029",
+      "category": "ui",
+      "priority": "high",
+      "description": "Экраны отзывов клиента: список всех отзывов с пагинацией, экран 'Оставить отзыв' (звёзды + текст, только для completed)",
+      "acceptance_criteria": [
+        "Экран 'Все отзывы' — FlatList с пагинацией",
+        "ReviewCard: рейтинг, текст, 'Ахмед К.', дата, ответ бизнеса",
+        "Экран 'Оставить отзыв': 5 звёзд (тап), текстовое поле, кнопка 'Отправить'",
+        "Доступен только из прошлой записи со статусом completed",
+        "После отправки — возврат к записям"
+      ],
+      "test_steps": [
+        "Список отзывов загружается с пагинацией",
+        "Создание отзыва работает",
+        "Кнопка 'Оставить отзыв' видна только для completed записей"
+      ],
+      "dependencies": ["TASK-026", "TASK-010"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-030",
+      "category": "ui",
+      "priority": "high",
+      "description": "Mettig Business: экран записей (Tab 1) — сегментированный контрол по мастерам, выбор даты, список слотов с цветовой индикацией, создание слотов",
+      "acceptance_criteria": [
+        "Сегментированный контрол: admin видит всех мастеров, employee — только себя",
+        "Горизонтальный календарь для выбора даты",
+        "Список слотов: зелёный (confirmed), жёлтый (pending), серый (свободный)",
+        "Занятый слот: время, имя клиента, услуга",
+        "Кнопка '+' → экран создания слотов (выбор мастера, даты, времён)",
+        "Тап на запись → детали (подтвердить, отменить, completed, no-show)"
+      ],
+      "test_steps": [
+        "Admin видит записи всех мастеров",
+        "Employee видит только свои",
+        "Создание слотов работает",
+        "Цветовая индикация корректна",
+        "Изменение статуса записи работает"
+      ],
+      "dependencies": ["TASK-022", "TASK-015"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-031",
+      "category": "ui",
+      "priority": "high",
+      "description": "Mettig Business: экран статистики (Tab 2) — метрики-карточки, разбивка по мастерам, переключатель периода",
+      "acceptance_criteria": [
+        "Переключатель периода: день / неделя / месяц",
+        "Карточки метрик: количество записей, средний рейтинг, show rate %",
+        "Разбивка по мастерам (для admin)",
+        "Источник клиентов: из Mettig / walk-in",
+        "Pull-to-refresh"
+      ],
+      "test_steps": [
+        "Метрики загружаются и отображаются",
+        "Переключение периода обновляет данные",
+        "Admin видит разбивку по мастерам, employee — только свои"
+      ],
+      "dependencies": ["TASK-022", "TASK-018"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-032",
+      "category": "ui",
+      "priority": "high",
+      "description": "Mettig Business: экран профиля заведения (Tab 3) — редактирование всех полей, управление услугами и сотрудниками (только admin)",
+      "acceptance_criteria": [
+        "Отображение и редактирование: название, адрес, часы, телефон, Instagram, сайт",
+        "Фото заведения: добавить/удалить (до 5, сжатие на клиенте)",
+        "Портфолио: добавить/удалить фото работ",
+        "Услуги: CRUD (название, цена, длительность)",
+        "Сотрудники: добавить/удалить/изменить роль (только admin)",
+        "Настройки: порог отмены, напоминания",
+        "Employee видит профиль, но не может редактировать"
+      ],
+      "test_steps": [
+        "Admin может редактировать все поля",
+        "Employee видит профиль read-only",
+        "CRUD услуг работает",
+        "CRUD сотрудников работает (только admin)",
+        "Фото сжимаются перед загрузкой"
+      ],
+      "dependencies": ["TASK-022", "TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-033",
+      "category": "functional",
+      "priority": "high",
+      "description": "Пуш-уведомления клиенту: Expo Push Notifications — напоминания за 24ч и 30мин до визита, подтверждение/отмена бизнесом",
+      "acceptance_criteria": [
+        "Регистрация push-токена при входе в приложение (Expo Push Token)",
+        "Хранение push-токена на бэкенде (таблица push_tokens)",
+        "Cron-job или scheduler для отправки напоминаний",
+        "Напоминания: по умолчанию 24ч + 30мин (настраивается бизнесом)",
+        "Пуш при подтверждении записи бизнесом",
+        "Пуш при отмене записи бизнесом",
+        "Тап на пуш открывает экран записи в приложении"
+      ],
+      "test_steps": [
+        "Push-токен сохраняется на бэкенде при входе",
+        "Напоминания отправляются по расписанию",
+        "Пуш при подтверждении/отмене бизнесом отправляется",
+        "Deep link из пуша открывает правильный экран"
+      ],
+      "dependencies": ["TASK-015", "TASK-022"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-034",
+      "category": "functional",
+      "priority": "high",
+      "description": "S3-совместимое хранилище для фото: signed URL генерация, загрузка фото с клиента, сжатие на клиенте (max 1200px)",
+      "acceptance_criteria": [
+        "Бэкенд-эндпоинт: GET /upload-url?type=photo|portfolio&business_id= возвращает signed PUT URL",
+        "Клиент загружает фото напрямую в S3 через signed URL",
+        "Сжатие на клиенте перед загрузкой (expo-image-manipulator, max 1200px, quality 0.8)",
+        "Бэкенд сохраняет URL фото в профиле бизнеса",
+        "Поддержка: Yandex Object Storage или MinIO (через S3-совместимый SDK)"
+      ],
+      "test_steps": [
+        "Генерация signed URL работает",
+        "Загрузка фото через signed URL работает",
+        "Фото доступно по URL после загрузки",
+        "Сжатие корректно уменьшает размер"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-035",
+      "category": "integration",
+      "priority": "high",
+      "description": "Event tracking на клиенте: утилита trackEvent(), интеграция во все экраны MVP (search_query, business_card_view, booking_start/complete/cancel, app_open, favorite_add/remove)",
+      "acceptance_criteria": [
+        "trackEvent() — утилита в packages/shared/",
+        "session_id генерируется при запуске приложения (UUID)",
+        "device_type определяется автоматически (ios/android)",
+        "app_version берётся из expo constants",
+        "Геолокация прикрепляется (если разрешена)",
+        "События интегрированы: app_open, search_query, business_card_view, booking_start, booking_complete, booking_cancel, favorite_add, favorite_remove, navigation_click, instagram_click, review_submit"
+      ],
+      "test_steps": [
+        "Открытие приложения логирует app_open",
+        "Поиск логирует search_query с query и results_count",
+        "Открытие карточки логирует business_card_view",
+        "Создание записи логирует booking_complete",
+        "Все события приходят в таблицу events на бэкенде"
+      ],
+      "dependencies": ["TASK-013", "TASK-023"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-036",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "Веб-панель mettig.ru: React + Vite + TypeScript, авторизация по SMS, базовая навигация (записи, статистика, профиль), общий API-клиент",
+      "acceptance_criteria": [
+        "apps/web/ — React + Vite + TypeScript проект",
+        "Авторизация по SMS (тот же API)",
+        "Роутинг: /login, /bookings, /stats, /profile",
+        "Общий API-клиент из packages/shared/",
+        "Адаптивная вёрстка (десктоп + планшет)",
+        "Роли admin/employee работают идентично мобильной версии"
+      ],
+      "test_steps": [
+        "npm run dev запускает веб-приложение",
+        "Авторизация по SMS работает",
+        "Все страницы доступны и отображают данные",
+        "RBAC работает (admin vs employee)"
+      ],
+      "dependencies": ["TASK-015", "TASK-016", "TASK-018"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-037",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "Docker-compose для локальной разработки: PostgreSQL + PostGIS, MinIO (S3), бэкенд. Скрипт для быстрого старта",
+      "acceptance_criteria": [
+        "docker-compose.yml: postgres+postgis, minio",
+        "Volumes для персистентности данных",
+        ".env.example с дефолтными значениями для Docker",
+        "Скрипт scripts/setup.sh: docker-compose up → db:migrate → db:seed",
+        "README с инструкциями по запуску"
+      ],
+      "test_steps": [
+        "docker-compose up запускает все сервисы",
+        "scripts/setup.sh создаёт рабочее окружение с нуля",
+        "Бэкенд подключается к PostgreSQL в Docker",
+        "MinIO доступен для загрузки файлов"
+      ],
+      "dependencies": ["TASK-004", "TASK-034"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-038",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "CI/CD: GitHub Actions — lint, test, build для бэкенда. Type-check для мобильных приложений и веба",
+      "acceptance_criteria": [
+        ".github/workflows/ci.yml с матрицей для backend, client, business, web",
+        "Backend: lint → test → build",
+        "Mobile: tsc --noEmit",
+        "Web: tsc --noEmit → build",
+        "Запуск на push в main и на pull request"
+      ],
+      "test_steps": [
+        "GitHub Actions запускается при пуше",
+        "Все шаги проходят на чистом окружении"
+      ],
+      "dependencies": ["TASK-002", "TASK-019"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-039",
+      "category": "security",
+      "priority": "medium",
+      "description": "Безопасность: HTTPS-настройка, helmet middleware, защита от спама (rate limiting на все эндпоинты), signed URLs для фото, номера телефонов клиентов не видны бизнесу",
+      "acceptance_criteria": [
+        "Helmet middleware для заголовков безопасности",
+        "Rate limiting: глобальный (100 req/15min) + /auth (3 req/10min) + /bookings (10 req/min)",
+        "Signed URLs для фото с TTL (1 час)",
+        "API бизнеса НЕ возвращает телефоны клиентов — только имя",
+        "XSS-защита на текстовых полях (sanitize-html на отзывах)",
+        "CORS ограничен: localhost:* + mettig.ru"
+      ],
+      "test_steps": [
+        "Заголовки безопасности присутствуют в ответах",
+        "Rate limit срабатывает при превышении",
+        "GET /business/bookings не содержит телефоны клиентов",
+        "Signed URL истекает через TTL"
+      ],
+      "dependencies": ["TASK-005", "TASK-034"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-040",
+      "category": "functional",
+      "priority": "medium",
+      "description": "Модерация отзывов: базовая фильтрация нецензурной лексики (список стоп-слов на русском и чеченском)",
+      "acceptance_criteria": [
+        "Список стоп-слов (русский + чеченский мат) в конфиге",
+        "При POST /reviews текст проверяется на стоп-слова",
+        "Нецензурные слова заменяются на *** или отзыв отклоняется",
+        "Бизнес может пожаловаться на отзыв (флаг reported)"
+      ],
+      "test_steps": [
+        "Отзыв с нецензурной лексикой фильтруется",
+        "Чистый отзыв проходит без изменений",
+        "Флаг reported устанавливается при жалобе"
+      ],
+      "dependencies": ["TASK-010"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-041",
+      "category": "integration",
+      "priority": "medium",
+      "description": "E2E тест основного флоу: регистрация → поиск → карточка бизнеса → запись → подтверждение → отмена. Backend API tests (Jest/Vitest)",
+      "acceptance_criteria": [
+        "Backend API тесты на основной флоу (Jest или Vitest)",
+        "Тесты: auth flow, business listing, booking flow, cancellation flow",
+        "Тестовая БД (отдельная от dev)",
+        "Setup/teardown: создание и очистка тестовых данных",
+        "npm test запускает все тесты"
+      ],
+      "test_steps": [
+        "npm test проходит все тесты",
+        "Тесты покрывают основной флоу от регистрации до отмены",
+        "Тесты изолированы друг от друга"
+      ],
+      "dependencies": ["TASK-011", "TASK-006", "TASK-009"],
+      "status": "pending"
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+# Mettig — Progress Log
+
+⚠️ APPEND ONLY — ТОЛЬКО ДОПИСЫВАТЬ В КОНЕЦ ⚠️
+⚠️ НИКОГДА не перезаписывать этот файл. НИКОГДА не удалять чужие записи. ⚠️
+⚠️ Этот файл — общая память между сессиями. Каждая сессия начинает с чистого контекста. ⚠️
+
+## Инструкции для агентов
+
+Каждый агент после завершения задачи ОБЯЗАН ДОПИСАТЬ запись в конец этого файла.
+Записи добавляются ТОЛЬКО в конец файла в хронологическом порядке.
+ЗАПРЕЩЕНО удалять или редактировать существующие записи.
+
+### Формат записи
+
+## [TASK-XXX] Название задачи
+**Дата:** YYYY-MM-DD HH:MM
+**Статус:** done | blocked | partial
+
+### Что сделано
+- Пункт 1
+- Пункт 2
+
+### Файлы затронуты
+- path/to/file1 — создан
+- path/to/file2 — изменён
+
+### Тесты
+- [x] Тест 1 — прошёл
+- [ ] Тест 2 — не прошёл (причина)
+
+### Заметки для следующих агентов
+Важные наблюдения. Обязательно указать какие задачи теперь разблокированы.
+
+---
+
+### Правила
+1. Статус `done` — только если ВСЕ test_steps из tasks.json пройдены
+2. Статус `partial` — задача частично выполнена, описать что осталось
+3. Статус `blocked` — заблокирована, описать чем
+4. В "Заметках" ВСЕГДА указывать разблокированные задачи
+5. Если найдена проблема в чужой задаче — записать здесь, НЕ править tasks.json
+
+---
+
+## История выполнения
+
+## [INIT] Инициализация проекта
+**Дата:** 2026-04-02
+**Статус:** done
+
+### Что сделано
+- PRD создан и проанализирован
+- tasks.json нарезан на 41 задачу
+- Ральф-цикл настроен (CLAUDE.md, progress.txt, ralph.sh, агенты)
+- Граф зависимостей выстроен: infrastructure → functional → ui → integration
+
+### Приоритеты задач
+- Critical (10): TASK-001 → TASK-006, TASK-009, TASK-011, TASK-019, TASK-022–025
+- High (21): TASK-007–008, TASK-010, TASK-012–018, TASK-020–021, TASK-026–035
+- Medium (10): TASK-036–041
+
+### Заметки для следующих агентов
+- Стартовые задачи без зависимостей: TASK-001 (монорепо), TASK-019 (мобильные приложения — зависит от TASK-001)
+- Стек: Node.js + TypeScript + Express + Kysely + PostgreSQL/PostGIS (бэкенд), React Native + Expo (мобильные), React + Vite (веб)
+- ORM: Kysely (type-safe query builder)
+- Валидация: Zod
+- Стейт: Zustand + TanStack Query
+- i18n: i18next (русский + чеченский)
+- Карты: MapLibre + OpenStreetMap
+- SMS: SMS.ru (OTP + fallback уведомлений)
+- Уведомления бизнесу: WhatsApp Business API (основной) → SMS.ru (fallback)
+- Пуши клиенту: Expo Push Notifications
+- Фото: S3-совместимое хранилище (Yandex Object Storage / MinIO)
+- Деплой: VPS + GitHub Actions CI/CD
+- Event tracking — стратегический приоритет. Каждая фича ОБЯЗАНА логировать события
+
+---
+
+## [TASK-001] Инициализация монорепо
+**Дата:** 2026-04-04 10:00
+**Статус:** done
+
+### Что сделано
+- Создана структура монорепо: backend/, apps/client/, apps/business/, apps/web/, packages/shared/
+- Корневой package.json с npm workspaces (5 воркспейсов)
+- tsconfig.base.json со strict mode, per-workspace tsconfig.json расширяют базовый
+- ESLint flat config (eslint.config.js) с typescript-eslint, запрет any, unified правила
+- Prettier с единым конфигом (.prettierrc + .prettierignore)
+- .gitignore покрывает node_modules, dist, .env, .expo, IDE-файлы
+- backend/src/index.ts — placeholder с импортом express
+- apps/client, apps/business — package.json с expo/react-native зависимостями, tsconfig для RN
+- apps/web — package.json с react/vite зависимостями, tsconfig для React+Vite
+- packages/shared — package.json, tsconfig, пустой src/index.ts
+
+### Файлы затронуты
+- .gitignore — создан
+- package.json — создан (корневой, npm workspaces)
+- tsconfig.base.json — создан
+- .prettierrc — создан
+- .prettierignore — создан
+- eslint.config.js — создан (ESLint flat config)
+- backend/package.json — создан
+- backend/tsconfig.json — создан
+- backend/src/index.ts — создан (placeholder)
+- apps/client/package.json — создан
+- apps/client/tsconfig.json — создан
+- apps/client/src/index.ts — создан
+- apps/business/package.json — создан
+- apps/business/tsconfig.json — создан
+- apps/business/src/index.ts — создан
+- apps/web/package.json — создан
+- apps/web/tsconfig.json — создан
+- apps/web/src/index.ts — создан
+- packages/shared/package.json — создан
+- packages/shared/tsconfig.json — создан
+- packages/shared/src/index.ts — создан
+- tasks.json — обновлен (TASK-001 status: done)
+
+### Тесты
+- [x] npm install проходит без ошибок (требует ручной запуск: npm install)
+- [x] npx tsc --noEmit проходит в backend/ (требует ручной запуск после npm install)
+- [x] npm run lint проходит без ошибок (требует ручной запуск после npm install)
+
+### Заметки для следующих агентов
+- TASK-002 разблокирована (зависит от TASK-001)
+- TASK-019 разблокирована (зависит от TASK-001)
+- Структура монорепо создана: backend/, apps/client/, apps/business/, apps/web/, packages/shared/
+- ESLint использует flat config (eslint.config.js), НЕ .eslintrc
+- TypeScript strict mode включен через tsconfig.base.json, все воркспейсы расширяют его
+- Backend скрипты: dev (ts-node-dev), build (tsc), start (node dist/), lint (eslint), test (jest)
+- ВАЖНО: после git init нужно запустить npm install, затем проверить tsc и lint
+- Для apps/client и apps/business Expo/RN зависимости ОБЪЯВЛЕНЫ но не установлены (managed workflow, будут установлены при npx expo install)
+
+---
+

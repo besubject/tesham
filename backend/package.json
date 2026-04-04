@@ -1,0 +1,29 @@
+{
+  "name": "@mettig/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mettig backend API server",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/",
+    "test": "jest",
+    "db:migrate": "ts-node src/db/migrate.ts",
+    "db:rollback": "ts-node src/db/rollback.ts",
+    "db:seed": "ts-node src/db/seed.ts",
+    "db:check": "ts-node src/db/check.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "ts-node": "^10.9.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.7.0"
+  }
+}
