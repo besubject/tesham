@@ -85,7 +85,7 @@
         "Типы компилируются без ошибок (npx tsc --noEmit)"
       ],
       "dependencies": ["TASK-002"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-004",

@@ -170,3 +170,40 @@
 - Git репозиторий инициализирован в /Users/umar/Desktop/mettig/
 
 ---
+
+## [TASK-003] PostgreSQL + PostGIS + Kysely
+**Дата:** 2026-04-04 12:00
+**Статус:** done
+
+### Что сделано
+- Установлены пакеты: kysely, pg, @types/pg
+- Создан src/db/index.ts — экспортирует инстанс Kysely с PostgresDialect + Pool
+- Создан src/db/types.ts — полные TypeScript-типы для всех таблиц БД
+- Создан src/db/check.ts — скрипт проверки подключения и PostGIS
+- Создан backend/.env для локальной разработки (PostgreSQL в Docker на порту 5433)
+- PostGIS-контейнер: postgis/postgis:16-3.4 запущен как mettig-postgres
+- npm run db:check — успешно подключается, выводит версию PostGIS 3.4
+- npx tsc --noEmit — без ошибок
+- npm run lint — без ошибок
+
+### Файлы затронуты
+- backend/src/db/index.ts — создан (Kysely instance)
+- backend/src/db/types.ts — создан (Database schema types: User, Category, Business, Staff, Service, Slot, Booking, Review, Favorite, Event)
+- backend/src/db/check.ts — создан (db:check скрипт)
+- backend/.env — создан (локальная конфигурация, в .gitignore)
+- backend/package.json — обновлён (добавлены kysely, pg, @types/pg)
+
+### Тесты
+- [x] npm run db:check — подключение к БД и PostGIS_version() прошли
+- [x] npx tsc --noEmit — без ошибок
+
+### Заметки для следующих агентов
+- TASK-004 разблокирована (зависит от TASK-003): система миграций Kysely
+- TASK-005 разблокирована (зависит от TASK-002, уже done): middleware стек
+- PostGIS-контейнер: docker run postgis/postgis:16-3.4, имя mettig-postgres, порт 5433
+- DATABASE_URL=postgresql://mettig:mettig_dev@localhost:5433/mettig (в .env)
+- Типы EventTable включают: event_type, session_id, anonymous_user_hash, user_id, payload (jsonb), created_at
+- Все таблицы в Database: users, categories, businesses, staff, services, slots, bookings, reviews, favorites, events
+
+---
+
