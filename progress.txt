@@ -133,3 +133,40 @@
 
 ---
 
+
+## [TASK-002] Настройка бэкенда: Express + TypeScript, health-check
+**Дата:** 2026-04-04 11:00
+**Статус:** done
+
+### Что сделано
+- Express-сервер настроен на PORT из .env (config.ts через dotenv)
+- Структура папок создана: src/routes/, src/controllers/, src/services/, src/middleware/, src/db/, src/utils/
+- GET /health возвращает { status: 'ok', timestamp: ISO } — проверено curl
+- .env.example создан в backend/ с полным набором переменных
+- Скрипты: dev (ts-node-dev --respawn), build (tsc), start (node dist/index.js)
+- npm run build проходит без ошибок
+- npx tsc --noEmit — без ошибок
+- npm run lint — без ошибок
+- Git инициализирован, первый коммит создан
+
+### Файлы затронуты
+- backend/src/index.ts — создан (entrypoint, SIGTERM handler)
+- backend/src/app.ts — создан (Express app, JSON middleware, /health router)
+- backend/src/config.ts — создан (config из dotenv: port, nodeEnv, db, jwt, smsru, cors)
+- backend/src/routes/health.ts — создан (GET / → {status:'ok', timestamp})
+- backend/.env.example — создан
+
+### Тесты
+- [x] npm run dev запускает сервер (ts-node-dev)
+- [x] curl http://localhost:3000/health → {"status":"ok","timestamp":"..."}
+- [x] npm run build компилирует без ошибок
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+
+### Заметки для следующих агентов
+- TASK-003 разблокирована (зависит от TASK-002): настройка PostgreSQL + PostGIS + Kysely
+- backend/src/db/ пока пустой (.gitkeep) — TASK-003 заполняет его
+- config.ts уже содержит db: { url, poolMin, poolMax } — используй при настройке Kysely
+- Git репозиторий инициализирован в /Users/umar/Desktop/mettig/
+
+---
