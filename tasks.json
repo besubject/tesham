@@ -176,7 +176,7 @@
         "DELETE /user/me удаляет аккаунт, повторный запрос возвращает 401"
       ],
       "dependencies": ["TASK-006"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-008",

@@ -340,3 +340,47 @@
 - Phone regex: /^\+?[78]\d{10}$/ — русские номера (+7 или 8)
 
 ---
+
+## [TASK-007] API пользователя: GET/PATCH/DELETE /user/me
+**Дата:** 2026-04-04 18:00
+**Статус:** done
+
+### Что сделано
+- `UserService`: `getById()`, `update()`, `delete()` — бизнес-логика в сервисе
+- `DELETE /user/me` каскадно удаляет: favorites, reviews, bookings; события в таблице events анонимизируются (user_id → null)
+- `PATCH /user/me` — Zod strict-схема (только name + language, неизвестные поля → 400)
+- Event tracking: `user.update_profile`, `user.delete_account` (fire-and-forget)
+- Контроллеры используют `try/catch + next(err)` паттерн (как в auth.controller.ts)
+- Accept-Language в TASK-009 (бизнесы), категории локализованы на уровне БД (name_ru / name_ce)
+- 12 тестов: 12/12 passed
+
+### Файлы затронуты
+- backend/src/services/user.service.ts — создан
+- backend/src/controllers/user.controller.ts — создан
+- backend/src/routes/user.ts — создан
+- backend/src/app.ts — изменён (подключён userRouter на /user)
+- backend/src/__tests__/user.test.ts — создан (12 тестов)
+
+### Тесты
+- [x] GET /user/me с валидным токеном → 200 + данные пользователя
+- [x] GET /user/me без токена → 401
+- [x] GET /user/me (пользователь не найден) → 404
+- [x] PATCH /user/me обновляет name → 200
+- [x] PATCH /user/me обновляет language → 200
+- [x] PATCH /user/me с невалидным language → 400
+- [x] PATCH /user/me с unknown fields → 400 (strict schema)
+- [x] PATCH /user/me с пустым name → 400
+- [x] DELETE /user/me → 204
+- [x] DELETE /user/me (пользователь не найден) → 404
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+- [x] npm test — 32/32 passed (все три тест-файла)
+
+### Заметки для следующих агентов
+- TASK-008 разблокирована (зависит от TASK-004 ✓): seed данные — можно выполнять параллельно
+- TASK-009 разблокирована (зависит от TASK-005 ✓ + TASK-008): API бизнесов — ждёт seed данные
+- Accept-Language поддержка для категорий реализуется в TASK-009 при возврате category в ответе бизнеса
+- Ответ ошибок: `{ error: { code, message } }` — НЕ `{ code, message }` напрямую
+- try/catch+next(err) ОБЯЗАТЕЛЕН для async контроллеров в Express 4
+
+---
