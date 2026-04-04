@@ -1,0 +1,57 @@
+import { Request, Response, NextFunction } from 'express';
+import { userService } from '../services/user.service';
+import { AppError } from '../middleware/error';
+
+export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new AppError(401, 'Authentication required', 'UNAUTHORIZED');
+    }
+
+    const user = await userService.getById(req.user.id);
+
+    res.json({
+      id: user.id,
+      phone: user.phone,
+      name: user.name,
+      language: user.language,
+      created_at: user.created_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new AppError(401, 'Authentication required', 'UNAUTHORIZED');
+    }
+
+    const user = await userService.update(req.user.id, req.body as { name?: string; language?: 'ru' | 'ce' });
+
+    res.json({
+      id: user.id,
+      phone: user.phone,
+      name: user.name,
+      language: user.language,
+      created_at: user.created_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new AppError(401, 'Authentication required', 'UNAUTHORIZED');
+    }
+
+    await userService.delete(req.user.id);
+
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+}

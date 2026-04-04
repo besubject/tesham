@@ -6,6 +6,7 @@ import { globalRateLimit } from './middleware/rate-limit';
 import { errorHandler } from './middleware/error';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
+import userRouter from './routes/user';
 
 const app: Application = express();
 
@@ -32,6 +33,7 @@ app.use(globalRateLimit);
 // Routes
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
+app.use('/user', userRouter);
 
 // Global error handler (must be last)
 app.use(errorHandler);
