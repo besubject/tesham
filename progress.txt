@@ -291,3 +291,52 @@
 
 ---
 
+
+## [TASK-006] Аутентификация: SMS OTP + JWT
+**Дата:** 2026-04-04 16:30
+**Статус:** done
+
+### Что сделано
+- `ISmsProvider` интерфейс + `SmsRuProvider` (SMS.ru API) + `MockSmsProvider` (dev/test)
+- Factory `createSmsProvider()` — автовыбор по наличию SMSRU_API_ID
+- `AuthService`: `sendCode()` (6-значный OTP, 5 мин TTL, in-memory Map), `verifyCode()`, `refresh()`
+- Max 5 попыток ввода OTP (защита брутфорса)
+- GET/POST user при первой верификации — автосоздание с пустым name
+- JWT: access (1ч) + refresh (30д), stateless (без таблицы refresh_tokens)
+- POST /auth/send-code — authRateLimit (3/10 мин) + Zod validate
+- POST /auth/verify-code — Zod validate
+- POST /auth/refresh — Zod validate
+- Event tracking: auth.send_code, auth.verify_code (fire-and-forget)
+- 20 тестов: 20/20 passed
+
+### Файлы затронуты
+- backend/src/services/sms.ts — создан (ISmsProvider, SmsRuProvider, MockSmsProvider)
+- backend/src/services/auth.service.ts — создан (AuthService, OTP store, JWT utils)
+- backend/src/controllers/auth.controller.ts — создан
+- backend/src/routes/auth.ts — создан (3 эндпоинта + rate limit + validation)
+- backend/src/app.ts — изменён (подключён authRouter на /auth)
+- backend/src/__tests__/auth.test.ts — создан (20 тестов)
+
+### Тесты
+- [x] Отправка кода на валидный номер → 200
+- [x] Верификация правильного кода → токены + пользователь (unit test)
+- [x] Верификация неправильного кода → 401
+- [x] Нет кода (не отправлен) → 401
+- [x] 4-й запрос SMS за 10 минут → 429 (authRateLimit)
+- [x] Refresh с валидным токеном → новая пара токенов
+- [x] Refresh с невалидным токеном → 401
+- [x] Удалённый пользователь → 401 при refresh
+- [x] Превышение попыток OTP → 429
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+- [x] npm test — 20/20 passed
+
+### Заметки для следующих агентов
+- TASK-007 разблокирована (зависит от TASK-006 ✓): GET/PATCH/DELETE /user/me
+- TASK-008 разблокирована (зависит от TASK-004 ✓ — уже была): seed данные
+- OTP хранится in-memory (Map). В prod нужен Redis, но для MVP достаточно
+- Refresh tokens stateless — в случае компрометации нельзя отозвать без ротации секрета
+- MockSmsProvider логирует OTP в консоль — удобно для разработки
+- Phone regex: /^\+?[78]\d{10}$/ — русские номера (+7 или 8)
+
+---
