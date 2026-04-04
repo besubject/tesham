@@ -207,3 +207,39 @@
 
 ---
 
+
+## [TASK-004] Система миграций: Kysely migrator + начальная миграция
+**Дата:** 2026-04-04 13:00
+**Статус:** done
+
+### Что сделано
+- Настроен FileMigrationProvider, папка backend/src/db/migrations/
+- Создан migrate.ts (db:migrate) и rollback.ts (db:rollback)
+- Начальная миграция 001_initial: все таблицы из модели данных
+- PostGIS geography(Point,4326) на businesses.location + GiST индекс
+- B-tree индексы: users.phone, businesses.phone, category_id, business_id, staff_id, slot_id
+- Composite index events(event_type, created_at) + GIN index на events.payload
+- Идемпотентность проверена (повторный db:migrate — "No pending migrations")
+
+### Файлы затронуты
+- backend/src/db/migrations/001_initial.ts — создан
+- backend/src/db/migrate.ts — создан
+- backend/src/db/rollback.ts — создан
+
+### Тесты
+- [x] npm run db:migrate — создал все таблицы
+- [x] npm run db:rollback — откатил последнюю миграцию
+- [x] Повторный npm run db:migrate — идемпотентно (No pending migrations)
+- [x] SELECT PostGIS_version() — возвращает версию (db:check)
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+
+### Заметки для следующих агентов
+- TASK-005 разблокирована (зависит от TASK-002 — done): middleware стек
+- TASK-008 разблокирована (зависит от TASK-004 — done): seed данные
+- TASK-006 зависит от TASK-004 + TASK-005 — ещё не разблокирована (TASK-005 pending)
+- Все UUID используют gen_random_uuid() (pgcrypto), не uuid-ossp
+- Миграция поддерживает up/down, Kysely хранит историю в таблице kysely_migration
+
+---
+

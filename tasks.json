@@ -108,7 +108,7 @@
         "SELECT PostGIS_version() возвращает версию"
       ],
       "dependencies": ["TASK-003"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-005",
