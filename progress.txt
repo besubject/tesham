@@ -414,3 +414,47 @@
 - Слоты: 30-мин интервалы с 09:00 до 17:30 (18 слотов в день на мастера)
 
 ---
+
+## [TASK-009] API бизнесов с геопоиском
+**Дата:** 2026-04-05 10:00
+**Статус:** done
+
+### Что сделано
+- `GET /businesses` — поиск по query (ILIKE по названию + EXISTS по услугам), фильтр по category_id, сортировка по расстоянию (PostGIS ST_Distance) + рейтингу, пагинация (page/limit)
+- `GET /businesses/:id` — полная карточка: бизнес + мастера + услуги + средний рейтинг + кол-во отзывов, Accept-Language: ru/ce для локализованного category_name
+- Zod-валидация query params: lat [-90..90], lng [-180..180], limit max 50, page/limit coerce
+- Event tracking: `business.view` (fire-and-forget) при GET /businesses/:id
+- Исправлен баг в тестах: `jest.clearAllMocks()` не очищает `mockResolvedValueOnce` очереди, заменено на `jest.resetAllMocks()` + повторная инициализация chainable mock в beforeEach; убраны лишние mockResolvedValueOnce из теста "caps limit at 50" (сервис не вызывается при 400)
+
+### Файлы затронуты
+- backend/src/routes/businesses.ts — создан (ранее был в git untracked)
+- backend/src/controllers/business.controller.ts — создан (ранее был в git untracked)
+- backend/src/services/business.service.ts — создан (ранее был в git untracked)
+- backend/src/__tests__/business.test.ts — исправлен (jest.resetAllMocks + убраны leftover Once values)
+- backend/src/app.ts — ранее изменён (businessesRouter уже подключён)
+- tasks.json — TASK-009 status: done
+- progress.txt — дополнен (этот файл)
+
+### Тесты
+- [x] GET /businesses возвращает список с пагинацией
+- [x] GET /businesses?query=борода — поиск работает
+- [x] GET /businesses?lat=43.317&lng=45.694 — гео-сортировка
+- [x] GET /businesses?category_id=... — фильтр по категории
+- [x] GET /businesses?limit=100 → 400 (Zod rejects > 50)
+- [x] GET /businesses/:id → полная карточка с staff и services
+- [x] GET /businesses/:id (несуществующий) → 404 BUSINESS_NOT_FOUND
+- [x] Accept-Language: ru → category_name на русском
+- [x] Accept-Language: ce → category_name на чеченском
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+- [x] npm test — 45/45 passed
+
+### Заметки для следующих агентов
+- TASK-010 разблокирована (зависит от TASK-009 ✓): API отзывов GET /businesses/:id/reviews + POST /reviews
+- TASK-011 разблокирована (зависит от TASK-009 ✓ + TASK-006 ✓): API бронирования
+- Баг в Jest mock паттерне: `clearAllMocks` НЕ очищает `mockResolvedValueOnce` очереди — использовать `resetAllMocks` + повторно инициализировать chainable
+- Accept-Language обрабатывается в контроллере: `startsWith('ce')` → 'ce', иначе 'ru'
+- Event tracking: business.view логируется в events таблицу (fire-and-forget)
+- Геопоиск: ST_Distance(b.location, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography)
+
+---

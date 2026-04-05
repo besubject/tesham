@@ -220,7 +220,7 @@
         "GET /businesses/:id возвращает полную карточку с мастерами и услугами"
       ],
       "dependencies": ["TASK-005", "TASK-008"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-010",
