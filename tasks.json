@@ -65,7 +65,9 @@
         "curl http://localhost:3000/health возвращает 200",
         "npm run build компилирует без ошибок"
       ],
-      "dependencies": ["TASK-001"],
+      "dependencies": [
+        "TASK-001"
+      ],
       "status": "done"
     },
     {
@@ -84,7 +86,9 @@
         "npm run db:check — скрипт проверяет подключение к БД и PostGIS",
         "Типы компилируются без ошибок (npx tsc --noEmit)"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "done"
     },
     {
@@ -107,7 +111,9 @@
         "Повторный npm run db:migrate работает идемпотентно",
         "SELECT PostGIS_version() возвращает версию"
       ],
-      "dependencies": ["TASK-003"],
+      "dependencies": [
+        "TASK-003"
+      ],
       "status": "done"
     },
     {
@@ -130,7 +136,9 @@
         "Невалидное тело запроса возвращает 400 с описанием ошибок от Zod",
         "Более 100 запросов за 15 минут возвращают 429"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "done"
     },
     {
@@ -155,7 +163,10 @@
         "4-й запрос SMS за 10 минут возвращает 429",
         "Refresh с валидным токеном возвращает новую пару"
       ],
-      "dependencies": ["TASK-004", "TASK-005"],
+      "dependencies": [
+        "TASK-004",
+        "TASK-005"
+      ],
       "status": "done"
     },
     {
@@ -175,7 +186,9 @@
         "PATCH /user/me обновляет имя и язык",
         "DELETE /user/me удаляет аккаунт, повторный запрос возвращает 401"
       ],
-      "dependencies": ["TASK-006"],
+      "dependencies": [
+        "TASK-006"
+      ],
       "status": "done"
     },
     {
@@ -195,7 +208,9 @@
         "SELECT count(*) FROM businesses возвращает 5+",
         "Повторный npm run db:seed не дублирует записи"
       ],
-      "dependencies": ["TASK-004"],
+      "dependencies": [
+        "TASK-004"
+      ],
       "status": "done"
     },
     {
@@ -219,7 +234,10 @@
         "GET /businesses?category_id=... фильтрует по категории",
         "GET /businesses/:id возвращает полную карточку с мастерами и услугами"
       ],
-      "dependencies": ["TASK-005", "TASK-008"],
+      "dependencies": [
+        "TASK-005",
+        "TASK-008"
+      ],
       "status": "done"
     },
     {
@@ -241,7 +259,10 @@
         "POST /reviews на non-completed booking возвращает 403",
         "Повторный POST /reviews на тот же booking возвращает 409"
       ],
-      "dependencies": ["TASK-009", "TASK-006"],
+      "dependencies": [
+        "TASK-009",
+        "TASK-006"
+      ],
       "status": "done"
     },
     {
@@ -265,8 +286,11 @@
         "DELETE /bookings/:id отменяет запись, слот свободен",
         "GET /bookings/my возвращает список записей пользователя"
       ],
-      "dependencies": ["TASK-009", "TASK-006"],
-      "status": "pending"
+      "dependencies": [
+        "TASK-009",
+        "TASK-006"
+      ],
+      "status": "done"
     },
     {
       "id": "TASK-012",
@@ -287,7 +311,9 @@
         "Notification log записывает все отправки с указанием канала",
         "Fallback на SMS работает при ошибке WhatsApp"
       ],
-      "dependencies": ["TASK-011"],
+      "dependencies": [
+        "TASK-011"
+      ],
       "status": "pending"
     },
     {
@@ -309,7 +335,10 @@
         "Создание записи автоматически логирует событие booking_complete",
         "Отмена записи автоматически логирует событие booking_cancel"
       ],
-      "dependencies": ["TASK-004", "TASK-005"],
+      "dependencies": [
+        "TASK-004",
+        "TASK-005"
+      ],
       "status": "pending"
     },
     {
@@ -330,7 +359,10 @@
         "Повторный POST /favorites на тот же бизнес возвращает 409",
         "DELETE /favorites/:id удаляет из избранного"
       ],
-      "dependencies": ["TASK-009", "TASK-006"],
+      "dependencies": [
+        "TASK-009",
+        "TASK-006"
+      ],
       "status": "pending"
     },
     {
@@ -354,7 +386,10 @@
         "Employee видит только свои записи",
         "PATCH /business/bookings/:id меняет статус записи"
       ],
-      "dependencies": ["TASK-011", "TASK-006"],
+      "dependencies": [
+        "TASK-011",
+        "TASK-006"
+      ],
       "status": "pending"
     },
     {
@@ -377,7 +412,10 @@
         "Admin может добавить и удалить сотрудника",
         "Employee не может управлять сотрудниками (403)"
       ],
-      "dependencies": ["TASK-009", "TASK-006"],
+      "dependencies": [
+        "TASK-009",
+        "TASK-006"
+      ],
       "status": "pending"
     },
     {
@@ -395,7 +433,10 @@
         "Employee не может ответить (403)",
         "Ответ виден в списке отзывов"
       ],
-      "dependencies": ["TASK-010", "TASK-016"],
+      "dependencies": [
+        "TASK-010",
+        "TASK-016"
+      ],
       "status": "pending"
     },
     {
@@ -414,7 +455,10 @@
         "Метрики корректны для тестовых данных",
         "Employee видит только свою статистику"
       ],
-      "dependencies": ["TASK-015", "TASK-010"],
+      "dependencies": [
+        "TASK-015",
+        "TASK-010"
+      ],
       "status": "pending"
     },
     {
@@ -436,7 +480,9 @@
         "npx tsc --noEmit проходит в обоих приложениях",
         "Навигация между табами работает"
       ],
-      "dependencies": ["TASK-001"],
+      "dependencies": [
+        "TASK-001"
+      ],
       "status": "pending"
     },
     {
@@ -458,7 +504,9 @@
         "i18n переключает язык между русским и чеченским",
         "npx tsc --noEmit проходит"
       ],
-      "dependencies": ["TASK-019"],
+      "dependencies": [
+        "TASK-019"
+      ],
       "status": "pending"
     },
     {
@@ -477,7 +525,9 @@
         "npx tsc --noEmit проходит",
         "Тема корректно применяется"
       ],
-      "dependencies": ["TASK-020"],
+      "dependencies": [
+        "TASK-020"
+      ],
       "status": "pending"
     },
     {
@@ -498,7 +548,10 @@
         "Токены сохраняются в secure store",
         "При перезапуске приложения пользователь остаётся авторизованным"
       ],
-      "dependencies": ["TASK-020", "TASK-006"],
+      "dependencies": [
+        "TASK-020",
+        "TASK-006"
+      ],
       "status": "pending"
     },
     {
@@ -523,7 +576,10 @@
         "Infinite scroll подгружает следующую страницу",
         "Геолокация запрашивается и используется для сортировки"
       ],
-      "dependencies": ["TASK-021", "TASK-009"],
+      "dependencies": [
+        "TASK-021",
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -548,7 +604,10 @@
         "Кнопка избранного работает (добавить/удалить)",
         "Список мастеров показывает свободные слоты"
       ],
-      "dependencies": ["TASK-021", "TASK-009"],
+      "dependencies": [
+        "TASK-021",
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -571,7 +630,10 @@
         "После записи слот пропадает из списка",
         "Экран подтверждения показывает все детали"
       ],
-      "dependencies": ["TASK-024", "TASK-011"],
+      "dependencies": [
+        "TASK-024",
+        "TASK-011"
+      ],
       "status": "pending"
     },
     {
@@ -593,7 +655,9 @@
         "Предупреждение показывается при поздней отмене",
         "'Записаться снова' ведёт в карточку бизнеса"
       ],
-      "dependencies": ["TASK-025"],
+      "dependencies": [
+        "TASK-025"
+      ],
       "status": "pending"
     },
     {
@@ -615,7 +679,10 @@
         "Тап на маркер показывает мини-карточку",
         "Переход в карточку бизнеса из мини-карточки"
       ],
-      "dependencies": ["TASK-021", "TASK-009"],
+      "dependencies": [
+        "TASK-021",
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -637,7 +704,10 @@
         "Выход очищает сессию",
         "Избранное показывает добавленные бизнесы"
       ],
-      "dependencies": ["TASK-022", "TASK-014"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-014"
+      ],
       "status": "pending"
     },
     {
@@ -657,7 +727,10 @@
         "Создание отзыва работает",
         "Кнопка 'Оставить отзыв' видна только для completed записей"
       ],
-      "dependencies": ["TASK-026", "TASK-010"],
+      "dependencies": [
+        "TASK-026",
+        "TASK-010"
+      ],
       "status": "pending"
     },
     {
@@ -680,7 +753,10 @@
         "Цветовая индикация корректна",
         "Изменение статуса записи работает"
       ],
-      "dependencies": ["TASK-022", "TASK-015"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-015"
+      ],
       "status": "pending"
     },
     {
@@ -700,7 +776,10 @@
         "Переключение периода обновляет данные",
         "Admin видит разбивку по мастерам, employee — только свои"
       ],
-      "dependencies": ["TASK-022", "TASK-018"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-018"
+      ],
       "status": "pending"
     },
     {
@@ -724,7 +803,10 @@
         "CRUD сотрудников работает (только admin)",
         "Фото сжимаются перед загрузкой"
       ],
-      "dependencies": ["TASK-022", "TASK-016"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-016"
+      ],
       "status": "pending"
     },
     {
@@ -747,7 +829,10 @@
         "Пуш при подтверждении/отмене бизнесом отправляется",
         "Deep link из пуша открывает правильный экран"
       ],
-      "dependencies": ["TASK-015", "TASK-022"],
+      "dependencies": [
+        "TASK-015",
+        "TASK-022"
+      ],
       "status": "pending"
     },
     {
@@ -768,7 +853,9 @@
         "Фото доступно по URL после загрузки",
         "Сжатие корректно уменьшает размер"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "pending"
     },
     {
@@ -791,7 +878,10 @@
         "Создание записи логирует booking_complete",
         "Все события приходят в таблицу events на бэкенде"
       ],
-      "dependencies": ["TASK-013", "TASK-023"],
+      "dependencies": [
+        "TASK-013",
+        "TASK-023"
+      ],
       "status": "pending"
     },
     {
@@ -813,7 +903,11 @@
         "Все страницы доступны и отображают данные",
         "RBAC работает (admin vs employee)"
       ],
-      "dependencies": ["TASK-015", "TASK-016", "TASK-018"],
+      "dependencies": [
+        "TASK-015",
+        "TASK-016",
+        "TASK-018"
+      ],
       "status": "pending"
     },
     {
@@ -834,7 +928,10 @@
         "Бэкенд подключается к PostgreSQL в Docker",
         "MinIO доступен для загрузки файлов"
       ],
-      "dependencies": ["TASK-004", "TASK-034"],
+      "dependencies": [
+        "TASK-004",
+        "TASK-034"
+      ],
       "status": "pending"
     },
     {
@@ -853,7 +950,10 @@
         "GitHub Actions запускается при пуше",
         "Все шаги проходят на чистом окружении"
       ],
-      "dependencies": ["TASK-002", "TASK-019"],
+      "dependencies": [
+        "TASK-002",
+        "TASK-019"
+      ],
       "status": "pending"
     },
     {
@@ -875,7 +975,10 @@
         "GET /business/bookings не содержит телефоны клиентов",
         "Signed URL истекает через TTL"
       ],
-      "dependencies": ["TASK-005", "TASK-034"],
+      "dependencies": [
+        "TASK-005",
+        "TASK-034"
+      ],
       "status": "pending"
     },
     {
@@ -894,7 +997,9 @@
         "Чистый отзыв проходит без изменений",
         "Флаг reported устанавливается при жалобе"
       ],
-      "dependencies": ["TASK-010"],
+      "dependencies": [
+        "TASK-010"
+      ],
       "status": "pending"
     },
     {
@@ -914,7 +1019,11 @@
         "Тесты покрывают основной флоу от регистрации до отмены",
         "Тесты изолированы друг от друга"
       ],
-      "dependencies": ["TASK-011", "TASK-006", "TASK-009"],
+      "dependencies": [
+        "TASK-011",
+        "TASK-006",
+        "TASK-009"
+      ],
       "status": "pending"
     }
   ]

@@ -493,3 +493,48 @@
 - Коды ошибок: BOOKING_NOT_FOUND (404), FORBIDDEN (403), BOOKING_NOT_COMPLETED (403), REVIEW_ALREADY_EXISTS (409)
 
 ---
+
+## [TASK-011] API слотов и записей
+**Дата:** 2026-04-05 14:00
+**Статус:** done
+
+### Что сделано
+- `GET /businesses/:id/slots?staff_id=&date=` — возвращает свободные слоты (is_booked=false) с фильтрами по staff_id и date
+- `POST /bookings { slot_id, service_id }` — создаёт запись с `SELECT ... FOR UPDATE` (оптимистичная блокировка через транзакцию Kysely)
+- Двойная запись невозможна: повторный POST на занятый слот → 409 SLOT_ALREADY_BOOKED
+- `GET /bookings/my` — список всех записей текущего пользователя (текущие + прошлые)
+- `DELETE /bookings/:id` — отмена записи, освобождение слота, warning если до визита < cancellation_threshold_minutes
+- Event tracking: `booking.create`, `booking.cancel` (fire-and-forget)
+- Zod-валидация: slot_id/service_id (UUID), date (YYYY-MM-DD regex), staff_id (UUID)
+
+### Файлы затронуты
+- `backend/src/services/booking.service.ts` — создан
+- `backend/src/controllers/booking.controller.ts` — создан
+- `backend/src/routes/bookings.ts` — создан
+- `backend/src/routes/businesses.ts` — изменён (добавлен GET /:id/slots)
+- `backend/src/app.ts` — изменён (подключён bookingsRouter на /bookings)
+- `backend/src/__tests__/booking.test.ts` — создан (19 тестов)
+
+### Тесты
+- [x] GET /businesses/:id/slots возвращает только свободные слоты
+- [x] GET /businesses/:id/slots — 400 при невалидном date или staff_id
+- [x] POST /bookings создаёт запись, слот помечается как booked
+- [x] Повторный POST на занятый слот → 409 SLOT_ALREADY_BOOKED
+- [x] POST /bookings на несуществующий слот → 404 SLOT_NOT_FOUND
+- [x] DELETE /bookings/:id отменяет запись, возвращает { success: true }
+- [x] DELETE /bookings/:id в пределах threshold → warning в ответе
+- [x] GET /bookings/my возвращает список записей пользователя
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — 0 ошибок, 0 предупреждений
+- [x] npm test — 79/79 passed (19 новых тестов)
+
+### Заметки для следующих агентов
+- TASK-013 разблокирована (зависит от TASK-006 ✓): Event tracking сервис, POST /events
+- TASK-014 разблокирована (зависит от TASK-007 ✓): API избранного
+- TASK-016 разблокирована (зависит от TASK-006 ✓ + TASK-009 ✓): API профиля заведения
+- Оптимистичная блокировка: `sql\`SELECT ... FOR UPDATE\`.execute(trx)` внутри db.transaction()
+- cancelBooking: возвращает { success: true, warning? } — warning если diffMinutes < threshold
+- Кодировка ошибок: SLOT_NOT_FOUND (404), SLOT_ALREADY_BOOKED (409), BOOKING_NOT_FOUND (404), BOOKING_NOT_CANCELLABLE (400), FORBIDDEN (403)
+- В тестах: sql из 'kysely' замокирован отдельно (mockSqlFn + mockSqlExecute), транзакция через db.transaction().execute(callback)
+
+---
