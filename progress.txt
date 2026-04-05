@@ -538,3 +538,52 @@
 - В тестах: sql из 'kysely' замокирован отдельно (mockSqlFn + mockSqlExecute), транзакция через db.transaction().execute(callback)
 
 ---
+
+## [TASK-012] Сервис уведомлений бизнесу
+**Дата:** 2026-04-05 16:00
+**Статус:** done
+
+### Что сделано
+- `INotificationProvider` интерфейс с методом `sendMessage(phone, message)`
+- `WhatsAppMockProvider` — всегда кидает ошибку на MVP (триггерит SMS fallback)
+- `SmsRuNotificationProvider` — реальная отправка через SMS.ru API
+- `MockNotificationProvider` — для dev/test без API ключей
+- `NotificationService.notifyBookingCreated()` — уведомление с именем клиента, услугой, датой, временем, мастером
+- `NotificationService.notifyBookingCancelled()` — уведомление с именем клиента, датой, временем
+- Логика fallback: WhatsApp (2 мин таймаут с `.unref()`) → SMS при ошибке
+- Лог всех попыток в `notification_log` таблице (channel, event_type, status, error_message)
+- Интеграция в `BookingService.createBooking` и `cancelBooking` (fire-and-forget)
+- Миграция `002_notification_log` применена
+
+### Файлы затронуты
+- `backend/src/db/migrations/002_notification_log.ts` — создан
+- `backend/src/db/types.ts` — добавлены NotificationLogTable, NotificationChannel, NotificationEventType, NotificationStatus
+- `backend/src/config.ts` — добавлен whatsapp.apiToken и whatsapp.phoneNumberId
+- `backend/.env.example` — добавлены WHATSAPP_API_TOKEN, WHATSAPP_PHONE_NUMBER_ID
+- `backend/src/services/notification.service.ts` — создан
+- `backend/src/services/booking.service.ts` — изменён (fire-and-forget notify calls)
+- `backend/src/__tests__/notification.test.ts` — создан (16 тестов)
+- `backend/src/__tests__/booking.test.ts` — изменён (мок notificationService)
+- `backend/src/__tests__/review.test.ts` — изменён (мок notificationService + smsru в config)
+
+### Тесты
+- [x] Создание записи триггерит notifyBookingCreated (проверено в booking.test.ts)
+- [x] Отмена записи триггерит notifyBookingCancelled (проверено в booking.test.ts)
+- [x] WhatsApp всегда fails → SMS fallback срабатывает
+- [x] notification_log записывает попытки (whatsapp failed + sms sent)
+- [x] Двойной фейл (WhatsApp + SMS) не бросает ошибку вверх
+- [x] notifyBookingCreated/Cancelled ничего не делает при несуществующем bookingId
+- [x] SmsRuNotificationProvider throws на HTTP error и non-OK статусах
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+- [x] npm test — 95/95 passed (16 новых тестов)
+
+### Заметки для следующих агентов
+- TASK-013 разблокирована (зависит от TASK-004 ✓ + TASK-005 ✓): Event tracking POST /events
+- TASK-014 разблокирована (зависит от TASK-007 ✓): API избранного
+- TASK-016 разблокирована (зависит от TASK-006 ✓ + TASK-009 ✓): API профиля заведения
+- На MVP WhatsApp мокирован и всегда фейлится — все уведомления идут через SMS
+- timer.unref() в WhatsApp timeout предотвращает утечки таймеров в тестах
+- После resetAllMocks() нужно реинициализировать notificationService моки вручную (см. booking.test.ts)
+
+---
