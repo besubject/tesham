@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 import { db } from '../db';
 import { AppError } from '../middleware/error';
+import { notificationService } from './notification.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,6 +177,11 @@ export class BookingService {
       .execute()
       .catch(() => undefined);
 
+    // Notify business (fire-and-forget)
+    void notificationService
+      .notifyBookingCreated(booking.newBooking.id)
+      .catch(() => undefined);
+
     // Fetch full booking details for response
     const detail = await this.getBookingDetail(booking.newBooking.id);
     if (!detail) {
@@ -287,6 +293,9 @@ export class BookingService {
       })
       .execute()
       .catch(() => undefined);
+
+    // Notify business (fire-and-forget)
+    void notificationService.notifyBookingCancelled(bookingId).catch(() => undefined);
 
     const result: CancelBookingResult = { success: true };
     if (withinThreshold) {

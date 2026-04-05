@@ -47,6 +47,15 @@ jest.mock('../config', () => ({
     },
     nodeEnv: 'test',
     cors: { origins: [] },
+    smsru: { apiId: '' },
+    whatsapp: { apiToken: '', phoneNumberId: '' },
+  },
+}));
+
+jest.mock('../services/notification.service', () => ({
+  notificationService: {
+    notifyBookingCreated: jest.fn().mockResolvedValue(undefined),
+    notifyBookingCancelled: jest.fn().mockResolvedValue(undefined),
   },
 }));
 

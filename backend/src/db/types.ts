@@ -114,6 +114,22 @@ export interface EventTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export type NotificationChannel = 'whatsapp' | 'sms';
+export type NotificationEventType = 'booking_created' | 'booking_cancelled';
+export type NotificationStatus = 'sent' | 'failed';
+
+export interface NotificationLogTable {
+  id: Generated<string>;
+  booking_id: string | null;
+  channel: NotificationChannel;
+  event_type: NotificationEventType;
+  phone: string;
+  message: string;
+  status: NotificationStatus;
+  error_message: string | null;
+  created_at: ColumnType<Date, never, never>;
+}
+
 // ─── Database schema ──────────────────────────────────────────────────────────
 
 export interface Database {
@@ -127,6 +143,7 @@ export interface Database {
   reviews: ReviewTable;
   favorites: FavoriteTable;
   events: EventTable;
+  notification_log: NotificationLogTable;
 }
 
 // ─── Convenience types ────────────────────────────────────────────────────────
@@ -166,3 +183,6 @@ export type NewFavorite = Insertable<FavoriteTable>;
 
 export type Event = Selectable<EventTable>;
 export type NewEvent = Insertable<EventTable>;
+
+export type NotificationLog = Selectable<NotificationLogTable>;
+export type NewNotificationLog = Insertable<NotificationLogTable>;

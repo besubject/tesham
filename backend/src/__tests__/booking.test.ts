@@ -13,6 +13,15 @@ const mockSqlFn = jest.fn().mockReturnValue(mockSqlResult);
 
 jest.mock('kysely', () => ({ sql: mockSqlFn }));
 
+// ─── Mock notification service ─────────────────────────────────────────────────
+
+jest.mock('../services/notification.service', () => ({
+  notificationService: {
+    notifyBookingCreated: jest.fn(),
+    notifyBookingCancelled: jest.fn(),
+  },
+}));
+
 // ─── Mock DB ──────────────────────────────────────────────────────────────────
 
 jest.mock('../db', () => {
@@ -75,6 +84,7 @@ import { db } from '../db';
 import { errorHandler } from '../middleware/error';
 import businessesRouter from '../routes/businesses';
 import bookingsRouter from '../routes/bookings';
+import { notificationService } from '../services/notification.service';
 
 // ─── Typed mock db ────────────────────────────────────────────────────────────
 
@@ -181,6 +191,8 @@ beforeEach(() => {
   mockSqlResult.as.mockReturnThis();
   mockSqlExecute.mockResolvedValue({ rows: [] });
   reinitChainable();
+  (notificationService.notifyBookingCreated as jest.Mock).mockResolvedValue(undefined);
+  (notificationService.notifyBookingCancelled as jest.Mock).mockResolvedValue(undefined);
 });
 
 // ─── GET /businesses/:id/slots ────────────────────────────────────────────────

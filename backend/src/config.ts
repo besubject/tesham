@@ -23,4 +23,8 @@ export const config = {
   cors: {
     origins: (process.env['CORS_ORIGINS'] ?? 'http://localhost:5173').split(','),
   },
+  whatsapp: {
+    apiToken: process.env['WHATSAPP_API_TOKEN'] ?? '',
+    phoneNumberId: process.env['WHATSAPP_PHONE_NUMBER_ID'] ?? '',
+  },
 } as const;
