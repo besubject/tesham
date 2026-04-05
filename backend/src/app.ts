@@ -9,6 +9,7 @@ import authRouter from './routes/auth';
 import userRouter from './routes/user';
 import businessesRouter from './routes/businesses';
 import reviewsRouter from './routes/reviews';
+import bookingsRouter from './routes/bookings';
 
 const app: Application = express();
 
@@ -38,6 +39,7 @@ app.use('/auth', authRouter);
 app.use('/user', userRouter);
 app.use('/businesses', businessesRouter);
 app.use('/reviews', reviewsRouter);
+app.use('/bookings', bookingsRouter);
 
 // Global error handler (must be last)
 app.use(errorHandler);
