@@ -458,3 +458,38 @@
 - Геопоиск: ST_Distance(b.location, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography)
 
 ---
+
+## [TASK-010] API отзывов
+**Дата:** 2026-04-05 12:00
+**Статус:** done
+
+### Что сделано
+- Реализован GET /businesses/:id/reviews с пагинацией (page, limit max 50)
+- Реализован POST /reviews с полной цепочкой проверок (booking exists → owner → completed → no duplicate)
+- Анонимизация имён: "Ахмед Кадыров" → "Ахмед К.", одно слово → без изменений, пусто → "Пользователь"
+- Средний рейтинг считается на лету в business.service.ts через subquery (уже был реализован)
+- Event tracking: review.create логируется в events (fire-and-forget)
+- Zod валидация: booking_id (UUID), rating (1-5 int), text (optional, max 2000)
+
+### Файлы затронуты
+- `backend/src/services/review.service.ts` — новый файл, ReviewService с getBusinessReviews() и createReview()
+- `backend/src/controllers/review.controller.ts` — новый файл, getBusinessReviews() и createReview()
+- `backend/src/routes/reviews.ts` — новый файл, POST /reviews с requireAuth
+- `backend/src/routes/businesses.ts` — добавлен GET /:id/reviews с reviewsQuerySchema
+- `backend/src/app.ts` — подключен reviewsRouter на /reviews
+- `backend/src/__tests__/review.test.ts` — новый файл, 15 тестов (GET + POST)
+
+### Тесты
+- npm run lint — 0 ошибок, 0 предупреждений
+- npx tsc --noEmit — без ошибок
+- npm test — 60/60 passed (15 новых тестов в review.test.ts)
+
+### Заметки для следующих агентов
+- TASK-011 разблокирована: API слотов и бронирования (GET /businesses/:id/slots, POST /bookings, GET /bookings/my, DELETE /bookings/:id)
+- TASK-016 ещё pending (зависит также от TASK-011)
+- Паттерн мока для returning(): в тесте нужно добавить 'returning' в chainable и инициализировать mockReturnValue(chainable)
+- В тесте POST /reviews: executeTakeFirst вызывается 3 раза: 1) booking, 2) existing review check, 3) insert returning
+- createReview возвращает 201 + тело созданного отзыва
+- Коды ошибок: BOOKING_NOT_FOUND (404), FORBIDDEN (403), BOOKING_NOT_COMPLETED (403), REVIEW_ALREADY_EXISTS (409)
+
+---

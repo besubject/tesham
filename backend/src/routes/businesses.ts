@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
 import { listBusinesses, getBusiness } from '../controllers/business.controller';
+import { getBusinessReviews } from '../controllers/review.controller';
 
 const router = Router();
 
@@ -16,10 +17,18 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(50).default(20),
 });
 
+const reviewsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(20),
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // GET /businesses — list with search, filter, geo sort
 router.get('/', validate({ query: listQuerySchema }), listBusinesses);
+
+// GET /businesses/:id/reviews — paginated reviews for a business
+router.get('/:id/reviews', validate({ query: reviewsQuerySchema }), getBusinessReviews);
 
 // GET /businesses/:id — full business card
 router.get('/:id', getBusiness);

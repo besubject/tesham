@@ -242,7 +242,7 @@
         "Повторный POST /reviews на тот же booking возвращает 409"
       ],
       "dependencies": ["TASK-009", "TASK-006"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-011",
