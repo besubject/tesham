@@ -1,0 +1,144 @@
+{
+  "common": {
+    "loading": "Лоаде...",
+    "error": "ГӀалат хилира",
+    "retry": "Юха дIатаIа",
+    "cancel": "Сацо",
+    "confirm": "Таро де",
+    "save": "Ӏалашдан",
+    "delete": "Яйа",
+    "close": "ДӀадерзо",
+    "back": "ДIасахьажа",
+    "next": "ХIокху тIаьхьа",
+    "done": "Кхочушдина",
+    "yes": "АьА",
+    "no": "ХIан-хIа"
+  },
+  "tabs": {
+    "home": "ТIегӀа",
+    "map": "Карта",
+    "bookings": "Язбинарш",
+    "profile": "Профиль",
+    "stats": "Статистика",
+    "business": "Компани"
+  },
+  "auth": {
+    "title": "Mettig чу дIахьо",
+    "phoneLabel": "Телефонан номер",
+    "phonePlaceholder": "+7 (XXX) XXX-XX-XX",
+    "sendCode": "Код схьаэца",
+    "codeLabel": "SMS-чул код язде",
+    "verify": "ДIахьо",
+    "resend": "Юха код хьадерза",
+    "resendIn": "{{seconds}} секундехь юха хьадерза",
+    "nameLabel": "Хьоьга цIе",
+    "namePlaceholder": "Хьан цIе хIун ю?",
+    "nameHint": "ДохтIаро хьо язбинчохь цIе гур ду",
+    "invalidPhone": "Нийсо телефонан номер яздехьа",
+    "invalidCode": "Нийсо дац код. Юха гIорта",
+    "codeExpired": "Кодан муьрехь кхаьчна. ТIеДехьа кхин"
+  },
+  "home": {
+    "searchPlaceholder": "Барбер, маникюр, стоматолог...",
+    "nearYou": "Хьан гонаха",
+    "allCategories": "Дерриге",
+    "noResults": "Схьалацаш хIума дац",
+    "noResultsHint": "ЖамӀ хийцахьа"
+  },
+  "business": {
+    "book": "Яздан",
+    "reviews": "хаамаш",
+    "noReviews": "Хаамаш дац хIинца",
+    "openNow": "Даьхна",
+    "closedNow": "ДӀасаэхна",
+    "addFavorite": "Таронашка тIеэца",
+    "removeFavorite": "Таронашкара ца эца",
+    "navigate": "Маршрут",
+    "callBusiness": "Zвонить",
+    "viewInstagram": "Instagram",
+    "viewWebsite": "Сайт"
+  },
+  "booking": {
+    "selectMaster": "Мастер харжа",
+    "selectService": "Товнаш харжа",
+    "selectDate": "Де харжа",
+    "selectSlot": "Хан харжа",
+    "confirmTitle": "Язбинарг таро дан",
+    "confirmButton": "Язбинарг таро де",
+    "successTitle": "Язбинарг таро дина!",
+    "successMessage": "24 сахьт хьалха а, 30 минот хьалха а хаийтур ду",
+    "cancelTitle": "Язбинарг сацо",
+    "cancelMessage": "Хьайн язбинарг сацо лаьа хьуна?",
+    "cancelButton": "Язбинарг сацо",
+    "cancelWarning": "Язбинарг {{hours}} сахьтехь ду. Мастер кечам бо",
+    "noSlots": "Маре хан яц",
+    "bookAgain": "Юха язбан",
+    "status": {
+      "confirmed": "Таро дина",
+      "cancelled": "Сацийна",
+      "completed": "Кхочушдина",
+      "no_show": "Хьо ца вахана"
+    }
+  },
+  "reviews": {
+    "title": "Хаамаш",
+    "writeReview": "Хаам яздан",
+    "ratingLabel": "Ненан хьекъал",
+    "commentLabel": "Хаам (оттаме дац)",
+    "commentPlaceholder": "Хьайн ойла йовзийтахьа...",
+    "submit": "ДIаяхьийта",
+    "businessReply": "Жоп:",
+    "thankYou": "Хаам делахь баркалла!"
+  },
+  "profile": {
+    "title": "Профиль",
+    "nameLabel": "Цӏе",
+    "phoneLabel": "Телефон",
+    "language": "Интерфейсан мотт",
+    "favorites": "Тарнаш",
+    "noFavorites": "Тарнаш яц",
+    "about": "Приложении тоьтту",
+    "logout": "ДIаэккха",
+    "logoutConfirm": "ДIаэккха лаьа хьуна?",
+    "deleteAccount": "Аккаунт яйа",
+    "deleteConfirm": "Тешна хьо? Хьайн дерриге жамӀаш дӀаяйр ю",
+    "version": "Версия"
+  },
+  "businessApp": {
+    "bookings": "Язбинарш",
+    "newBooking": "Керла язбинарг",
+    "noBookings": "ХӀара дийнахь язбинарш яц",
+    "createSlots": "Ханаш кхолла",
+    "slotStatus": {
+      "free": "Маре",
+      "pending": "Хьожу",
+      "confirmed": "Таро дина",
+      "completed": "Кхочушдина",
+      "no_show": "Ца вахана",
+      "cancelled": "Сацийна"
+    },
+    "stats": {
+      "bookings": "Язбинарш",
+      "rating": "Ненан хьекъал",
+      "showRate": "Show Rate",
+      "period": {
+        "day": "Де",
+        "week": "Kиллсо",
+        "month": "Бутт"
+      }
+    },
+    "profile": {
+      "title": "Компанин профиль",
+      "name": "Цӏе",
+      "address": "Адрес",
+      "phone": "Телефон",
+      "instagram": "Instagram",
+      "website": "Сайт",
+      "workingHours": "Болх бан хан",
+      "staff": "Белхалой",
+      "services": "Тевнаш",
+      "addStaff": "Белхало тIеэца",
+      "addService": "Тевнаш тIеэца"
+    }
+  }
+}

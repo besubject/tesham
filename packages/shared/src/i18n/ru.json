@@ -1,0 +1,144 @@
+{
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Произошла ошибка",
+    "retry": "Повторить",
+    "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "close": "Закрыть",
+    "back": "Назад",
+    "next": "Далее",
+    "done": "Готово",
+    "yes": "Да",
+    "no": "Нет"
+  },
+  "tabs": {
+    "home": "Главная",
+    "map": "Карта",
+    "bookings": "Записи",
+    "profile": "Профиль",
+    "stats": "Статистика",
+    "business": "Заведение"
+  },
+  "auth": {
+    "title": "Вход в Mettig",
+    "phoneLabel": "Номер телефона",
+    "phonePlaceholder": "+7 (XXX) XXX-XX-XX",
+    "sendCode": "Получить код",
+    "codeLabel": "Введите код из SMS",
+    "verify": "Войти",
+    "resend": "Отправить код повторно",
+    "resendIn": "Повторная отправка через {{seconds}} сек",
+    "nameLabel": "Ваше имя",
+    "namePlaceholder": "Как вас зовут?",
+    "nameHint": "Это имя увидит мастер при записи",
+    "invalidPhone": "Введите корректный номер телефона",
+    "invalidCode": "Неверный код. Попробуйте ещё раз",
+    "codeExpired": "Код устарел. Запросите новый"
+  },
+  "home": {
+    "searchPlaceholder": "Барбер, маникюр, стоматолог...",
+    "nearYou": "Рядом с вами",
+    "allCategories": "Все",
+    "noResults": "Ничего не найдено",
+    "noResultsHint": "Попробуйте изменить запрос или категорию"
+  },
+  "business": {
+    "book": "Записаться",
+    "reviews": "отзывов",
+    "noReviews": "Пока нет отзывов",
+    "openNow": "Открыто",
+    "closedNow": "Закрыто",
+    "addFavorite": "В избранное",
+    "removeFavorite": "Из избранного",
+    "navigate": "Маршрут",
+    "callBusiness": "Позвонить",
+    "viewInstagram": "Instagram",
+    "viewWebsite": "Сайт"
+  },
+  "booking": {
+    "selectMaster": "Выберите мастера",
+    "selectService": "Выберите услугу",
+    "selectDate": "Выберите дату",
+    "selectSlot": "Выберите время",
+    "confirmTitle": "Подтверждение записи",
+    "confirmButton": "Подтвердить запись",
+    "successTitle": "Запись подтверждена!",
+    "successMessage": "Мы напомним вам за 24 часа и за 30 минут",
+    "cancelTitle": "Отмена записи",
+    "cancelMessage": "Вы уверены, что хотите отменить запись?",
+    "cancelButton": "Отменить запись",
+    "cancelWarning": "Запись менее чем через {{hours}} ч. Мастер уже готовится к визиту",
+    "noSlots": "Нет свободных слотов",
+    "bookAgain": "Записаться снова",
+    "status": {
+      "confirmed": "Подтверждена",
+      "cancelled": "Отменена",
+      "completed": "Завершена",
+      "no_show": "Не пришёл"
+    }
+  },
+  "reviews": {
+    "title": "Отзывы",
+    "writeReview": "Написать отзыв",
+    "ratingLabel": "Оценка",
+    "commentLabel": "Комментарий (необязательно)",
+    "commentPlaceholder": "Поделитесь впечатлениями...",
+    "submit": "Отправить",
+    "businessReply": "Ответ заведения:",
+    "thankYou": "Спасибо за отзыв!"
+  },
+  "profile": {
+    "title": "Профиль",
+    "nameLabel": "Имя",
+    "phoneLabel": "Телефон",
+    "language": "Язык интерфейса",
+    "favorites": "Избранное",
+    "noFavorites": "Избранное пусто",
+    "about": "О приложении",
+    "logout": "Выйти",
+    "logoutConfirm": "Вы уверены, что хотите выйти?",
+    "deleteAccount": "Удалить аккаунт",
+    "deleteConfirm": "Вы уверены? Все ваши данные будут удалены",
+    "version": "Версия"
+  },
+  "businessApp": {
+    "bookings": "Записи",
+    "newBooking": "Новая запись",
+    "noBookings": "Нет записей на этот день",
+    "createSlots": "Создать слоты",
+    "slotStatus": {
+      "free": "Свободно",
+      "pending": "Ожидание",
+      "confirmed": "Подтверждено",
+      "completed": "Завершено",
+      "no_show": "Не пришёл",
+      "cancelled": "Отменено"
+    },
+    "stats": {
+      "bookings": "Записей",
+      "rating": "Рейтинг",
+      "showRate": "Show Rate",
+      "period": {
+        "day": "День",
+        "week": "Неделя",
+        "month": "Месяц"
+      }
+    },
+    "profile": {
+      "title": "Профиль заведения",
+      "name": "Название",
+      "address": "Адрес",
+      "phone": "Телефон",
+      "instagram": "Instagram",
+      "website": "Сайт",
+      "workingHours": "Часы работы",
+      "staff": "Сотрудники",
+      "services": "Услуги",
+      "addStaff": "Добавить сотрудника",
+      "addService": "Добавить услугу"
+    }
+  }
+}
