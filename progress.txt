@@ -640,3 +640,59 @@
 - optionalAuth не падает при невалидном/истёкшем токене — просто не ставит req.user
 
 ---
+
+
+## [TASK-019] Инициализация мобильных приложений: Expo + React Navigation
+**Дата:** 2026-04-06 14:30
+**Статус:** done
+
+### Что сделано
+- `apps/client/App.tsx` — точка входа с SafeAreaProvider + NavigationContainer + RootNavigator
+- `apps/client/src/navigation/types.ts` — типизация: RootTabParamList, HomeStackParamList, BookingsStackParamList, ProfileStackParamList
+- `apps/client/src/navigation/RootNavigator.tsx` — BottomTabNavigator с 4 табами: Главная, Карта, Записи, Профиль
+- `apps/client/src/navigation/HomeStackNavigator.tsx` — stack для таба "Главная"
+- `apps/client/src/navigation/BookingsStackNavigator.tsx` — stack для таба "Записи"
+- `apps/client/src/navigation/ProfileStackNavigator.tsx` — stack для таба "Профиль"
+- Экраны-заглушки: HomeScreen, MapScreen, BookingsScreen, ProfileScreen
+- `apps/business/App.tsx` — аналогично, 3 таба: Записи, Статистика, Профиль заведения
+- `apps/business/src/navigation/types.ts` — типизация для бизнес-приложения
+- `apps/business/src/navigation/RootNavigator.tsx` — BottomTabNavigator с 3 табами
+- Стек-навигаторы: BookingsStackNavigator, StatsStackNavigator, BusinessProfileStackNavigator
+- Экраны-заглушки: BookingsScreen, StatsScreen, BusinessProfileScreen
+- `app.json`, `babel.config.js` в обоих приложениях
+- Зависимости: @react-navigation/native, @react-navigation/bottom-tabs, @react-navigation/native-stack, react-native-screens, react-native-safe-area-context
+- main в package.json обновлён на App.tsx
+- tsconfig.json: убраны outDir/rootDir, добавлен App.tsx в include
+
+### Файлы затронуты
+- `apps/client/App.tsx` — создан
+- `apps/client/app.json` — создан
+- `apps/client/babel.config.js` — создан
+- `apps/client/package.json` — обновлён (main + deps + scripts)
+- `apps/client/tsconfig.json` — обновлён
+- `apps/client/src/navigation/` — 5 файлов создано
+- `apps/client/src/screens/` — 4 экрана создано
+- `apps/business/App.tsx` — создан
+- `apps/business/app.json` — создан
+- `apps/business/babel.config.js` — создан
+- `apps/business/package.json` — обновлён
+- `apps/business/tsconfig.json` — обновлён
+- `apps/business/src/navigation/` — 5 файлов создано
+- `apps/business/src/screens/` — 3 экрана создано
+
+### Тесты
+- [x] npx tsc --noEmit — без ошибок в apps/client
+- [x] npx tsc --noEmit — без ошибок в apps/business
+- [x] Навигационная структура создана (BottomTabs + Stack navigators)
+- [x] registerRootComponent(App) вызывается в App.tsx
+
+### Заметки для следующих агентов
+- TASK-020 разблокирована (зависит от TASK-019 ✓): shared-пакет (API-клиент, типы, i18n, utils)
+- Expo SDK 52 + React Navigation v7 (@react-navigation/native ^7, @react-navigation/bottom-tabs ^7, @react-navigation/native-stack ^7)
+- react-native-safe-area-context ^5 (совместима с Expo 52)
+- react-native-screens ^4 (совместима с Expo 52)
+- Для добавления экранов: создать файл в src/screens/, добавить маршрут в соответствующий Stack params list и navigator
+- Все навигационные типы используют CompositeScreenProps для доступа к родительскому навигатору
+- babel-preset-expo нужен в package.json при работе с Expo (устанавливается через expo или отдельно)
+
+---
