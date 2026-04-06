@@ -696,3 +696,50 @@
 - babel-preset-expo нужен в package.json при работе с Expo (устанавливается через expo или отдельно)
 
 ---
+
+## [TASK-020] Shared-пакет
+**Дата:** 2026-04-06
+**Статус:** done
+
+### Что сделано
+- `packages/shared/src/types/index.ts` — все API DTOs: UserDto, CategoryDto, BusinessListItemDto, BusinessDetailDto, StaffItemDto, ServiceItemDto, SlotItemDto, BookingItemDto, ReviewItemDto, FavoriteItemDto, AuthResponseDto, PaginatedResponseDto<T>, ApiErrorDto
+- `packages/shared/src/api/client.ts` — axios instance с JWT request interceptor (Bearer token) + response interceptor (401 → auto-refresh → retry, очередь параллельных запросов)
+- `packages/shared/src/storage/token.ts` — tokenStorage через expo-secure-store (getAccessToken, setAccessToken, getRefreshToken, setRefreshToken, clearTokens)
+- `packages/shared/src/i18n/ru.json` + `ce.json` — переводы для всех MVP-экранов (auth, home, business, booking, reviews, profile, businessApp)
+- `packages/shared/src/i18n/index.ts` — initI18n(), реэкспорт useTranslation
+- `packages/shared/src/utils/index.ts` — 6 утилит: formatPhone, formatDate, formatTime, formatPrice, getInitials, anonymizeName, formatDistance
+- `packages/shared/src/index.ts` — единый реэкспорт всего из shared
+
+### Файлы затронуты
+- `packages/shared/src/types/index.ts` — создан
+- `packages/shared/src/api/client.ts` — создан
+- `packages/shared/src/storage/token.ts` — создан
+- `packages/shared/src/i18n/index.ts` — создан
+- `packages/shared/src/i18n/ru.json` — создан
+- `packages/shared/src/i18n/ce.json` — создан
+- `packages/shared/src/utils/index.ts` — создан
+- `packages/shared/src/index.ts` — обновлён (полный реэкспорт)
+- `packages/shared/package.json` — обновлён: main/types → src/index.ts, deps: axios ^1.7, i18next ^23, react-i18next ^15
+- `packages/shared/tsconfig.json` — обновлён: moduleResolution: bundler, jsx: react-jsx, ESNext
+- `apps/client/package.json` — добавлены @mettig/shared, expo-secure-store
+- `apps/business/package.json` — добавлены @mettig/shared, expo-secure-store
+
+### Тесты
+- [x] Import из packages/shared/ работает в обоих приложениях (типы резолвятся через main: ./src/index.ts)
+- [x] API-клиент с JWT interceptor + auto-refresh реализован
+- [x] i18n: ru.json + ce.json созданы, initI18n() инициализирует i18next
+- [x] npx tsc --noEmit — без ошибок в apps/client
+- [x] npx tsc --noEmit — без ошибок в apps/business
+- [x] npx tsc --noEmit — без ошибок в packages/shared
+- [x] npm run lint + npm test (backend) — 103/103 passed (существующие тесты не сломались)
+
+### Заметки для следующих агентов
+- TASK-021 разблокирована (зависит от TASK-020 ✓): дизайн-система (theme.ts, компоненты UI)
+- TASK-022 разблокирована (зависит от TASK-020 ✓ + TASK-006 ✓, critical): экраны авторизации
+- tokenStorage использует expo-secure-store — только в Expo среде (не работает в веб без полифила)
+- apiClient создаётся как singleton при импорте; для тестов используй createApiClient()
+- BASE_URL берётся из process.env.EXPO_PUBLIC_API_URL (Expo env vars), fallback: http://localhost:3000
+- packages/shared/main: ./src/index.ts — Metro bundler разрешает TypeScript напрямую без сборки
+- Auto-refresh: при параллельных 401 ответах запросы ставятся в очередь failedQueue, обновление токена происходит один раз
+
+---
