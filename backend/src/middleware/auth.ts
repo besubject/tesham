@@ -34,6 +34,19 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   }
 }
 
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const token = extractToken(req);
+  if (token) {
+    try {
+      const payload = jwt.verify(token, config.jwt.accessSecret) as AuthUser;
+      req.user = payload;
+    } catch {
+      // ignore invalid token for optional auth
+    }
+  }
+  next();
+}
+
 export function requireRole(role: string) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {

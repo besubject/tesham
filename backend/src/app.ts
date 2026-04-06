@@ -10,6 +10,7 @@ import userRouter from './routes/user';
 import businessesRouter from './routes/businesses';
 import reviewsRouter from './routes/reviews';
 import bookingsRouter from './routes/bookings';
+import eventsRouter from './routes/events';
 
 const app: Application = express();
 
@@ -40,6 +41,7 @@ app.use('/user', userRouter);
 app.use('/businesses', businessesRouter);
 app.use('/reviews', reviewsRouter);
 app.use('/bookings', bookingsRouter);
+app.use('/events', eventsRouter);
 
 // Global error handler (must be last)
 app.use(errorHandler);

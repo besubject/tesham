@@ -2,6 +2,7 @@ import { sql } from 'kysely';
 import { db } from '../db';
 import { AppError } from '../middleware/error';
 import { notificationService } from './notification.service';
+import { trackEvent } from '../utils/track-event';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -160,22 +161,16 @@ export class BookingService {
     });
 
     // Event tracking (fire-and-forget)
-    void db
-      .insertInto('events')
-      .values({
-        event_type: 'booking.create',
-        payload: JSON.stringify({
-          booking_id: booking.newBooking.id,
-          business_id: booking.businessId,
-          slot_id,
-          service_id,
-        }),
-        session_id: null,
-        anonymous_user_hash: null,
-        user_id,
-      })
-      .execute()
-      .catch(() => undefined);
+    trackEvent({
+      event_type: 'booking_complete',
+      payload: {
+        booking_id: booking.newBooking.id,
+        business_id: booking.businessId,
+        slot_id,
+        service_id,
+      },
+      user_id,
+    });
 
     // Notify business (fire-and-forget)
     void notificationService
@@ -282,17 +277,11 @@ export class BookingService {
     });
 
     // Event tracking (fire-and-forget)
-    void db
-      .insertInto('events')
-      .values({
-        event_type: 'booking.cancel',
-        payload: JSON.stringify({ booking_id: bookingId, within_threshold: withinThreshold }),
-        session_id: null,
-        anonymous_user_hash: null,
-        user_id: userId,
-      })
-      .execute()
-      .catch(() => undefined);
+    trackEvent({
+      event_type: 'booking_cancel',
+      payload: { booking_id: bookingId, within_threshold: withinThreshold },
+      user_id: userId,
+    });
 
     // Notify business (fire-and-forget)
     void notificationService.notifyBookingCancelled(bookingId).catch(() => undefined);

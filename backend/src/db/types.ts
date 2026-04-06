@@ -111,6 +111,10 @@ export interface EventTable {
   anonymous_user_hash: string | null;
   user_id: string | null;
   payload: ColumnType<Record<string, unknown>, string, string>;
+  device_type: string | null;
+  app_version: string | null;
+  lat: ColumnType<string | null, string | null, string | null>;
+  lng: ColumnType<string | null, string | null, string | null>;
   created_at: ColumnType<Date, never, never>;
 }
 

@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 import { db } from '../db';
 import { AppError } from '../middleware/error';
+import { trackEvent } from '../utils/track-event';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,14 @@ export class BusinessService {
       countQb.executeTakeFirst(),
     ]);
 
+    // Track search query event (fire-and-forget)
+    if (query) {
+      trackEvent({
+        event_type: 'search_query',
+        payload: { query, category_id: category_id ?? null, has_geo: hasGeo },
+      });
+    }
+
     return {
       data: rows.map((row) => ({
         id: row.id,
@@ -224,17 +233,10 @@ export class BusinessService {
     const categoryName = lang === 'ce' ? business.category_name_ce : business.category_name_ru;
 
     // Log event (fire-and-forget)
-    void db
-      .insertInto('events')
-      .values({
-        event_type: 'business.view',
-        payload: JSON.stringify({ business_id: id }),
-        session_id: null,
-        anonymous_user_hash: null,
-        user_id: null,
-      })
-      .execute()
-      .catch(() => undefined);
+    trackEvent({
+      event_type: 'business_card_view',
+      payload: { business_id: id },
+    });
 
     return {
       id: business.id,

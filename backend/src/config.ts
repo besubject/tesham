@@ -27,4 +27,5 @@ export const config = {
     apiToken: process.env['WHATSAPP_API_TOKEN'] ?? '',
     phoneNumberId: process.env['WHATSAPP_PHONE_NUMBER_ID'] ?? '',
   },
+  analyticsSalt: process.env['ANALYTICS_SALT'] ?? 'dev-analytics-salt',
 } as const;
