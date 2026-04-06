@@ -587,3 +587,56 @@
 - После resetAllMocks() нужно реинициализировать notificationService моки вручную (см. booking.test.ts)
 
 ---
+
+## [TASK-013] Event tracking сервис
+**Дата:** 2026-04-06 12:00
+**Статус:** done
+
+### Что сделано
+- Утилита `trackEvent()` в `utils/track-event.ts` с вычислением `anonymous_user_hash` = SHA-256(user_id + ANALYTICS_SALT)
+- `POST /events` — клиентский endpoint с опциональной авторизацией, принимает `{ event_type, payload, session_id, device_type, app_version, lat?, lng? }`
+- `optionalAuth` middleware добавлен в `middleware/auth.ts` — не падает при невалидном токене
+- Миграция `003_events_columns.ts` — добавлены колонки `device_type`, `app_version`, `lat`, `lng` в таблицу events
+- Переименованы события в `booking.service.ts`: `booking.create` → `booking_complete`, `booking.cancel` → `booking_cancel`
+- Переименовано событие в `business.service.ts`: `business.view` → `business_card_view`
+- Добавлено событие `search_query` в `BusinessService.list()` при наличии query param
+- Все сервисы перешли с raw `db.insertInto('events')` на `trackEvent()`
+- ANALYTICS_SALT добавлен в config.ts, .env, .env.example
+
+### Файлы затронуты
+- `backend/src/utils/track-event.ts` — создан
+- `backend/src/controllers/event.controller.ts` — создан
+- `backend/src/routes/events.ts` — создан
+- `backend/src/db/migrations/003_events_columns.ts` — создан
+- `backend/src/middleware/auth.ts` — добавлен optionalAuth
+- `backend/src/db/types.ts` — EventTable: добавлены device_type, app_version, lat, lng
+- `backend/src/config.ts` — добавлен analyticsSalt
+- `backend/src/app.ts` — подключен eventsRouter на /events
+- `backend/src/services/booking.service.ts` — использует trackEvent(), новые имена событий
+- `backend/src/services/business.service.ts` — использует trackEvent(), новые имена событий, search_query
+- `backend/src/__tests__/event.test.ts` — создан (8 тестов)
+- `backend/.env.example` — добавлен ANALYTICS_SALT
+
+### Тесты
+- [x] POST /events создаёт запись в таблице events (202 OK)
+- [x] anonymous_user_hash не содержит raw user_id (SHA-256 хеш)
+- [x] При аутентифицированном запросе user_id и hash проставляются
+- [x] Без токена anonymous_user_hash = null
+- [x] POST /events с lat/lng сохраняет координаты
+- [x] POST /events без event_type → 400
+- [x] booking_complete логируется автоматически при создании записи
+- [x] booking_cancel логируется автоматически при отмене записи
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — без ошибок
+- [x] npm test — 103/103 passed (8 новых тестов)
+
+### Заметки для следующих агентов
+- TASK-014 разблокирована (зависит от TASK-009 ✓ + TASK-006 ✓): API избранного GET/POST/DELETE /favorites
+- TASK-015 разблокирована (зависит от TASK-011 ✓ + TASK-006 ✓): API для Mettig Business
+- TASK-016 разблокирована (зависит от TASK-011 ✓ + TASK-006 ✓): API профиля заведения
+- trackEvent() — fire-and-forget, никогда не бросает ошибки
+- anonymous_user_hash вычисляется только если user_id не null
+- Событие search_query логируется только когда query param передан в GET /businesses
+- optionalAuth не падает при невалидном/истёкшем токене — просто не ставит req.user
+
+---
