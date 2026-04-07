@@ -1083,3 +1083,39 @@
 
 ### Разблокированные задачи
 - TASK-036 (depends: TASK-015 ✓, TASK-016 ✓, TASK-018) — частично разблокирована
+
+---
+
+## [TASK-017] API ответов бизнеса на отзывы
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `PATCH /business/reviews/:id { reply_text }` — обновляет `reply_text` и `reply_at`
+- Только admin заведения (requireRole('admin') + проверка businessId)
+- Проверка: отзыв должен принадлежать текущему заведению (by business_id)
+- 404 REVIEW_NOT_FOUND если отзыв не найден или принадлежит другому заведению
+- Ответ публичный — reply_text уже возвращался в GET /businesses/:id/reviews
+
+### Файлы затронуты
+- `backend/src/services/review.service.ts` — добавлен `replyToReview()`, интерфейсы `ReplyToReviewParams`, `ReviewReplyResult`
+- `backend/src/controllers/review.controller.ts` — добавлен `replyToReview()`, импортирован `AppError`
+- `backend/src/routes/business.ts` — добавлен `PATCH /business/reviews/:id` с `requireRole('admin')` + Zod валидация
+- `backend/src/__tests__/business-profile.test.ts` — добавлено 6 тестов для нового эндпоинта
+
+### Тесты
+- [x] Admin может ответить на отзыв → 200 + { id, reply_text, reply_at }
+- [x] Employee не может ответить → 403
+- [x] Без аутентификации → 401
+- [x] Пустой reply_text → 400 (Zod min(1))
+- [x] Отсутствующий reply_text → 400
+- [x] Несуществующий/чужой отзыв → 404 REVIEW_NOT_FOUND
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — 0 ошибок
+- [x] npm test — 136/136 passed (6 новых тестов)
+
+### Заметки для следующих агентов
+- TASK-018 разблокирована (зависит от TASK-015 ✓ + TASK-010 ✓): API статистики бизнеса GET /business/stats
+- reply_text хранится в reviews.reply_text, reply_at в reviews.reply_at — уже были в таблице с TASK-004
+- Роут добавлен в /business router (бизнес-роуты), а не в /reviews (клиентский роутер)
+- updateTable('reviews').set({ reply_text, reply_at }).where('id', reviewId) — стандартный Kysely update
