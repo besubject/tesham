@@ -80,6 +80,7 @@ export interface BookingItemDto {
   business_id: string;
   business_name: string;
   staff_name: string;
+  cancellation_threshold_minutes: number;
   created_at: string;
   cancelled_at: string | null;
 }

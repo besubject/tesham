@@ -1166,3 +1166,49 @@
 - TASK-036 (depends: TASK-015 ✓, TASK-016 ✓, TASK-018 ✓) — ПОЛНОСТЬЮ РАЗБЛОКИРОВАНА
 
 ---
+
+---
+
+## [TASK-026] Экран записей клиента (Tab 3)
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `BookingsScreen.tsx` — полная реализация экрана "Мои записи":
+  - Секция "Текущие" — записи со статусом `confirmed`
+  - Секция "Прошлые" — записи со статусами `completed`, `cancelled`, `no_show`
+  - Счётчики в заголовке секции
+  - `BookingCard` с кнопкой "Отменить" (только для `confirmed`)
+  - `ConfirmationModal` для подтверждения отмены
+  - `WarningBanner` (variant=warning) показывается внутри карточки если запись в рамках `cancellation_threshold_minutes`
+  - Сообщение о поздней отмене в тексте модала
+  - Кнопка "Записаться снова" для прошлых записей → переход в `BusinessDetails`
+  - Pull-to-refresh, loading state, empty state
+  - Оптимистичное обновление статуса при отмене, re-fetch при ошибке
+- `packages/shared/src/types/index.ts` — добавлено поле `cancellation_threshold_minutes: number` в `BookingItemDto`
+- `backend/src/services/booking.service.ts` — `getMyBookings` и `getBookingDetail` теперь возвращают `cancellation_threshold_minutes` из таблицы `businesses`
+- `apps/client/src/navigation/types.ts` — `RootTabParamList.Home` обновлён до `NavigatorScreenParams<HomeStackParamList> | undefined` для поддержки навигации в BusinessDetails из Bookings-таба
+
+### Файлы затронуты
+- `apps/client/src/screens/bookings/BookingsScreen.tsx` — реализован
+- `apps/client/src/navigation/types.ts` — обновлён RootTabParamList
+- `packages/shared/src/types/index.ts` — добавлено cancellation_threshold_minutes
+- `backend/src/services/booking.service.ts` — getMyBookings + getBookingDetail возвращают порог отмены
+- `tasks.json` — TASK-026 status: done
+- `progress.txt` — дополнен (этот файл)
+
+### Тесты
+- [x] npx tsc --noEmit (client) — без ошибок
+- [x] npx tsc --noEmit (backend) — без ошибок
+- [x] npx tsc --noEmit (shared) — без ошибок
+- [x] npm run lint (backend) — 0 ошибок (только предупреждения, pre-existing)
+- [x] npm run lint (client) — 0 новых ошибок (2 pre-existing ошибки в types.ts и CodeScreen.tsx)
+- [x] npm test (backend) — 144/144 passed
+- [x] Текущие записи отображаются (confirmed)
+- [x] Прошлые записи отображаются (completed/cancelled/no_show)
+- [x] Отмена записи работает с ConfirmationModal
+- [x] WarningBanner показывается для записей в рамках порога отмены
+- [x] "Записаться снова" ведёт в BusinessDetails через cross-tab навигацию
+
+### Разблокированные задачи
+- TASK-029 (depends: TASK-026 ✓, TASK-010 ✓) — ПОЛНОСТЬЮ РАЗБЛОКИРОВАНА

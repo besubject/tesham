@@ -17,7 +17,7 @@ export type AuthStackParamList = {
 
 // Bottom tab navigator params
 export type RootTabParamList = {
-  Home: undefined;
+  Home: NavigatorScreenParams<HomeStackParamList> | undefined;
   Map: undefined;
   Bookings: undefined;
   Profile: undefined;

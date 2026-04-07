@@ -25,6 +25,7 @@ export interface BookingItem {
   business_id: string;
   business_name: string;
   staff_name: string;
+  cancellation_threshold_minutes: number;
   created_at: Date;
   cancelled_at: Date | null;
 }
@@ -201,6 +202,7 @@ export class BookingService {
         'sv.price as service_price',
         'b.business_id',
         'biz.name as business_name',
+        'biz.cancellation_threshold_minutes',
         'st.name as staff_name',
         sql<Date>`b.created_at`.as('created_at'),
         sql<Date | null>`b.cancelled_at`.as('cancelled_at'),
@@ -220,6 +222,7 @@ export class BookingService {
       business_id: row.business_id,
       business_name: row.business_name,
       staff_name: row.staff_name,
+      cancellation_threshold_minutes: row.cancellation_threshold_minutes,
       created_at: row.created_at,
       cancelled_at: row.cancelled_at,
     }));
@@ -310,6 +313,7 @@ export class BookingService {
         'sv.price as service_price',
         'b.business_id',
         'biz.name as business_name',
+        'biz.cancellation_threshold_minutes',
         'st.name as staff_name',
         sql<Date>`b.created_at`.as('created_at'),
         sql<Date | null>`b.cancelled_at`.as('cancelled_at'),
@@ -329,6 +333,7 @@ export class BookingService {
       business_id: row.business_id,
       business_name: row.business_name,
       staff_name: row.staff_name,
+      cancellation_threshold_minutes: row.cancellation_threshold_minutes,
       created_at: row.created_at,
       cancelled_at: row.cancelled_at,
     };
