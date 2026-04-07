@@ -915,3 +915,53 @@
 - TASK-014 (избранное API): кнопка ♥ уже готова в UI — при 404 ошибках оптимистично переключает состояние; полноценная персистентность появится после TASK-014
 - Статическая карта: используется `staticmap.openstreetmap.de` — не требует нативных модулей; MapLibre добавится в TASK-027
 - lat/lng в BusinessDetailDto: ST_Y возвращает широту, ST_X — долготу
+
+---
+
+## [TASK-025] Экран записи клиента
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `BookingSlotsScreen.tsx` — полный экран выбора записи:
+  - Список мастеров (StaffOption с radio-выбором) — при открытии со staffId из BusinessDetails нужный мастер предвыбран
+  - Список услуг (ServiceOption с radio-выбором и ценой) — автовыбор если одна услуга
+  - Горизонтальный календарь (30 дней вперёд): день недели + число + месяц, выбранный день акцентирован
+  - Слоты через GET /businesses/:id/slots?staff_id=&date= — только свободные (is_booked=false), отображаются как SlotChip
+  - При смене даты/мастера слоты перезагружаются, выбранный слот сбрасывается
+  - Кнопка «Подтвердить запись» → POST /bookings{slot_id, service_id} → navigation.replace('BookingConfirm', {...})
+  - Error banner при ошибке бронирования
+- `BookingConfirmScreen.tsx` — экран подтверждения:
+  - Зелёная карточка (colors.accent) с галочкой, «Запись подтверждена!», название бизнеса
+  - Детали: мастер, услуга, дата (форматированная, с днём недели), время, стоимость
+  - Карточка напоминания: «напомним за 24 часа и 30 минут»
+  - Кнопка «Отменить запись» → ConfirmationModal (destructive) → DELETE /bookings/:id
+  - После отмены — экран «Запись отменена» с кнопкой «На главную» (popToTop)
+  - Кнопка «На главная» всегда доступна
+- `HomeStackParamList.BookingConfirm` — обновлены params (bookingId, businessName, staffName, serviceName, date, startTime, price)
+- Оба экрана зарегистрированы в `HomeStackNavigator.tsx`
+
+### Файлы затронуты
+- `apps/client/src/screens/home/BookingSlotsScreen.tsx` — создан
+- `apps/client/src/screens/home/BookingConfirmScreen.tsx` — создан
+- `apps/client/src/navigation/HomeStackNavigator.tsx` — добавлены BookingSlots и BookingConfirm
+- `apps/client/src/navigation/types.ts` — обновлён BookingConfirm params
+- `tasks.json` — TASK-025 status: done
+- `progress.txt` — дополнен (этот файл)
+
+### Тесты
+- [x] npx tsc --noEmit (apps/client) — без ошибок
+- [x] npx tsc --noEmit (packages/shared) — без ошибок
+- [x] npx tsc --noEmit (backend) — без ошибок
+- [x] npm run lint (backend) — 0 ошибок
+- [x] Флоу записи: BusinessDetails → BookingSlots (staffId передан) → выбор услуги + слота → POST /bookings → BookingConfirm
+- [x] Только свободные слоты отображаются (фильтр is_booked=false)
+- [x] Кнопка отмены открывает ConfirmationModal → DELETE /bookings/:id
+
+### Заметки для следующих агентов
+- TASK-026 разблокирована (зависит от TASK-025 ✓): экран записей бизнеса (Business app)
+- TASK-014 (избранное) разблокирована (зависит от TASK-009 ✓, TASK-006 ✓): API + UI избранного
+- TASK-015 разблокирована (зависит от TASK-011 ✓, TASK-006 ✓): уведомления — WhatsApp + SMS.ru
+- Полный флоу записи работает за 3 тапа: карточка бизнеса → кнопка «Записаться» → выбор слота → «Подтвердить»
+- BookingConfirm использует navigation.replace (не push) чтобы кнопка «Назад» не возвращала на слоты
+- BookingCreateResponse интерфейс определён локально в BookingSlotsScreen — если понадобится в других местах, перенести в shared types
