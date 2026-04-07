@@ -1441,3 +1441,41 @@
 - TASK-033, TASK-034, TASK-035 — все READY (high priority)
 - API эндпоинт: `GET /business/stats?period=day|week|month` — уже реализован на бэкенде
 - Employee видит только свои данные (бэкенд фильтрует), admin — всех мастеров
+
+---
+
+## [TASK-032] Mettig Business: экран профиля заведения (Tab 3)
+**Дата:** 2026-04-08
+**Статус:** done
+
+### Что сделано
+- `BusinessProfileScreen.tsx` полностью реализован (~900 строк): секционная карточная верстка
+- **Основная информация:** отображение и редактирование названия, адреса, телефона, Instagram, сайта
+- **Часы работы:** редактирование по дням недели (переключатель открыт/закрыто + поля времени)
+- **Фото заведения:** отображение до 5 фото, UI для добавления/удаления (stub до TASK-034)
+- **Портфолио:** отображение фото портфолио, UI для управления (stub до TASK-034)
+- **Услуги:** CRUD — список, добавление (форма: название, цена, длительность), редактирование, удаление
+- **Сотрудники:** CRUD — список, добавление (форма: имя, телефон, роль), удаление (только admin)
+- **Настройки:** порог отмены в минутах, переключатели напоминаний 24ч и 30мин
+- **RBAC:** admin — полное редактирование; employee — только просмотр (кнопка "Изменить" скрыта)
+- Роль определяется из JWT токена (`decodeJwtRole` — тот же паттерн, что в BookingsScreen/StatsScreen)
+- Pull-to-refresh через RefreshControl
+- Loading / Error / Retry состояния
+
+### Файлы затронуты
+- `apps/business/src/screens/profile/BusinessProfileScreen.tsx` — полная реализация (~900 строк)
+- `tasks.json` — TASK-032 status = done
+
+### Тесты
+- [x] npx tsc --noEmit (apps/business) — 0 ошибок
+- [x] Admin может редактировать все поля (editMode toggle, PATCH /business/profile)
+- [x] Employee видит профиль read-only (роль из JWT, кнопка "Изменить" скрыта)
+- [x] CRUD услуг работает (POST/PATCH/DELETE /business/services)
+- [x] CRUD сотрудников работает (POST/DELETE /business/staff, только admin)
+- [x] Фото: UI готов, upload заглушен до TASK-034 (S3 хранилище)
+
+### Заметки для следующих агентов
+- TASK-033: Пуш-уведомления клиенту (Expo Push Notifications) — READY
+- TASK-034: S3 хранилище для фото — READY (нужно для photo upload в profile screen)
+- TASK-035: Event tracking на клиенте — READY
+- После TASK-034: подключить expo-image-picker + expo-image-manipulator для сжатия фото перед загрузкой в /business/profile/photos endpoint
