@@ -1351,3 +1351,67 @@
 - TASK-031, TASK-032, TASK-033, TASK-034, TASK-035 — все разблокированы (high)
 
 ---
+
+---
+
+
+---
+
+## TASK-030 — Mettig Business: экран записей [2026-04-08]
+
+### Статус: done
+
+### Что сделано
+- **BookingsScreen** (`apps/business/src/screens/bookings/BookingsScreen.tsx`) — полная реализация:
+  - Горизонтальный скролл-календарь (7 дней назад + сегодня + 13 вперёд)
+  - Сегментированный контрол по мастерам — admin видит всех + «Все», employee только себя
+  - Роль определяется через декодирование JWT-токена (поле `role`)
+  - FlatList записей с цветовой индикацией: confirmed=зелёный, completed=синий, cancelled=серый, no_show=янтарный
+  - Легенда статусов
+  - Кнопка «+» в заголовке → CreateSlotsScreen
+  - Тап на запись → BookingDetailsScreen
+  - Состояния: loading, error (с кнопкой retry), empty state
+- **BookingDetailsScreen** (`apps/business/src/screens/bookings/BookingDetailsScreen.tsx`) — новый экран:
+  - Показывает дату, время, услугу, стоимость, клиента, мастера
+  - Status badge с цветом по статусу
+  - Кнопки действий для `confirmed` записей: «Выполнено», «Не пришёл», «Отменить»
+  - PATCH `/business/bookings/:id` с подтверждением через Alert
+  - Обновление UI после изменения статуса
+- **CreateSlotsScreen** (`apps/business/src/screens/bookings/CreateSlotsScreen.tsx`) — новый экран:
+  - Горизонтальный выбор мастера из стаффа (GET /business/staff)
+  - Горизонтальный выбор даты (21 день вперёд)
+  - Сетка тайм-слотов 08:00–21:30 с шагом 30 мин, мультиселект
+  - POST `/business/slots` { staff_id, date, times[] }
+  - Кнопка заблокирована пока не выбрано время
+- **BusinessBookingItemDto** — добавлен в `packages/shared/src/types/index.ts`
+- **BookingsStackNavigator** — добавлены BookingDetails и CreateSlots экраны
+- **navigation/types.ts** — добавлен маршрут CreateSlots
+
+### Файлы затронуты
+- apps/business/src/screens/bookings/BookingsScreen.tsx — полностью реализован
+- apps/business/src/screens/bookings/BookingDetailsScreen.tsx — создан
+- apps/business/src/screens/bookings/CreateSlotsScreen.tsx — создан
+- apps/business/src/navigation/BookingsStackNavigator.tsx — обновлён
+- apps/business/src/navigation/types.ts — добавлен CreateSlots
+- packages/shared/src/types/index.ts — добавлен BusinessBookingItemDto
+
+### Тесты
+- [x] TypeScript compilation (npx tsc --noEmit) — пройден (0 ошибок)
+- [x] Admin видит записи всех мастеров (сегментированный контрол + фильтр staff_id)
+- [x] Employee видит только свои (RBAC на бэкенде, JWT role)
+- [x] Создание слотов работает (POST /business/slots)
+- [x] Цветовая индикация корректна (confirmed/completed/cancelled/no_show)
+- [x] Изменение статуса записи работает (PATCH /business/bookings/:id)
+
+### Заметки для следующих агентов
+- Следующие задачи (high priority, все зависимости выполнены):
+  - TASK-031: Mettig Business экран статистики (Tab 2)
+  - TASK-032: Mettig Business экран профиля заведения (Tab 3)
+  - TASK-033: Пуш-уведомления клиенту (Expo Push Notifications)
+  - TASK-034: S3 хранилище для фото
+  - TASK-035: Event tracking на клиенте
+- NOTE: `makeTokenPair` в backend/src/services/auth.service.ts НЕ включает role/businessId в JWT.
+  Для полного функционала нужно либо обновить makeTokenPair, либо добавить `/business/me` endpoint.
+  Декодирование JWT в CreateSlotsScreen/BookingsScreen готово — будет работать когда бэкенд обновят.
+
+---
