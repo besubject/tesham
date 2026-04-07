@@ -793,3 +793,46 @@
 - Дизайн-токены (#1D6B4F, #FAFAF8, #E8E8E4, #C4462A) применены inline — после TASK-021 можно заменить на theme constants
 
 ---
+
+---
+
+## [TASK-021] Дизайн-система: theme + UI компоненты
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `packages/shared/src/ui/theme.ts` — токены дизайна: colors (#FAFAF8 bg, #1D6B4F accent, #C4462A coral, #D97706 amber, #2563EB blue, #E8E8E4 border), typography (h1-h3, body, caption, label, button), spacing, borderRadius, shadow
+- `packages/shared/src/ui/AvatarInitials.tsx` — аватарка с Image или View+инициалы (fallback)
+- `packages/shared/src/ui/RatingBadge.tsx` — рейтинг со звёздой и счётчиком отзывов, размеры sm/md
+- `packages/shared/src/ui/StatusBadge.tsx` — статусы: confirmed/cancelled/completed/no_show/open/closed
+- `packages/shared/src/ui/SlotChip.tsx` — чип слота времени (selected/disabled states)
+- `packages/shared/src/ui/CategoryChip.tsx` — чип категории с иконкой (selected state)
+- `packages/shared/src/ui/SearchBar.tsx` — строка поиска с иконкой и кнопкой очистки
+- `packages/shared/src/ui/BusinessCard.tsx` — карточка бизнеса (фото/placeholder, имя, категория, адрес, рейтинг, расстояние, статус)
+- `packages/shared/src/ui/BookingCard.tsx` — карточка записи (статус, сервис, мастер, дата/время, цена, отмена)
+- `packages/shared/src/ui/ReviewCard.tsx` — карточка отзыва (пользователь, звёзды, текст, ответ заведения)
+- `packages/shared/src/ui/ConfirmationModal.tsx` — модальное окно подтверждения (destructive mode, isLoading)
+- `packages/shared/src/ui/WarningBanner.tsx` — баннер info/warning/error/success с dismiss
+- `packages/shared/src/ui/index.ts` — barrel export всех компонентов и токенов
+- `packages/shared/src/index.ts` — добавлен `export * from './ui'`
+
+### Файлы затронуты
+- `packages/shared/src/ui/` — создана директория с 13 файлами
+- `packages/shared/src/index.ts` — добавлен реэкспорт UI
+
+### Тесты
+- [x] npx tsc --noEmit — без ошибок в packages/shared
+- [x] npx tsc --noEmit — без ошибок в apps/client
+- [x] npx tsc --noEmit — без ошибок в apps/business
+- [x] Все компоненты типизированы строго (no any)
+- [x] Тема корректно применяется (цвета из auth screens перенесены в tokens)
+
+### Заметки для следующих агентов
+- TASK-023 разблокирована (TASK-021 ✓, TASK-009 ✓): главный экран клиента — поиск, категории, список бизнесов, геолокация
+- TASK-024 разблокирована (TASK-021 ✓, TASK-009 ✓): карточка бизнеса — фото, карта, мастера, услуги, отзывы
+- Все UI компоненты импортируются через `import { BusinessCard, SlotChip, ... } from '@mettig/shared'`
+- BusinessCard принимает BusinessListItemDto напрямую — совместим с API ответом
+- StatusBadge поддерживает 'open'/'closed' дополнительно к BookingStatus для использования в карточке бизнеса
+- ConfirmationModal использует stopPropagation через e.stopPropagation?.() (optional chaining для React Native)
+
+---
