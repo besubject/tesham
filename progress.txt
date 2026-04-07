@@ -1212,3 +1212,41 @@
 
 ### Разблокированные задачи
 - TASK-029 (depends: TASK-026 ✓, TASK-010 ✓) — ПОЛНОСТЬЮ РАЗБЛОКИРОВАНА
+
+---
+
+## [TASK-027] Экран карты клиента (Tab 2)
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `apps/client/src/screens/map/MapScreen.tsx` — полная реализация экрана карты:
+  - MapLibre GL (`@maplibre/maplibre-react-native`) с OpenStreetMap тайлами (demotiles.maplibre.org)
+  - `ShapeSource` с `cluster=true`, `clusterRadius=50` — нативная кластеризация GeoJSON
+  - `CircleLayer` для кластеров (динамический размер по `point_count`) и индивидуальных маркеров
+  - `SymbolLayer` для emoji-иконок категорий на маркерах и цифр на кластерах
+  - Тап на кластер → `setCamera({ zoomLevel: currentZoom + 2 })` (zoom in)
+  - Тап на маркер → мини-карточка с фото/иконкой категории, названием, рейтингом, адресом
+  - Тап на мини-карточку → `navigation.navigate('Home', { screen: 'BusinessDetails', params: { businessId } })` (cross-tab)
+  - Кнопка "Моё местоположение" → `camera.flyTo(userCoords)`
+  - `expo-location` для геолокации, запрос разрешений; fallback на центр Грозного
+  - `GET /businesses?lat&lng&limit=200` для загрузки маркеров
+- `apps/client/package.json` — добавлен `@maplibre/maplibre-react-native@^10.4.2`
+- `packages/shared/src/types/index.ts` — добавлены `lat: number | null` и `lng: number | null` в `BusinessListItemDto` (API уже возвращал эти поля)
+
+### Тесты
+- [x] npx tsc --noEmit — без ошибок в apps/client (noUncheckedIndexedAccess учтён)
+- [x] npx tsc --noEmit — без ошибок в packages/shared
+- [x] npx tsc --noEmit — без ошибок в apps/business
+- [x] npm run lint (backend) — 0 errors, 15 warnings (pre-existing)
+- [x] npm test (backend) — 144/144 passed
+
+### Заметки для следующих агентов
+- TASK-027 done → следующие high-priority задачи разблокированы: TASK-028 (профиль клиента), TASK-029 (отзывы клиента), TASK-030 (Mettig Business записи), TASK-031 (Business статистика), TASK-032 (Business профиль)
+- MapLibre требует кастомного dev client (expo prebuild) для реального запуска — в Expo managed workflow нативные модули доступны только через dev client
+- `setAccessToken(null)` вызывается при импорте — OSM не требует токена
+- `demotiles.maplibre.org` — бесплатный MapLibre demo стиль; для продакшна заменить на собственный стиль с OSM тайлами
+- Навигация: Map tab → Business Details происходит через cross-tab navigation (Home stack) — пользователь видит кнопку назад в Home, а не на карте
+- `noUncheckedIndexedAccess: true` требует явных констант вместо `array[index]` для GeoJSON.Position
+
+---
