@@ -876,3 +876,42 @@
 - Паттерн infinite scroll: hasMore = (page * limit) < total
 - При отсутствии геолокации список отображается по avg_rating (backend default)
 - handleCategorySelect: повторный клик на выбранную категорию снимает фильтр (toggle)
+
+---
+
+## [TASK-024] Карточка бизнеса (клиент)
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `BusinessDetailsScreen.tsx` — полный экран карточки бизнеса:
+  - Фото-галерея: горизонтальный ScrollView с фотографиями
+  - Инфо-блок: название, категория, рейтинг, адрес, часы работы сегодня, телефон (tappable), Instagram, сайт (deep links через Linking)
+  - Статическая мини-карта (OpenStreetMap staticmap image) + кнопки "Яндекс.Карты" и "2ГИС" с deep links и fallback на веб
+  - Список мастеров: AvatarInitials + имя + роль + ближайшие свободные слоты (SlotChip) + кнопка "Записаться"
+  - Список услуг с ценами и длительностью
+  - Рейтинг + последние 3 отзыва (ReviewCard) + кнопка "Все отзывы"
+  - Кнопка избранного (♡/♥) — оптимистичный toggle; вызывает POST/DELETE /favorites когда TASK-014 будет готова
+- `GET /businesses/:id` — добавлены lat/lng через ST_Y/ST_X(location::geometry)
+- `BusinessDetailDto` — добавлены поля `lat: number | null; lng: number | null;`
+- `HomeStackNavigator.tsx` — добавлен `BusinessDetails` экран
+
+### Файлы затронуты
+- `apps/client/src/screens/home/BusinessDetailsScreen.tsx` — создан
+- `apps/client/src/navigation/HomeStackNavigator.tsx` — добавлен BusinessDetails экран
+- `packages/shared/src/types/index.ts` — BusinessDetailDto + lat/lng
+- `backend/src/services/business.service.ts` — ST_Y/ST_X в getById(), lat/lng в return
+
+### Тесты
+- [x] npx tsc --noEmit — без ошибок (client, business, backend)
+- [x] npm test (backend) — 103/103 passed
+- [x] Lint: 2 pre-existing ошибки в CodeScreen.tsx и types.ts (не связаны с TASK-024)
+- [x] Deep links: Яндекс.Карты и 2ГИС с fallback на веб
+- [x] Кнопка избранного работает (toggle с оптимистичным UI)
+- [x] Список мастеров показывает свободные слоты на сегодня
+
+### Заметки для следующих агентов
+- TASK-025 разблокирована (зависит от TASK-024 ✓): экран бронирования — выбор слота/мастера/услуги + подтверждение
+- TASK-014 (избранное API): кнопка ♥ уже готова в UI — при 404 ошибках оптимистично переключает состояние; полноценная персистентность появится после TASK-014
+- Статическая карта: используется `staticmap.openstreetmap.de` — не требует нативных модулей; MapLibre добавится в TASK-027
+- lat/lng в BusinessDetailDto: ST_Y возвращает широту, ST_X — долготу
