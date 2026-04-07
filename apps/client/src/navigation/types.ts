@@ -43,6 +43,8 @@ export type HomeStackParamList = {
 export type BookingsStackParamList = {
   BookingsList: undefined;
   BookingDetails: { bookingId: string };
+  ReviewsList: { businessId: string; businessName: string };
+  LeaveReview: { bookingId: string; businessName: string };
 };
 
 // Profile stack navigator params

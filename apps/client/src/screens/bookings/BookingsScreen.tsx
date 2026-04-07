@@ -308,16 +308,48 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
                   }
                 />
 
-                {/* "Записаться снова" for past bookings */}
+                {/* Action buttons for past bookings */}
                 {isPastSection && (
-                  <TouchableOpacity
-                    style={styles.bookAgainBtn}
-                    onPress={() => handleBookAgain(item.business_id)}
-                    activeOpacity={0.7}
-                    accessibilityLabel={`Записаться снова в ${item.business_name}`}
-                  >
-                    <Text style={styles.bookAgainText}>Записаться снова</Text>
-                  </TouchableOpacity>
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={styles.bookAgainBtn}
+                      onPress={() => handleBookAgain(item.business_id)}
+                      activeOpacity={0.7}
+                      accessibilityLabel={`Записаться снова в ${item.business_name}`}
+                    >
+                      <Text style={styles.bookAgainText}>Записаться снова</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.reviewsBtn}
+                      onPress={() =>
+                        navigation.navigate('ReviewsList', {
+                          businessId: item.business_id,
+                          businessName: item.business_name,
+                        })
+                      }
+                      activeOpacity={0.7}
+                      accessibilityLabel={`Все отзывы о ${item.business_name}`}
+                    >
+                      <Text style={styles.reviewsBtnText}>Отзывы</Text>
+                    </TouchableOpacity>
+
+                    {item.status === 'completed' && (
+                      <TouchableOpacity
+                        style={styles.leaveReviewBtn}
+                        onPress={() =>
+                          navigation.navigate('LeaveReview', {
+                            bookingId: item.id,
+                            businessName: item.business_name,
+                          })
+                        }
+                        activeOpacity={0.7}
+                        accessibilityLabel={`Оставить отзыв о ${item.business_name}`}
+                      >
+                        <Text style={styles.leaveReviewBtnText}>★ Оставить отзыв</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
             );
@@ -375,8 +407,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
   bookAgainBtn: {
-    alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.sm,
@@ -386,5 +422,28 @@ const styles = StyleSheet.create({
   bookAgainText: {
     ...typography.buttonSmall,
     color: colors.accent,
+  },
+  reviewsBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  reviewsBtnText: {
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
+  leaveReviewBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.amberLight,
+    borderWidth: 1,
+    borderColor: colors.amber,
+  },
+  leaveReviewBtnText: {
+    ...typography.buttonSmall,
+    color: colors.amber,
   },
 });
