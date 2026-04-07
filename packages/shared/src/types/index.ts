@@ -57,6 +57,8 @@ export interface BusinessDetailDto extends BusinessListItemDto {
   category_name: string;
   staff: StaffItemDto[];
   services: ServiceItemDto[];
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface SlotItemDto {

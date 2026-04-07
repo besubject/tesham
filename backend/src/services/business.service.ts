@@ -39,6 +39,8 @@ export interface BusinessDetail extends BusinessListItem {
   category_name: string;
   staff: StaffItem[];
   services: ServiceItem[];
+  lat: number | null;
+  lng: number | null;
 }
 
 interface StaffItem {
@@ -206,6 +208,8 @@ export class BusinessService {
         sql<string>`c.icon`.as('category_icon'),
         sql<number | null>`(SELECT ROUND(AVG(rating)::numeric, 2) FROM reviews WHERE business_id = b.id)`.as('avg_rating'),
         sql<number>`(SELECT COUNT(*) FROM reviews WHERE business_id = b.id)`.as('review_count'),
+        sql<number | null>`ST_Y(b.location::geometry)`.as('lat'),
+        sql<number | null>`ST_X(b.location::geometry)`.as('lng'),
       ])
       .where('b.id', '=', id)
       .where('b.is_active', '=', true)
@@ -258,6 +262,8 @@ export class BusinessService {
       avg_rating: business.avg_rating !== null ? Number(business.avg_rating) : null,
       review_count: Number(business.review_count),
       distance_m: null,
+      lat: business.lat !== null ? Number(business.lat) : null,
+      lng: business.lng !== null ? Number(business.lng) : null,
       staff,
       services,
     };
