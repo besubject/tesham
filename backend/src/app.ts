@@ -11,6 +11,7 @@ import businessesRouter from './routes/businesses';
 import reviewsRouter from './routes/reviews';
 import bookingsRouter from './routes/bookings';
 import eventsRouter from './routes/events';
+import categoriesRouter from './routes/categories';
 
 const app: Application = express();
 
@@ -42,6 +43,7 @@ app.use('/businesses', businessesRouter);
 app.use('/reviews', reviewsRouter);
 app.use('/bookings', bookingsRouter);
 app.use('/events', eventsRouter);
+app.use('/categories', categoriesRouter);
 
 // Global error handler (must be last)
 app.use(errorHandler);
