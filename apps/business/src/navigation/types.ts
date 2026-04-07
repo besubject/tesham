@@ -1,6 +1,19 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { CompositeScreenProps } from '@react-navigation/native';
+import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
+
+// Root stack — auth vs main
+export type RootStackParamList = {
+  Auth: NavigatorScreenParams<AuthStackParamList>;
+  Main: NavigatorScreenParams<RootTabParamList>;
+};
+
+// Auth stack navigator params
+export type AuthStackParamList = {
+  PhoneScreen: undefined;
+  CodeScreen: { phone: string };
+  NameScreen: { phone: string; accessToken: string; refreshToken: string };
+};
 
 // Bottom tab navigator params
 export type RootTabParamList = {
@@ -28,6 +41,16 @@ export type BusinessProfileStackParamList = {
 };
 
 // Screen props types
+export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<
+  RootStackParamList,
+  T
+>;
+
+export type AuthStackScreenProps<T extends keyof AuthStackParamList> = CompositeScreenProps<
+  NativeStackScreenProps<AuthStackParamList, T>,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
 export type RootTabScreenProps<T extends keyof RootTabParamList> = BottomTabScreenProps<
   RootTabParamList,
   T
@@ -53,6 +76,6 @@ export type BusinessProfileStackScreenProps<T extends keyof BusinessProfileStack
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace ReactNavigation {
-    interface RootParamList extends RootTabParamList {}
+    interface RootParamList extends RootStackParamList {}
   }
 }
