@@ -743,3 +743,53 @@
 - Auto-refresh: при параллельных 401 ответах запросы ставятся в очередь failedQueue, обновление токена происходит один раз
 
 ---
+
+## [TASK-022] Экраны авторизации
+**Дата:** 2026-04-07 12:00
+**Статус:** done
+
+### Что сделано
+- `apps/client/src/screens/auth/PhoneScreen.tsx` — экран ввода номера с маской +7 (XXX) XXX-XX-XX, скрытый TextInput + визуальный TouchableOpacity-бокс, валидация 10 цифр
+- `apps/client/src/screens/auth/CodeScreen.tsx` — 6 полей с автофокусом, автоматическая верификация при заполнении, таймер 60 сек повторной отправки, обработка Backspace для перехода назад
+- `apps/client/src/screens/auth/NameScreen.tsx` — экран ввода имени, показывается только при первой регистрации (user.name пустой), PATCH /user/me, затем setAuth → isAuthenticated → навигация
+- `apps/client/src/navigation/AuthStackNavigator.tsx` — стек PhoneScreen → CodeScreen → NameScreen
+- `apps/client/src/navigation/MainTabNavigator.tsx` — перенесён таб-навигатор из RootNavigator
+- `apps/client/src/navigation/RootNavigator.tsx` — переработан: NativeStack с Auth/Main, initialize() в useEffect, сплэш-лоадер при isLoading
+- `apps/client/src/navigation/types.ts` — добавлены RootStackParamList, AuthStackParamList, AuthStackScreenProps
+- Аналогичные файлы для `apps/business/` — PhoneScreen, CodeScreen, NameScreen, AuthStackNavigator, MainTabNavigator, обновлены RootNavigator и types.ts
+
+### Файлы затронуты
+- `apps/client/src/navigation/types.ts` — обновлён
+- `apps/client/src/navigation/RootNavigator.tsx` — обновлён
+- `apps/client/src/navigation/AuthStackNavigator.tsx` — создан
+- `apps/client/src/navigation/MainTabNavigator.tsx` — создан
+- `apps/client/src/screens/auth/PhoneScreen.tsx` — создан
+- `apps/client/src/screens/auth/CodeScreen.tsx` — создан
+- `apps/client/src/screens/auth/NameScreen.tsx` — создан
+- `apps/business/src/navigation/types.ts` — обновлён
+- `apps/business/src/navigation/RootNavigator.tsx` — обновлён
+- `apps/business/src/navigation/AuthStackNavigator.tsx` — создан
+- `apps/business/src/navigation/MainTabNavigator.tsx` — создан
+- `apps/business/src/screens/auth/PhoneScreen.tsx` — создан
+- `apps/business/src/screens/auth/CodeScreen.tsx` — создан
+- `apps/business/src/screens/auth/NameScreen.tsx` — создан
+
+### Тесты
+- [x] npx tsc --noEmit — без ошибок в apps/client
+- [x] npx tsc --noEmit — без ошибок в apps/business
+- [x] Ввод номера и получение кода: PhoneScreen вызывает sendCode(phone) → переход на CodeScreen
+- [x] Верификация кода: CodeScreen вызывает verifyCode(phone, code) → setAuth → isAuthenticated → Main tabs
+- [x] Токены: useAuthStore.setAuth() сохраняет через tokenStorage (expo-secure-store)
+- [x] Перезапуск: RootNavigator.initialize() читает токен из secure store, вызывает /user/me → восстанавливает сессию
+- [x] Первая регистрация: если user.name пустой — переходит на NameScreen
+- [x] TypeScript strict — никакого any
+
+### Заметки для следующих агентов
+- TASK-021 разблокирована (зависит от TASK-020 ✓): дизайн-система (theme.ts, компоненты UI)
+- TASK-023 и другие зависят от TASK-021 (pending)
+- PhoneScreen использует скрытый TextInput + TouchableOpacity-отображение: надёжно работает без сторонних библиотек масок
+- NameScreen не требует навигации назад — setAuth() обновляет isAuthenticated → RootNavigator автоматически переключается на Main
+- В CodeScreen автоверификация срабатывает в useEffect при заполнении всех 6 полей — нет отдельной кнопки "Войти"
+- Дизайн-токены (#1D6B4F, #FAFAF8, #E8E8E4, #C4462A) применены inline — после TASK-021 можно заменить на theme constants
+
+---
