@@ -134,6 +134,13 @@ export interface NotificationLogTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export interface PushTokenTable {
+  id: Generated<string>;
+  user_id: string;
+  token: string;
+  created_at: ColumnType<Date, never, never>;
+}
+
 // ─── Database schema ──────────────────────────────────────────────────────────
 
 export interface Database {
@@ -148,6 +155,7 @@ export interface Database {
   favorites: FavoriteTable;
   events: EventTable;
   notification_log: NotificationLogTable;
+  push_tokens: PushTokenTable;
 }
 
 // ─── Convenience types ────────────────────────────────────────────────────────
@@ -190,3 +198,6 @@ export type NewEvent = Insertable<EventTable>;
 
 export type NotificationLog = Selectable<NotificationLogTable>;
 export type NewNotificationLog = Insertable<NotificationLogTable>;
+
+export type PushToken = Selectable<PushTokenTable>;
+export type NewPushToken = Insertable<PushTokenTable>;

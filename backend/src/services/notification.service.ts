@@ -3,6 +3,31 @@ import { db } from '../db';
 import type { NotificationChannel, NotificationEventType, NotificationStatus } from '../db/types';
 import { config } from '../config';
 
+// ─── Expo Push API ────────────────────────────────────────────────────────────
+
+interface ExpoPushMessage {
+  to: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}
+
+async function sendExpoPush(messages: ExpoPushMessage[]): Promise<void> {
+  if (messages.length === 0) return;
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(messages),
+    });
+    if (!response.ok) {
+      console.error('[ExpoPush] HTTP error:', response.status);
+    }
+  } catch (err) {
+    console.error('[ExpoPush] Failed to send push:', err);
+  }
+}
+
 // ─── Provider interface ───────────────────────────────────────────────────────
 
 export interface INotificationProvider {
@@ -106,6 +131,43 @@ export class NotificationService {
       `Дата: ${data.slot_date} ${data.slot_time}`;
 
     await this.sendWithFallback(bookingId, data.business_phone, message, 'booking_cancelled');
+  }
+
+  async notifyClientBookingCancelledByBusiness(bookingId: string): Promise<void> {
+    const row = await db
+      .selectFrom('bookings as b')
+      .innerJoin('slots as sl', 'sl.id', 'b.slot_id')
+      .innerJoin('services as sv', 'sv.id', 'b.service_id')
+      .innerJoin('businesses as biz', 'biz.id', 'b.business_id')
+      .select([
+        'b.user_id',
+        'biz.name as business_name',
+        'sv.name as service_name',
+        sql<string>`sl.date::text`.as('slot_date'),
+        'sl.start_time as slot_time',
+      ])
+      .where('b.id', '=', bookingId)
+      .executeTakeFirst();
+
+    if (!row) return;
+
+    // Fetch push tokens for this user
+    const tokenRows = await db
+      .selectFrom('push_tokens')
+      .select('token')
+      .where('user_id', '=', row.user_id)
+      .execute();
+
+    if (tokenRows.length === 0) return;
+
+    const messages: ExpoPushMessage[] = tokenRows.map((t) => ({
+      to: t.token,
+      title: 'Запись отменена',
+      body: `${row.business_name} отменил вашу запись на ${row.service_name} (${row.slot_date} ${row.slot_time})`,
+      data: { booking_id: bookingId },
+    }));
+
+    await sendExpoPush(messages);
   }
 
   private async sendWithFallback(
