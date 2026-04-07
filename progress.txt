@@ -1036,3 +1036,50 @@
 - TASK-030 (depends: TASK-022, TASK-015) — частично разблокирована
 - TASK-033 (depends: TASK-015, TASK-022) — частично разблокирована
 - TASK-036 (depends: TASK-015, TASK-016, TASK-018) — частично разблокирована
+
+---
+
+## [TASK-016] API профиля заведения + сотрудники + услуги
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `BusinessProfileService` — новый сервис с методами:
+  - `getProfile(businessId)` — полный профиль заведения
+  - `updateProfile({ userId, businessId, update })` — обновление (requireAdmin)
+  - `getStaff(businessId)` — список сотрудников с JOIN на users (phone)
+  - `addStaff({ userId, businessId, name, phone, role })` — добавление через lookup по телефону (requireAdmin)
+  - `deleteStaff({ userId, businessId, staffId })` — мягкое удаление (requireAdmin, нельзя удалить себя)
+  - `getServices(businessId)` — список услуг
+  - `createService(...)` — создание (requireAdmin)
+  - `updateService(...)` — обновление (requireAdmin)
+  - `deleteService(...)` — мягкое удаление (requireAdmin)
+- `BusinessProfileController` — все обработчики с inline-проверкой `req.user?.businessId`
+- `routes/business.ts` — добавлены 10 новых роутов c Zod-валидацией
+- Event tracking: `business_profile_updated`, `business_staff_added`, `business_staff_removed`, `business_service_created`, `business_service_updated`, `business_service_deleted`
+- 12 новых тестов, 130/130 passed
+
+### Файлы затронуты
+- `backend/src/services/business-profile.service.ts` — создан
+- `backend/src/controllers/business-profile.controller.ts` — создан
+- `backend/src/routes/business.ts` — добавлены роуты профиля/стафа/сервисов
+- `backend/src/__tests__/business-profile.test.ts` — создан (12 тестов)
+- `tasks.json` — TASK-016 status: done
+- `progress.txt` — дополнен (этот файл)
+
+### Тесты
+- [x] npx tsc --noEmit (backend) — без ошибок
+- [x] npm run lint — 0 ошибок (1 предупреждение из существующего кода)
+- [x] npm test — 130/130 passed
+- [x] Admin может получить профиль заведения (200)
+- [x] Admin может обновить профиль (200)
+- [x] Employee не может обновить профиль (403)
+- [x] Admin может добавить сотрудника (201)
+- [x] Employee не может добавить сотрудника (403)
+- [x] Возвращает 409 если пользователь уже сотрудник
+- [x] Возвращает 404 если пользователь не найден по телефону
+- [x] Admin может удалить сотрудника (204)
+- [x] Employee не может удалить сотрудника (403)
+
+### Разблокированные задачи
+- TASK-036 (depends: TASK-015 ✓, TASK-016 ✓, TASK-018) — частично разблокирована
