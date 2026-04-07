@@ -28,7 +28,15 @@ export type HomeStackParamList = {
   HomeScreen: undefined;
   BusinessDetails: { businessId: string };
   BookingSlots: { businessId: string; staffId?: string };
-  BookingConfirm: { slotId: string; serviceId: string };
+  BookingConfirm: {
+    bookingId: string;
+    businessName: string;
+    staffName: string;
+    serviceName: string;
+    date: string;
+    startTime: string;
+    price: number;
+  };
 };
 
 // Bookings stack navigator params
