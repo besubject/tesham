@@ -19,6 +19,8 @@ import {
   updateBusinessService,
   deleteBusinessService,
 } from '../controllers/business-profile.controller';
+import { replyToReview } from '../controllers/review.controller';
+import { requireRole } from '../middleware/auth';
 
 const router = Router();
 
@@ -77,6 +79,10 @@ const updateServiceSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
+const replyToReviewSchema = z.object({
+  reply_text: z.string().min(1).max(2000),
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // GET /business/profile — get full business profile (admin only)
@@ -120,6 +126,14 @@ router.patch(
   '/bookings/:id',
   validate({ body: updateBookingStatusSchema }),
   updateBusinessBookingStatus,
+);
+
+// PATCH /business/reviews/:id — reply to a review (admin only)
+router.patch(
+  '/reviews/:id',
+  requireRole('admin'),
+  validate({ body: replyToReviewSchema }),
+  replyToReview,
 );
 
 export default router;

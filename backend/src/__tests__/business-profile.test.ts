@@ -389,3 +389,95 @@ describe('DELETE /business/staff/:id', () => {
     expect(res.status).toBe(403);
   });
 });
+
+// ─── PATCH /business/reviews/:id ──────────────────────────────────────────────
+
+const REVIEW_ID = 'rev-uuid-1';
+const REPLY_TEXT = 'Спасибо за отзыв!';
+
+describe('PATCH /business/reviews/:id', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+
+    const terminal = new Set(['executeTakeFirst', 'executeTakeFirstOrThrow', 'execute', 'transaction']);
+    Object.keys(mockDb).forEach((key) => {
+      if (!terminal.has(key)) {
+        const fn = (mockDb as Record<string, jest.Mock>)[key];
+        if (fn) fn.mockReturnValue(mockDb);
+      }
+    });
+
+    mockDb.execute.mockResolvedValue([]);
+    mockDb.executeTakeFirst.mockResolvedValue(undefined);
+  });
+
+  it('admin can reply to a review', async () => {
+    // review exists and belongs to business
+    mockDb.executeTakeFirst.mockResolvedValueOnce({ id: REVIEW_ID });
+    // update execute
+    mockDb.execute.mockResolvedValueOnce([]);
+
+    const app = buildApp();
+    const res = await request(app)
+      .patch(`/business/reviews/${REVIEW_ID}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reply_text: REPLY_TEXT });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('id', REVIEW_ID);
+    expect(res.body).toHaveProperty('reply_text', REPLY_TEXT);
+    expect(res.body).toHaveProperty('reply_at');
+  });
+
+  it('returns 403 when employee tries to reply', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .patch(`/business/reviews/${REVIEW_ID}`)
+      .set('Authorization', `Bearer ${employeeToken}`)
+      .send({ reply_text: REPLY_TEXT });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .patch(`/business/reviews/${REVIEW_ID}`)
+      .send({ reply_text: REPLY_TEXT });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when reply_text is missing', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .patch(`/business/reviews/${REVIEW_ID}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when reply_text is empty string', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .patch(`/business/reviews/${REVIEW_ID}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reply_text: '' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 when review not found or belongs to different business', async () => {
+    mockDb.executeTakeFirst.mockResolvedValueOnce(undefined);
+
+    const app = buildApp();
+    const res = await request(app)
+      .patch(`/business/reviews/nonexistent-review`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reply_text: REPLY_TEXT });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('REVIEW_NOT_FOUND');
+  });
+});

@@ -38,6 +38,18 @@ export interface CreatedReview {
   created_at: Date;
 }
 
+export interface ReplyToReviewParams {
+  reviewId: string;
+  businessId: string;
+  replyText: string;
+}
+
+export interface ReviewReplyResult {
+  id: string;
+  reply_text: string;
+  reply_at: Date;
+}
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function formatAuthorName(name: string): string {
@@ -187,6 +199,32 @@ export class ReviewService {
       reply_text: review.reply_text,
       created_at: review.created_at,
     };
+  }
+
+  async replyToReview(params: ReplyToReviewParams): Promise<ReviewReplyResult> {
+    const { reviewId, businessId, replyText } = params;
+
+    // Verify review exists and belongs to this business
+    const existing = await db
+      .selectFrom('reviews')
+      .select('id')
+      .where('id', '=', reviewId)
+      .where('business_id', '=', businessId)
+      .executeTakeFirst();
+
+    if (!existing) {
+      throw new AppError(404, 'Review not found', 'REVIEW_NOT_FOUND');
+    }
+
+    const replyAt = new Date();
+
+    await db
+      .updateTable('reviews')
+      .set({ reply_text: replyText, reply_at: replyAt })
+      .where('id', '=', reviewId)
+      .execute();
+
+    return { id: reviewId, reply_text: replyText, reply_at: replyAt };
   }
 }
 

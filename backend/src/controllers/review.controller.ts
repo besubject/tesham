@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { reviewService } from '../services/review.service';
+import { AppError } from '../middleware/error';
 
 export async function getBusinessReviews(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -30,6 +31,27 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
     });
 
     res.status(201).json(review);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function replyToReview(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user?.businessId) {
+      throw new AppError(403, 'Business access required', 'FORBIDDEN');
+    }
+
+    const { id } = req.params as { id: string };
+    const body = req.body as { reply_text: string };
+
+    const result = await reviewService.replyToReview({
+      reviewId: id,
+      businessId: req.user.businessId,
+      replyText: body.reply_text,
+    });
+
+    res.json(result);
   } catch (err) {
     next(err);
   }
