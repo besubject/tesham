@@ -1119,3 +1119,50 @@
 - reply_text хранится в reviews.reply_text, reply_at в reviews.reply_at — уже были в таблице с TASK-004
 - Роут добавлен в /business router (бизнес-роуты), а не в /reviews (клиентский роутер)
 - updateTable('reviews').set({ reply_text, reply_at }).where('id', reviewId) — стандартный Kysely update
+
+---
+
+## [TASK-018] API статистики бизнеса
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `BusinessStatsService` — новый сервис с методом `getStats({ userId, businessId, period, staffId? })`:
+  - `bookings_count` — общее число записей за период
+  - `avg_rating` — средний рейтинг отзывов за период (null если нет отзывов)
+  - `show_rate_pct` — (completed / (completed + no_show)) × 100, округление до 0.1
+  - `by_staff[]` — разбивка по мастерам (только admin без фильтра по staff_id)
+  - `by_source{ app, walk_in }` — разбивка по источнику записи
+- RBAC: employee — принудительный фильтр по своему staff_id; admin — опциональный `?staff_id=`
+- Периоды: `day` = 1 день, `week` = 7 дней (default), `month` = 30 дней
+- `GET /business/stats?period=day|week|month&staff_id=<uuid>`
+- Zod-валидация query (`statsQuerySchema`)
+- Event tracking: `business_stats_viewed`
+
+### Файлы затронуты
+- `backend/src/services/business-stats.service.ts` — создан
+- `backend/src/controllers/business-stats.controller.ts` — создан
+- `backend/src/routes/business.ts` — добавлен GET /business/stats + statsQuerySchema
+- `backend/src/__tests__/business-stats.test.ts` — создан (8 тестов)
+- `tasks.json` — TASK-018 status: done
+- `progress.txt` — дополнен (этот файл)
+
+### Тесты
+- [x] npx tsc --noEmit — без ошибок
+- [x] npm run lint — 0 ошибок (только предупреждения)
+- [x] npm test — 144/144 passed (8 новых тестов)
+- [x] GET /business/stats?period=week — возвращает метрики (200)
+- [x] Admin получает полную статистику + by_staff разбивку
+- [x] Employee видит только свою статистику (by_staff пустой)
+- [x] Admin может фильтровать по staff_id
+- [x] period по умолчанию = week
+- [x] Невалидный period → 400
+- [x] Без токена → 401
+- [x] Без businessId в токене → 403
+- [x] Не сотрудник заведения → 403
+
+### Разблокированные задачи
+- TASK-031 (depends: TASK-022, TASK-018 ✓) — теперь зависит только от TASK-022
+- TASK-036 (depends: TASK-015 ✓, TASK-016 ✓, TASK-018 ✓) — ПОЛНОСТЬЮ РАЗБЛОКИРОВАНА
+
+---
