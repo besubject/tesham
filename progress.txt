@@ -1303,3 +1303,51 @@
 
 ---
 
+
+---
+
+## TASK-029 — Экраны отзывов клиента [2026-04-08]
+
+### Статус: done
+
+### Что сделано
+- **ReviewsListScreen** (`apps/client/src/screens/bookings/ReviewsListScreen.tsx`):
+  - FlatList с бесконечной пагинацией (PAGE_SIZE=20)
+  - GET `/businesses/:id/reviews?page=X&limit=Y`
+  - Используется уже готовый компонент `ReviewCard` из @mettig/shared
+  - Показывает счётчик отзывов в заголовке
+  - Empty state при отсутствии отзывов
+- **LeaveReviewScreen** (`apps/client/src/screens/bookings/LeaveReviewScreen.tsx`):
+  - 5 звёзд — интерактивный тап (`StarRating` компонент)
+  - Текстовое поле с лимитом 1000 символов + счётчик
+  - POST `/reviews` с `{ booking_id, rating, text }`
+  - Кнопка «Отправить» заблокирована до выбора рейтинга
+  - После успешной отправки — навигация на `BookingsList`
+  - Обработка ошибок (Alert с текстом из API)
+  - KeyboardAvoidingView для корректной работы с клавиатурой
+- **BookingsScreen** обновлён:
+  - Для записей в секции «Прошлые» — кнопки «Записаться снова», «Отзывы», «★ Оставить отзыв»
+  - Кнопка «Оставить отзыв» видна ТОЛЬКО для статуса `completed`
+  - Кнопка «Отзывы» доступна для всех прошлых записей (любой статус)
+- **BookingsStackNavigator** — добавлены `ReviewsList` и `LeaveReview` экраны
+- **Navigation types** — `BookingsStackParamList` расширен двумя роутами
+
+### Файлы затронуты
+- apps/client/src/screens/bookings/ReviewsListScreen.tsx — создан
+- apps/client/src/screens/bookings/LeaveReviewScreen.tsx — создан
+- apps/client/src/screens/bookings/BookingsScreen.tsx — добавлены кнопки
+- apps/client/src/navigation/BookingsStackNavigator.tsx — добавлены экраны
+- apps/client/src/navigation/types.ts — расширен BookingsStackParamList
+
+### Тесты
+- [x] TypeScript compilation (npx tsc --noEmit) — пройден
+- [x] Список отзывов загружается с пагинацией
+- [x] Создание отзыва работает (POST /reviews)
+- [x] Кнопка «Оставить отзыв» видна только для completed записей
+
+### Заметки для следующих агентов
+- Следующая по приоритету (high) задача с выполненными зависимостями: TASK-030
+- TASK-030 зависит от TASK-022 и TASK-015 — оба done
+- TASK-031, TASK-032, TASK-033, TASK-034, TASK-035 — все разблокированы (high)
+
+---
