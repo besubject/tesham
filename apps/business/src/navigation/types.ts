@@ -26,6 +26,7 @@ export type RootTabParamList = {
 export type BookingsStackParamList = {
   BookingsList: undefined;
   BookingDetails: { bookingId: string };
+  CreateSlots: { staffId?: string } | undefined;
 };
 
 // Stats stack navigator params

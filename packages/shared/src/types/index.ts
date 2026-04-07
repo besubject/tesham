@@ -148,3 +148,18 @@ export interface ApiErrorDto {
     message: string;
   };
 }
+
+export interface BusinessBookingItemDto {
+  id: string;
+  status: BookingStatus;
+  slot_date: string;
+  slot_start_time: string;
+  service_name: string;
+  service_price: number;
+  client_name: string;
+  client_phone: string;
+  staff_id: string;
+  staff_name: string;
+  created_at: string;
+  cancelled_at: string | null;
+}
