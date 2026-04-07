@@ -965,3 +965,43 @@
 - Полный флоу записи работает за 3 тапа: карточка бизнеса → кнопка «Записаться» → выбор слота → «Подтвердить»
 - BookingConfirm использует navigation.replace (не push) чтобы кнопка «Назад» не возвращала на слоты
 - BookingCreateResponse интерфейс определён локально в BookingSlotsScreen — если понадобится в других местах, перенести в shared types
+
+---
+
+## [TASK-014] API избранного
+**Дата:** 2026-04-07
+**Статус:** done
+
+### Что сделано
+- `FavoriteService` — уже существовал в `favorite.service.ts` (полноценная реализация):
+  - `getFavorites(userId)` — возвращает `{ businesses[], staff[] }` с деталями через JOIN
+  - `addFavorite({ user_id, business_id?, staff_id? })` — проверяет существование сущности, уникальность, создаёт запись + event tracking
+  - `removeFavorite(favoriteId, userId)` — проверяет владельца, удаляет + event tracking
+- `FavoriteController` — `getFavorites`, `addFavorite`, `removeFavorite` (все с requireAuth)
+- `routes/favorites.ts` — Zod-схема с mutex-валидацией: либо `business_id`, либо `staff_id` (не оба, не ни одного)
+- Зарегистрирован в `app.ts` как `/favorites`
+- 15 новых тестов (GET/POST/DELETE, 401/403/404/409 кейсы), всего 118/118 passed
+- `npx tsc --noEmit` — без ошибок
+
+### Файлы затронуты
+- `backend/src/controllers/favorite.controller.ts` — создан
+- `backend/src/routes/favorites.ts` — создан
+- `backend/src/app.ts` — добавлен import и `app.use('/favorites', favoritesRouter)`
+- `backend/src/__tests__/favorite.test.ts` — создан (15 тестов)
+- `tasks.json` — TASK-014 status: done
+- `progress.txt` — дополнен (этот файл)
+
+### Тесты
+- [x] npx tsc --noEmit (backend) — без ошибок
+- [x] npm test — 118/118 passed
+- [x] POST /favorites добавляет бизнес в избранное (201)
+- [x] GET /favorites возвращает список избранных
+- [x] Повторный POST /favorites на тот же бизнес возвращает 409
+- [x] DELETE /favorites/:id удаляет из избранного (204)
+- [x] 401 без токена, 403 чужой элемент, 404 не найдено, 400 невалидный body
+
+### Заметки для следующих агентов
+- TASK-028 (профиль клиента) теперь может полноценно показывать избранное через GET /favorites
+- TASK-015 разблокирована (зависит от TASK-011 ✓, TASK-006 ✓): API Mettig Business (слоты, записи, RBAC)
+- TASK-016 разблокирована (зависит от TASK-009 ✓, TASK-006 ✓): API профиля заведения + сотрудники + услуги
+- favorites таблица уже существовала в migration 001_initial.ts — никаких новых миграций не требовалось
