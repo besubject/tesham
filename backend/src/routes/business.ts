@@ -8,6 +8,17 @@ import {
   getBusinessBookings,
   updateBusinessBookingStatus,
 } from '../controllers/business-booking.controller';
+import {
+  getBusinessProfile,
+  updateBusinessProfile,
+  getBusinessStaff,
+  addBusinessStaff,
+  deleteBusinessStaff,
+  getBusinessServices,
+  createBusinessService,
+  updateBusinessService,
+  deleteBusinessService,
+} from '../controllers/business-profile.controller';
 
 const router = Router();
 
@@ -36,7 +47,64 @@ const updateBookingStatusSchema = z.object({
   status: z.enum(['cancelled', 'completed', 'no_show']),
 });
 
+const updateProfileSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  address: z.string().min(1).max(500).optional(),
+  phone: z.string().min(5).max(20).optional(),
+  instagram_url: z.string().url().nullable().optional(),
+  website_url: z.string().url().nullable().optional(),
+  working_hours: z.record(z.string(), z.unknown()).optional(),
+  cancellation_threshold_minutes: z.number().int().min(0).optional(),
+  reminder_settings: z.record(z.string(), z.unknown()).optional(),
+});
+
+const addStaffSchema = z.object({
+  name: z.string().min(1).max(200),
+  phone: z.string().min(5).max(20),
+  role: z.enum(['admin', 'employee']),
+});
+
+const createServiceSchema = z.object({
+  name: z.string().min(1).max(200),
+  price: z.number().int().min(0),
+  duration_minutes: z.number().int().min(1),
+});
+
+const updateServiceSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  price: z.number().int().min(0).optional(),
+  duration_minutes: z.number().int().min(1).optional(),
+  is_active: z.boolean().optional(),
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
+
+// GET /business/profile — get full business profile (admin only)
+router.get('/profile', getBusinessProfile);
+
+// PATCH /business/profile — update business profile (admin only)
+router.patch('/profile', validate({ body: updateProfileSchema }), updateBusinessProfile);
+
+// GET /business/staff — list all staff members
+router.get('/staff', getBusinessStaff);
+
+// POST /business/staff — add staff member (admin only)
+router.post('/staff', validate({ body: addStaffSchema }), addBusinessStaff);
+
+// DELETE /business/staff/:id — remove staff member (admin only)
+router.delete('/staff/:id', deleteBusinessStaff);
+
+// GET /business/services — list all services
+router.get('/services', getBusinessServices);
+
+// POST /business/services — create service (admin only)
+router.post('/services', validate({ body: createServiceSchema }), createBusinessService);
+
+// PATCH /business/services/:id — update service (admin only)
+router.patch('/services/:id', validate({ body: updateServiceSchema }), updateBusinessService);
+
+// DELETE /business/services/:id — soft-delete service (admin only)
+router.delete('/services/:id', deleteBusinessService);
 
 // POST /business/slots — create multiple slots
 router.post('/slots', validate({ body: createSlotsSchema }), createBusinessSlots);
