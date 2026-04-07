@@ -1250,3 +1250,56 @@
 - `noUncheckedIndexedAccess: true` требует явных констант вместо `array[index]` для GeoJSON.Position
 
 ---
+
+## [TASK-028] Экран профиля клиента (Tab 4)
+**Дата:** 2026-04-08 
+**Статус:** done
+
+### Что сделано
+- Создан полнофункциональный ProfileScreen (Tab 4) с отображением:
+  - Имени и телефона пользователя (из auth store)
+  - Переключателем языка (Русский / Нохчийн) с двумя кнопками
+  - Кнопкой "Избранное" (переход на FavoritesScreen)
+  - Кнопкой "О приложении" (отображение версии v1.0.0)
+  - Кнопкой "Выйти" (с модалью подтверждения)
+  - Кнопкой "Удалить аккаунт" (с модалью подтверждения, красная)
+
+- Создан FavoritesScreen для отображения избранных:
+  - Список избранных бизнесов (с адресом и категорией)
+  - Список избранных мастеров (с аватаром и бизнесом)
+  - Refresh control для обновления
+  - Empty state для пустого списка
+
+- Реализована полная интеграция:
+  - useAuthStore методы: updateProfile(), deleteAccount(), logout()
+  - API функции: updateProfile(name, language), deleteAccount()
+  - i18n интеграция с мгновенным изменением языка
+  - Типы UserLanguage, GetFavoritesResponseDto, FavoriteBusinessItemDto, FavoriteStaffItemDto
+  - Навигация: ProfileStackNavigator с двумя экранами
+
+### Файлы затронуты
+- apps/client/src/screens/profile/ProfileScreen.tsx — создан (285 строк)
+- apps/client/src/screens/profile/FavoritesScreen.tsx — создан (287 строк)
+- apps/client/src/navigation/ProfileStackNavigator.tsx — изменён (добавлена FavoritesScreen)
+- apps/client/src/navigation/types.ts — Favorites уже в ProfileStackParamList
+- packages/shared/src/auth/store.ts — добавлены updateProfile, deleteAccount методы
+- packages/shared/src/auth/api.ts — добавлены updateProfile, deleteAccount функции
+- packages/shared/src/auth/index.ts — экспорт новых функций
+
+### Тесты
+- [x] TypeScript compilation (npx tsc --noEmit) — пройден оба приложения
+- [x] Профиль отображает данные пользователя
+- [x] Смена языка применяется мгновенно ко всему интерфейсу
+- [x] Выход очищает сессию и токены
+- [x] Избранное показывает добавленные бизнесы и мастеров
+- [x] Все acceptance criteria выполнены
+
+### Заметки для следующих агентов
+- TASK-028 разблокирует зависящие от неё задачи (если были)
+- Профиль и Избранное имеют полную функциональность и готовы к использованию
+- i18n переключатель интегрирован и работает мгновенно
+- Есть полная поддержка обеих языков (русский и чеченский)
+- Backend API /favorites, PATCH /user/me, DELETE /user/me используются корректно
+
+---
+
