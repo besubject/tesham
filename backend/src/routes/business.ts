@@ -20,6 +20,7 @@ import {
   deleteBusinessService,
 } from '../controllers/business-profile.controller';
 import { replyToReview } from '../controllers/review.controller';
+import { getBusinessStats } from '../controllers/business-stats.controller';
 import { requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -83,7 +84,15 @@ const replyToReviewSchema = z.object({
   reply_text: z.string().min(1).max(2000),
 });
 
+const statsQuerySchema = z.object({
+  period: z.enum(['day', 'week', 'month']).default('week'),
+  staff_id: z.string().uuid().optional(),
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
+
+// GET /business/stats — business statistics (admin=all, employee=own)
+router.get('/stats', validate({ query: statsQuerySchema }), getBusinessStats);
 
 // GET /business/profile — get full business profile (admin only)
 router.get('/profile', getBusinessProfile);
