@@ -163,3 +163,22 @@ export interface BusinessBookingItemDto {
   created_at: string;
   cancelled_at: string | null;
 }
+
+export interface StaffStatItemDto {
+  staff_id: string;
+  staff_name: string;
+  bookings_count: number;
+  show_rate_pct: number;
+}
+
+export interface BusinessStatsDto {
+  period: 'day' | 'week' | 'month';
+  bookings_count: number;
+  avg_rating: number | null;
+  show_rate_pct: number;
+  by_staff: StaffStatItemDto[];
+  by_source: {
+    app: number;
+    walk_in: number;
+  };
+}
