@@ -836,3 +836,43 @@
 - ConfirmationModal использует stopPropagation через e.stopPropagation?.() (optional chaining для React Native)
 
 ---
+
+---
+
+## [TASK-023] Главный экран клиента
+**Дата:** 2026-04-07 12:00
+**Статус:** done
+
+### Что сделано
+- `HomeScreen` полностью реализован: поиск с debounce 300мс, горизонтальный скролл категорий, список бизнесов с infinite scroll, pull-to-refresh, skeleton screens
+- Геолокация через `expo-location`: запрашивает разрешение при загрузке, передаёт lat/lng в API для гео-сортировки; без разрешения — список по рейтингу
+- `GET /categories` backend endpoint добавлен (`backend/src/routes/categories.ts`) — возвращает категории с sort_order
+- `expo-location@~18.0.0` добавлен в `apps/client/package.json` и установлен
+- При смене debouncedQuery / selectedCategoryId / location — список сбрасывается на page=1
+- Бесконечный скролл: `onEndReached` с threshold 0.5, добавляет page+1, `hasMore` считается через pagination.total
+- SkeletonCard — inline компонент с тремя карточками-заглушками при isLoading
+- Навигация: BusinessCard.onPress → navigation.navigate('BusinessDetails', { businessId })
+
+### Файлы затронуты
+- `apps/client/src/screens/home/HomeScreen.tsx` — полностью переписан
+- `apps/client/package.json` — добавлен expo-location
+- `backend/src/routes/categories.ts` — создан
+- `backend/src/app.ts` — подключён categoriesRouter на /categories
+- `tasks.json` — TASK-023 status: done
+- `progress.txt` — дополнен (этот файл)
+
+### Тесты
+- [x] npx tsc --noEmit (apps/client) — без ошибок
+- [x] npx tsc --noEmit (packages/shared) — без ошибок
+- [x] npx tsc --noEmit (backend) — без ошибок
+- [x] npm run lint (backend) — 0 ошибок
+- [x] npm test (backend) — 103/103 passed
+
+### Заметки для следующих агентов
+- TASK-024 разблокирована (зависит от TASK-021 ✓ + TASK-009 ✓): экран карточки бизнеса
+- TASK-027 разблокирована (зависит от TASK-021 ✓ + TASK-009 ✓): экран профиля клиента
+- expo-location установлен в корневой node_modules монорепо (workspace hoisting)
+- /categories возвращает [{id, name_ru, name_ce, icon}], сортировка по sort_order
+- Паттерн infinite scroll: hasMore = (page * limit) < total
+- При отсутствии геолокации список отображается по avg_rating (backend default)
+- handleCategorySelect: повторный клик на выбранную категорию снимает фильтр (toggle)
