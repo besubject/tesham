@@ -54,7 +54,8 @@ while has_pending_tasks; do
     echo "========================================="
     pending=$(grep -c '"status": "pending"' "$TASKS_FILE" 2>/dev/null || echo "0")
     done_count=$(grep -c '"status": "done"' "$TASKS_FILE" 2>/dev/null || echo "0")
-    echo "  Pending: $pending | Done: $done_count"
+    current_id=$(grep -A 10 '"status": "pending"' "$TASKS_FILE" | grep '"id"' | head -1 | sed 's/.*"id": "\([^"]*\)".*/\1/')
+    echo "  Pending: $pending | Done: $done_count | Current: $current_id"
     echo "========================================="
 
     agent=$(resolve_agent) || {

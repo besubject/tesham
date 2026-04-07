@@ -49,6 +49,7 @@ export type BookingsStackParamList = {
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditProfile: undefined;
+  Favorites: undefined;
 };
 
 // Screen props types

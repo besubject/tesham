@@ -101,6 +101,32 @@ export interface FavoriteItemDto {
   created_at: string;
 }
 
+export interface FavoriteBusinessItemDto {
+  id: string;
+  business_id: string;
+  business_name: string;
+  business_address: string;
+  business_phone: string;
+  category_name_ru: string;
+  category_name_ce: string;
+  created_at: string;
+}
+
+export interface FavoriteStaffItemDto {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  staff_avatar_url: string | null;
+  business_id: string;
+  business_name: string;
+  created_at: string;
+}
+
+export interface GetFavoritesResponseDto {
+  businesses: FavoriteBusinessItemDto[];
+  staff: FavoriteStaffItemDto[];
+}
+
 export interface AuthResponseDto {
   accessToken: string;
   refreshToken: string;
