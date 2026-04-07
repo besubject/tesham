@@ -1005,3 +1005,34 @@
 - TASK-015 разблокирована (зависит от TASK-011 ✓, TASK-006 ✓): API Mettig Business (слоты, записи, RBAC)
 - TASK-016 разблокирована (зависит от TASK-009 ✓, TASK-006 ✓): API профиля заведения + сотрудники + услуги
 - favorites таблица уже существовала в migration 001_initial.ts — никаких новых миграций не требовалось
+
+## TASK-015 — API Mettig Business: слоты и записи [2026-04-07] ✅
+
+**Статус:** done
+
+**Реализовано:**
+- `POST /business/slots { staff_id, date, times[] }` — массовое создание слотов
+- `DELETE /business/slots/:id` — удаление свободного слота (занятый → 400 SLOT_IS_BOOKED)
+- `GET /business/bookings?staff_id=&date=` — список записей с RBAC
+- `PATCH /business/bookings/:id { status }` — смена статуса (cancelled / completed / no_show)
+- RBAC: employee видит/изменяет только свои записи и слоты; admin — все
+- При отмене бизнесом → Expo Push уведомление клиенту (`notifyClientBookingCancelledByBusiness`)
+- Миграция `004_push_tokens` — таблица `push_tokens` для хранения Expo токенов
+- Event tracking: `business_slots_created`, `business_booking_status_changed`
+
+**Файлы:**
+- `backend/src/db/migrations/004_push_tokens.ts`
+- `backend/src/db/types.ts` (PushTokenTable)
+- `backend/src/services/notification.service.ts` (notifyClientBookingCancelledByBusiness + sendExpoPush)
+- `backend/src/services/business-booking.service.ts`
+- `backend/src/controllers/business-booking.controller.ts`
+- `backend/src/routes/business.ts`
+- `backend/src/app.ts` (/business router)
+
+**TypeScript:** ✅ 0 ошибок
+
+**Разблокированы задачи:**
+- TASK-018 (depends: TASK-015, TASK-010) — Mettig Business: вся бизнес-логика мобильного приложения
+- TASK-030 (depends: TASK-022, TASK-015) — частично разблокирована
+- TASK-033 (depends: TASK-015, TASK-022) — частично разблокирована
+- TASK-036 (depends: TASK-015, TASK-016, TASK-018) — частично разблокирована
