@@ -1415,3 +1415,29 @@
   Декодирование JWT в CreateSlotsScreen/BookingsScreen готово — будет работать когда бэкенд обновят.
 
 ---
+
+---
+
+## [TASK-031] Mettig Business: экран статистики (Tab 2)
+**Дата:** 2026-04-08
+**Статус:** done
+
+### Что сделано
+- `StatsScreen.tsx` полностью реализован: переключатель периода (День / Неделя / Месяц), три карточки метрик (Записей, Рейтинг ★, Show rate %), раздел "Откуда клиенты" (Mettig / Walk-in), разбивка по мастерам (таблица, только admin)
+- Pull-to-refresh через `RefreshControl`
+- Роль определяется из JWT токена (`decodeJwtRole`)
+- Состояния: loading (ActivityIndicator), error (текст + кнопка "Повторить")
+- Новые типы `StaffStatItemDto` и `BusinessStatsDto` добавлены в `packages/shared/src/types/index.ts`
+
+### Файлы затронуты
+- `apps/business/src/screens/stats/StatsScreen.tsx` — полная реализация (432 строки)
+- `packages/shared/src/types/index.ts` — добавлены StaffStatItemDto, BusinessStatsDto
+
+### Тесты
+- [x] npx tsc --noEmit (apps/business) — без ошибок
+
+### Заметки для следующих агентов
+- TASK-032 готова к работе (экран профиля заведения, Tab 3)
+- TASK-033, TASK-034, TASK-035 — все READY (high priority)
+- API эндпоинт: `GET /business/stats?period=day|week|month` — уже реализован на бэкенде
+- Employee видит только свои данные (бэкенд фильтрует), admin — всех мастеров
