@@ -45,6 +45,8 @@ export interface BusinessListItemDto {
   avg_rating: number | null;
   review_count: number;
   distance_m: number | null;
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface BusinessDetailDto extends BusinessListItemDto {
@@ -57,8 +59,6 @@ export interface BusinessDetailDto extends BusinessListItemDto {
   category_name: string;
   staff: StaffItemDto[];
   services: ServiceItemDto[];
-  lat: number | null;
-  lng: number | null;
 }
 
 export interface SlotItemDto {
