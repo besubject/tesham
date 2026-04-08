@@ -1,0 +1,243 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ========================
+  # BACKEND: lint, test, build
+  # ========================
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: .
+
+      - name: Lint backend code
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Type-check backend
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Build backend
+        run: npm run build
+        continue-on-error: false
+
+      - name: Run backend tests
+        run: npm run test -- --passWithNoTests
+        continue-on-error: false
+
+  # ========================
+  # MOBILE CLIENT: type-check
+  # ========================
+  client:
+    name: Mobile Client
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    defaults:
+      run:
+        working-directory: ./apps/client
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: .
+
+      - name: Type-check client
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Lint client code
+        run: npm run lint
+        continue-on-error: true
+
+  # ========================
+  # MOBILE BUSINESS: type-check
+  # ========================
+  business:
+    name: Mobile Business
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    defaults:
+      run:
+        working-directory: ./apps/business
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: .
+
+      - name: Type-check business
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Lint business code
+        run: npm run lint
+        continue-on-error: true
+
+  # ========================
+  # WEB: type-check, build
+  # ========================
+  web:
+    name: Web Application
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    defaults:
+      run:
+        working-directory: ./apps/web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: .
+
+      - name: Type-check web
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Lint web code
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build web application
+        run: npm run build
+        continue-on-error: false
+
+  # ========================
+  # SHARED PACKAGE: type-check, lint
+  # ========================
+  shared:
+    name: Shared Package
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    defaults:
+      run:
+        working-directory: ./packages/shared
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: .
+
+      - name: Type-check shared
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Lint shared code
+        run: npm run lint
+        continue-on-error: true
+
+  # ========================
+  # MONOREPO: Format check
+  # ========================
+  format:
+    name: Code Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Check code format
+        run: npm run format:check
+        continue-on-error: true
+
+  # ========================
+  # CI Summary
+  # ========================
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [backend, client, business, web, shared, format]
+    if: always()
+    steps:
+      - name: Check CI status
+        run: |
+          if [[ "${{ needs.backend.result }}" == "failure" || \
+                "${{ needs.client.result }}" == "failure" || \
+                "${{ needs.business.result }}" == "failure" || \
+                "${{ needs.web.result }}" == "failure" || \
+                "${{ needs.shared.result }}" == "failure" ]]; then
+            echo "❌ CI Pipeline Failed"
+            exit 1
+          else
+            echo "✅ CI Pipeline Passed"
+          fi

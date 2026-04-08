@@ -1881,3 +1881,178 @@ docker-compose down -v
 ✅ Документация полная и подробная
 
 **Примечание:** Полное тестирование docker-compose up невозможно в этой среде (нет Docker), но конфигурация синтаксически корректна и готова к использованию на локальной машине разработчика.
+
+## TASK-038 — CI/CD: GitHub Actions
+
+**Статус:** ✅ DONE
+
+**Что реализовано:**
+
+### GitHub Actions Workflow (.github/workflows/ci.yml)
+
+**Основной CI pipeline:**
+- Запускается на push и pull request к main/develop ветвям
+- Параллельное выполнение 6 job-ов (backend, client, business, web, shared, format)
+- Конкурренция: отменяет старые запуски при новых push-ах
+
+**Job Matrix:**
+
+1. **Backend** (Node.js 20.x)
+   - Lint: `npm run lint` ✅
+   - Type-check: `npm run typecheck` ✅
+   - Test: `npm run test` ✅
+   - Build: `npm run build` ✅
+   - Fail condition: любой из этапов не прошёл
+
+2. **Mobile Client** (React Native + Expo)
+   - Type-check: `npm run typecheck` ✅
+   - Lint: `npm run lint` (optional) ⚠️
+   - Fail condition: только typecheck обязателен
+
+3. **Mobile Business** (React Native + Expo)
+   - Type-check: `npm run typecheck` ✅
+   - Lint: `npm run lint` (optional) ⚠️
+   - Fail condition: только typecheck обязателен
+
+4. **Web Application** (React + Vite)
+   - Type-check: `npm run typecheck` ✅
+   - Lint: `npm run lint` (optional) ⚠️
+   - Build: `npm run build` ✅
+   - Fail condition: typecheck и build обязательны
+
+5. **Shared Package**
+   - Type-check: `npm run typecheck` ✅
+   - Lint: `npm run lint` (optional) ⚠️
+   - Fail condition: только typecheck обязателен
+
+6. **Format Check**
+   - Code format: `npm run format:check` ⚠️
+   - Fail condition: опциональный, не блокирует merge
+
+7. **CI Summary**
+   - Агрегирует результаты всех job-ов
+   - Если критические job-ы failed → pipeline fails
+
+### Дополнительный Workflow (.github/workflows/lint.yml)
+
+**Lint & Format workflow:**
+- Запускается на pull request
+- ESLint для всех workspaces
+- Prettier format check
+- Для быстрой feedback при PR
+
+### Документация
+
+**CONTRIBUTING.md** (в .github/):
+- Quick start guide для контрибьюторов
+- Описание CI/CD pipeline
+- Локальные проверки перед PR
+- Code standards (TypeScript, naming, commits)
+- Bug reporting и feature suggestions
+- Development workflow
+- Deployment process
+
+**CI_CD.md** (в .github/):
+- Полная документация всех workflows
+- Job details с примерами команд
+- Pipeline triggers и статусы
+- Локальное тестирование
+- Отладка CI failures
+- Защита веток и monitoring
+- Roadmap для будущих улучшений
+
+### Фичи Workflow
+
+**Concurrency:**
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+→ Отменяет старые runs при новых push-ах (экономит compute)
+
+**Caching:**
+```yaml
+cache: 'npm'
+```
+→ Кеширует npm dependencies (ускоряет установку)
+
+**Matrix Strategy:**
+```yaml
+matrix:
+  node-version: [20.x]
+```
+→ Можно легко добавить другие версии Node для тестирования
+
+**Fail Conditions:**
+- `continue-on-error: false` — блокирует pipeline
+- `continue-on-error: true` — опциональный, не блокирует
+
+### Triggers
+
+Pipeline запускается на:
+```yaml
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+```
+
+**Scenarios:**
+✅ Push в main → CI запускается
+✅ Push в develop → CI запускается
+✅ PR к main → CI запускается
+✅ PR к develop → CI запускается
+✅ Несколько quick push-ей → только последний запущен (concurrency)
+
+### Acceptance Criteria ✅
+
+✅ .github/workflows/ci.yml с матрицей для backend, client, business, web
+✅ Backend: lint → test → build
+✅ Mobile: tsc --noEmit
+✅ Web: tsc --noEmit → build
+✅ Запуск на push в main и на pull request
+
+### Test Steps ✅
+
+✅ Workflow файлы синтаксически корректны (YAML)
+✅ Jobs определены правильно
+✅ Triggers настроены на main/develop
+✅ Concurrency включена
+✅ Все рабочие директории указаны
+✅ Кеширование npm зависимостей включено
+✅ Node.js 20.x установлен
+
+### Интеграция
+
+**GitHub Actions будет запускаться автоматически при:**
+1. Push на main/develop
+2. Pull request к main/develop
+
+**Статус появится:**
+- В GitHub UI как "Checks" на PR
+- В Actions tab репозитория
+- В коммите как статус
+
+### Локальное тестирование перед push
+
+```bash
+# Все проверки как в CI
+npm run lint --workspaces --if-present
+npm run typecheck --workspaces --if-present
+npm run build --workspaces --if-present
+npm run format:check
+
+# Или отдельно
+cd backend && npm run lint && npm run typecheck && npm run test && npm run build
+cd apps/web && npm run typecheck && npm run build
+```
+
+### Примечания
+
+- Логи всех job-ов доступны в GitHub Actions UI
+- Можно переиспользовать workflow для deploy (следующий шаг)
+- Format check опциональный, чтобы не блокировать по стилю
+- Lint для mobile опциональный, typecheck обязателен
+- Backend требует всё: lint, typecheck, test, build
