@@ -60,3 +60,19 @@ export function formatDistance(meters: number | null): string {
   if (meters < 1000) return `${Math.round(meters)} м`;
   return `${(meters / 1000).toFixed(1)} км`;
 }
+
+// Event tracking
+export {
+  trackEvent,
+  trackAppOpen,
+  trackSearchQuery,
+  trackBusinessCardView,
+  trackBookingStart,
+  trackBookingComplete,
+  trackBookingCancel,
+  trackFavoriteAdd,
+  trackFavoriteRemove,
+  trackReviewSubmit,
+  type EventType,
+  type EventPayload,
+} from './track-event';

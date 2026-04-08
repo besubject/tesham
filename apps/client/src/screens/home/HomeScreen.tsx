@@ -21,6 +21,8 @@ import {
   SearchBar,
   spacing,
   typography,
+  trackAppOpen,
+  trackSearchQuery,
 } from '@mettig/shared';
 import type { HomeStackScreenProps } from '../../navigation/types';
 
@@ -93,6 +95,11 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // ── App initialization ──────────────────────────────────────────────────────
+  useEffect(() => {
+    void trackAppOpen();
+  }, []);
+
   // ── Geolocation ─────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -162,6 +169,13 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
       () => setIsLoading(false),
     );
   }, [debouncedQuery, selectedCategoryId, location, fetchBusinesses]);
+
+  // ── Track search queries ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (debouncedQuery.length > 0) {
+      void trackSearchQuery(debouncedQuery, businesses.length);
+    }
+  }, [debouncedQuery, businesses.length]);
 
   // ── Pull-to-refresh ──────────────────────────────────────────────────────────
   const handleRefresh = useCallback(() => {
