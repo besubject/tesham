@@ -1479,3 +1479,43 @@
 - TASK-034: S3 хранилище для фото — READY (нужно для photo upload в profile screen)
 - TASK-035: Event tracking на клиенте — READY
 - После TASK-034: подключить expo-image-picker + expo-image-manipulator для сжатия фото перед загрузкой в /business/profile/photos endpoint
+
+## [TASK-033] Пуш-уведомления клиенту: Expo Push Notifications
+**Дата:** 2026-04-08
+**Статус:** done
+
+### Что сделано
+- Интегрирован usePushNotifications hook в RootNavigator для регистрации push-токенов
+- Добавлена обработка deep linking при нажатии на пуш (onNotificationResponseReceivedListener)
+- Интегрирована отправка пушей при подтверждении записи бизнесом (notifyClientBookingConfirmed)
+- Интегрирована отправка пушей при отмене записи бизнесом (notifyClientBookingCancelledByBusiness)
+- Подтверждены напоминания за 24ч и 30мин (scheduler работал, функции готовы)
+
+### Инфраструктура (была готова)
+- Таблица push_tokens в БД и миграция (004_push_tokens.ts)
+- API эндпоинты /user/push-token (POST/DELETE)
+- Notification Service с поддержкой Expo Push API
+- Reminder Scheduler (запускается при старте бэкенда)
+- Notification handler (Notifications.setNotificationHandler)
+
+### Файлы затронуты
+- apps/client/src/navigation/RootNavigator.tsx — добавлен hook
+- apps/client/src/hooks/usePushNotifications.ts — расширен для deep linking
+- backend/src/services/business-booking.service.ts — интеграция notification.service
+
+### Процесс отправки
+1. **Регистрация**: При логине получается Expo push-токен и отправляется на бэкенд
+2. **Подтверждение**: Когда бизнес подтверждает запись, отправляется пуш клиенту
+3. **Отмена**: Когда бизнес отменяет запись, отправляется пуш клиенту
+4. **Напоминания**: Scheduler проверяет каждые 60 сек и отправляет напоминания за 24ч и 30мин
+5. **Deep Link**: Нажатие на пуш открывает экран записей в приложении (BookingsList)
+
+### Тесты
+- [x] TypeScript compilation
+- [x] Регистрация push-токена работает
+- [x] Напоминания отправляются по расписанию
+- [x] Пуш при подтверждении/отмене отправляется
+- [x] Deep link открывает правильный экран
+
+---
+
