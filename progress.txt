@@ -2095,3 +2095,61 @@ TASK-039 — Безопасность (helmet, rate limiting, CORS, XSS) — DON
 - backend/src/utils/reminder-scheduler.ts (fix pre-existing TS error)
 - backend/package.json (deps)
 
+
+────────────────────────────────────────────────────────────────
+TASK-040 — Модерация отзывов (profanity filter + reported flag) — DONE
+────────────────────────────────────────────────────────────────
+Дата: 2026-04-08
+
+Что сделано:
+1. backend/src/utils/profanity-filter.ts — модуль фильтрации:
+   - Списки стоп-слов: RU (хуй, пизд, ебал, бляд, сука, мудак, гондон, чмо, долбоёб, пидор, жопа, хер, нахуй, похуй и др.) + CE (базовая лексика)
+   - checkProfanity(text) → { original, cleaned, hasProfanity, matches }
+   - censorText(text) — простая обёртка
+   - Unicode-aware regex с word boundaries (\p{L}), case-insensitive
+   - Стратегия: substitute (заменить ***), не reject — не блокируем легитимные отзывы
+
+2. Миграция 005_review_reported.ts:
+   - reviews.is_reported boolean DEFAULT false
+   - reviews.reported_at timestamptz
+   - reviews.reported_reason varchar(500)
+   - Partial index reviews_is_reported_idx WHERE is_reported = true
+
+3. backend/src/db/types.ts — обновлён ReviewTable
+
+4. backend/src/services/review.service.ts:
+   - createReview() применяет checkProfanity и сохраняет cleaned-версию
+   - Событие review.create логирует had_profanity и matches
+   - Новый метод reportReview({reviewId, businessId, reason})
+   - Защита от двойного report (409 REVIEW_ALREADY_REPORTED)
+
+5. POST /business/reviews/:id/report — новый endpoint:
+   - admin only (requireRole('admin'))
+   - Body: { reason?: string (max 500) }
+   - Sanitize reason через sanitize-html
+   - reportReview controller в backend/src/controllers/review.controller.ts
+
+6. Тесты: backend/src/__tests__/profanity-filter.test.ts — 12 тестов:
+   - Чистый текст не меняется
+   - Пустой/null/undefined → no profanity
+   - Русский мат детектируется
+   - Inflected forms (root match)
+   - Замена ***-ами одинаковой длины
+   - Сохранение окружающего текста
+   - Case-insensitive
+   - Корректные/false-positive граничные случаи
+
+Тесты:
+- profanity-filter: 12/12 ✅
+- Backend build: ✅
+- Backend jest total: 155/156 (1 pre-existing failure не связан)
+
+Файлы изменены/созданы:
+- backend/src/utils/profanity-filter.ts (новый)
+- backend/src/db/migrations/005_review_reported.ts (новый)
+- backend/src/db/types.ts
+- backend/src/services/review.service.ts
+- backend/src/controllers/review.controller.ts
+- backend/src/routes/business.ts
+- backend/src/__tests__/profanity-filter.test.ts (новый)
+

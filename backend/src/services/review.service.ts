@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 import { db } from '../db';
 import { AppError } from '../middleware/error';
+import { checkProfanity } from '../utils/profanity-filter';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,18 @@ export interface ReviewReplyResult {
   id: string;
   reply_text: string;
   reply_at: Date;
+}
+
+export interface ReportReviewParams {
+  reviewId: string;
+  businessId: string;
+  reason?: string;
+}
+
+export interface ReportReviewResult {
+  id: string;
+  is_reported: boolean;
+  reported_at: Date;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -116,6 +129,9 @@ export class ReviewService {
   async createReview(params: CreateReviewParams): Promise<CreatedReview> {
     const { booking_id, rating, text, user_id } = params;
 
+    // Profanity filter — substitute offensive words with asterisks
+    const { cleaned: cleanedText, hasProfanity, matches } = checkProfanity(text);
+
     // 1. Check booking exists
     const booking = await db
       .selectFrom('bookings')
@@ -148,7 +164,7 @@ export class ReviewService {
       throw new AppError(409, 'Review already exists for this booking', 'REVIEW_ALREADY_EXISTS');
     }
 
-    // Create review
+    // Create review (with censored text)
     const review = await db
       .insertInto('reviews')
       .values({
@@ -156,9 +172,12 @@ export class ReviewService {
         user_id,
         business_id: booking.business_id,
         rating,
-        text: text ?? '',
+        text: cleanedText ?? '',
         reply_text: null,
         reply_at: null,
+        is_reported: false,
+        reported_at: null,
+        reported_reason: null,
       })
       .returning([
         'id',
@@ -181,7 +200,13 @@ export class ReviewService {
       .insertInto('events')
       .values({
         event_type: 'review.create',
-        payload: JSON.stringify({ review_id: review.id, business_id: review.business_id, rating }),
+        payload: JSON.stringify({
+          review_id: review.id,
+          business_id: review.business_id,
+          rating,
+          had_profanity: hasProfanity,
+          profanity_matches: matches,
+        }),
         session_id: null,
         anonymous_user_hash: null,
         user_id,
@@ -225,6 +250,53 @@ export class ReviewService {
       .execute();
 
     return { id: reviewId, reply_text: replyText, reply_at: replyAt };
+  }
+
+  async reportReview(params: ReportReviewParams): Promise<ReportReviewResult> {
+    const { reviewId, businessId, reason } = params;
+
+    // Verify review exists and belongs to this business
+    const existing = await db
+      .selectFrom('reviews')
+      .select(['id', 'is_reported'])
+      .where('id', '=', reviewId)
+      .where('business_id', '=', businessId)
+      .executeTakeFirst();
+
+    if (!existing) {
+      throw new AppError(404, 'Review not found', 'REVIEW_NOT_FOUND');
+    }
+
+    if (existing.is_reported) {
+      throw new AppError(409, 'Review is already reported', 'REVIEW_ALREADY_REPORTED');
+    }
+
+    const reportedAt = new Date();
+
+    await db
+      .updateTable('reviews')
+      .set({
+        is_reported: true,
+        reported_at: reportedAt,
+        reported_reason: reason ?? null,
+      })
+      .where('id', '=', reviewId)
+      .execute();
+
+    // Event tracking (fire-and-forget)
+    void db
+      .insertInto('events')
+      .values({
+        event_type: 'review.report',
+        payload: JSON.stringify({ review_id: reviewId, business_id: businessId, reason }),
+        session_id: null,
+        anonymous_user_hash: null,
+        user_id: null,
+      })
+      .execute()
+      .catch(() => undefined);
+
+    return { id: reviewId, is_reported: true, reported_at: reportedAt };
   }
 }
 

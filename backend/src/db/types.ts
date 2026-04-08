@@ -93,6 +93,9 @@ export interface ReviewTable {
   text: string;
   reply_text: string | null;
   reply_at: Date | null;
+  is_reported: ColumnType<boolean, boolean | undefined, boolean>;
+  reported_at: Date | null;
+  reported_reason: string | null;
   created_at: ColumnType<Date, never, never>;
 }
 

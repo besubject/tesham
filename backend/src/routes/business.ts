@@ -19,7 +19,7 @@ import {
   updateBusinessService,
   deleteBusinessService,
 } from '../controllers/business-profile.controller';
-import { replyToReview } from '../controllers/review.controller';
+import { replyToReview, reportReview } from '../controllers/review.controller';
 import { getBusinessStats } from '../controllers/business-stats.controller';
 import { requireRole } from '../middleware/auth';
 
@@ -84,6 +84,10 @@ const replyToReviewSchema = z.object({
   reply_text: z.string().min(1).max(2000),
 });
 
+const reportReviewSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
 const statsQuerySchema = z.object({
   period: z.enum(['day', 'week', 'month']).default('week'),
   staff_id: z.string().uuid().optional(),
@@ -143,6 +147,14 @@ router.patch(
   requireRole('admin'),
   validate({ body: replyToReviewSchema }),
   replyToReview,
+);
+
+// POST /business/reviews/:id/report — report a review for moderation (admin only)
+router.post(
+  '/reviews/:id/report',
+  requireRole('admin'),
+  validate({ body: reportReviewSchema }),
+  reportReview,
 );
 
 export default router;

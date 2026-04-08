@@ -63,3 +63,24 @@ export async function replyToReview(req: Request, res: Response, next: NextFunct
     next(err);
   }
 }
+
+export async function reportReview(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user?.businessId) {
+      throw new AppError(403, 'Business access required', 'FORBIDDEN');
+    }
+
+    const { id } = req.params as { id: string };
+    const body = req.body as { reason?: string };
+
+    const result = await reviewService.reportReview({
+      reviewId: id,
+      businessId: req.user.businessId,
+      reason: sanitizeText(body.reason),
+    });
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
