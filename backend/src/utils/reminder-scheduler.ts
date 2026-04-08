@@ -28,14 +28,10 @@ async function findBookingsNearTime(
     .select('b.id')
     .where('b.status', '=', 'confirmed')
     .where(
-      sql<boolean>`(sl.date + sl.start_time::time) AT TIME ZONE 'UTC'`,
-      '>=',
-      new Date(lowerMs),
+      sql<boolean>`(sl.date + sl.start_time::time) AT TIME ZONE 'UTC' >= ${new Date(lowerMs)}`,
     )
     .where(
-      sql<boolean>`(sl.date + sl.start_time::time) AT TIME ZONE 'UTC'`,
-      '<=',
-      new Date(upperMs),
+      sql<boolean>`(sl.date + sl.start_time::time) AT TIME ZONE 'UTC' <= ${new Date(upperMs)}`,
     )
     .execute();
 

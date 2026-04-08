@@ -2056,3 +2056,42 @@ cd apps/web && npm run typecheck && npm run build
 - Format check опциональный, чтобы не блокировать по стилю
 - Lint для mobile опциональный, typecheck обязателен
 - Backend требует всё: lint, typecheck, test, build
+
+────────────────────────────────────────────────────────────────
+TASK-039 — Безопасность (helmet, rate limiting, CORS, XSS) — DONE
+────────────────────────────────────────────────────────────────
+Дата: 2026-04-08
+
+Что сделано:
+1. helmet middleware добавлен в backend/src/app.ts с CSP-директивами, HSTS (1 год, includeSubDomains, preload)
+2. Rate limiting:
+   - global: 100 req/15min (уже был)
+   - /auth: 3 req/10min (authRateLimit)
+   - /bookings: 10 req/min (bookingsRateLimit — новый)
+3. CORS ограничен: localhost:* + 127.0.0.1:* (regex) + https://mettig.ru + https://www.mettig.ru
+4. Телефоны клиентов убраны из API бизнеса:
+   - BusinessBookingItem интерфейс (убрано поле client_phone)
+   - SQL SELECT в getBusinessBookings и getBookingDetail
+   - Mapping результатов
+5. XSS-защита на /reviews POST и PUT reply через sanitize-html (allowedTags: [], allowedAttributes: {})
+6. Signed URLs уже настроены: s3.urlExpiration = 3600 (1 час) в backend/src/config.ts ✅
+
+Попутно:
+- Починен pre-existing typecheck-ошибка в backend/src/utils/reminder-scheduler.ts (Kysely Date binding через sql template)
+
+Установлены пакеты:
+- helmet@^8.1.0 (backend)
+- sanitize-html@^2.17.2 + @types/sanitize-html@^2.16.1 (backend)
+
+Тесты:
+- Backend build: ✅ (tsc --noEmit чистый)
+- Backend jest: 143/144 passed (1 failure pre-existing в booking.test.ts — notifyClientBookingConfirmed мок не настроен, не связано с задачей)
+
+Файлы изменены:
+- backend/src/app.ts
+- backend/src/middleware/rate-limit.ts
+- backend/src/services/business-booking.service.ts
+- backend/src/controllers/review.controller.ts
+- backend/src/utils/reminder-scheduler.ts (fix pre-existing TS error)
+- backend/package.json (deps)
+

@@ -1,6 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
+import sanitizeHtml from 'sanitize-html';
 import { reviewService } from '../services/review.service';
 import { AppError } from '../middleware/error';
+
+// Strip ALL HTML tags from user-provided text to prevent XSS
+function sanitizeText(text: string | undefined): string | undefined {
+  if (!text) return text;
+  return sanitizeHtml(text, { allowedTags: [], allowedAttributes: {} }).trim();
+}
 
 export async function getBusinessReviews(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -26,7 +33,7 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
     const review = await reviewService.createReview({
       booking_id: body.booking_id,
       rating: body.rating,
-      text: body.text,
+      text: sanitizeText(body.text),
       user_id: userId,
     });
 
@@ -48,7 +55,7 @@ export async function replyToReview(req: Request, res: Response, next: NextFunct
     const result = await reviewService.replyToReview({
       reviewId: id,
       businessId: req.user.businessId,
-      replyText: body.reply_text,
+      replyText: sanitizeText(body.reply_text) ?? '',
     });
 
     res.json(result);
