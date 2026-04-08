@@ -3,16 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "description": "mettig.ru web application (React + Vite)",
-  "main": "src/index.ts",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
   },
   "dependencies": {
+    "@mettig/shared": "*",
+    "@tanstack/react-query": "^5.50.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/react": "~18.3.0",
