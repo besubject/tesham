@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '@mettig/shared';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { AuthStackNavigator } from './AuthStackNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
 import type { RootStackParamList } from './types';
@@ -10,6 +11,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator(): React.JSX.Element {
   const { isAuthenticated, isLoading, initialize } = useAuthStore();
+
+  // Register push token when user logs in/out
+  usePushNotifications(isAuthenticated);
 
   useEffect(() => {
     void initialize();

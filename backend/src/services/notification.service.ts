@@ -133,6 +133,80 @@ export class NotificationService {
     await this.sendWithFallback(bookingId, data.business_phone, message, 'booking_cancelled');
   }
 
+  async notifyClientBookingConfirmed(bookingId: string): Promise<void> {
+    const row = await db
+      .selectFrom('bookings as b')
+      .innerJoin('slots as sl', 'sl.id', 'b.slot_id')
+      .innerJoin('services as sv', 'sv.id', 'b.service_id')
+      .innerJoin('businesses as biz', 'biz.id', 'b.business_id')
+      .select([
+        'b.user_id',
+        'biz.name as business_name',
+        'sv.name as service_name',
+        sql<string>`sl.date::text`.as('slot_date'),
+        'sl.start_time as slot_time',
+      ])
+      .where('b.id', '=', bookingId)
+      .executeTakeFirst();
+
+    if (!row) return;
+
+    const tokenRows = await db
+      .selectFrom('push_tokens')
+      .select('token')
+      .where('user_id', '=', row.user_id)
+      .execute();
+
+    if (tokenRows.length === 0) return;
+
+    const messages: ExpoPushMessage[] = tokenRows.map((t) => ({
+      to: t.token,
+      title: 'Запись подтверждена',
+      body: `${row.business_name} ждёт вас на ${row.service_name} ${row.slot_date} в ${row.slot_time}`,
+      data: { booking_id: bookingId },
+    }));
+
+    await sendExpoPush(messages);
+  }
+
+  async sendReminderPush(bookingId: string, minutesBefore: number): Promise<void> {
+    const row = await db
+      .selectFrom('bookings as b')
+      .innerJoin('slots as sl', 'sl.id', 'b.slot_id')
+      .innerJoin('services as sv', 'sv.id', 'b.service_id')
+      .innerJoin('businesses as biz', 'biz.id', 'b.business_id')
+      .select([
+        'b.user_id',
+        'biz.name as business_name',
+        'sv.name as service_name',
+        sql<string>`sl.date::text`.as('slot_date'),
+        'sl.start_time as slot_time',
+      ])
+      .where('b.id', '=', bookingId)
+      .where('b.status', '=', 'confirmed')
+      .executeTakeFirst();
+
+    if (!row) return;
+
+    const tokenRows = await db
+      .selectFrom('push_tokens')
+      .select('token')
+      .where('user_id', '=', row.user_id)
+      .execute();
+
+    if (tokenRows.length === 0) return;
+
+    const timeLabel = minutesBefore >= 60 ? `${minutesBefore / 60} ч` : `${minutesBefore} мин`;
+    const messages: ExpoPushMessage[] = tokenRows.map((t) => ({
+      to: t.token,
+      title: `Напоминание: через ${timeLabel}`,
+      body: `${row.business_name} — ${row.service_name} в ${row.slot_time}`,
+      data: { booking_id: bookingId },
+    }));
+
+    await sendExpoPush(messages);
+  }
+
   async notifyClientBookingCancelledByBusiness(bookingId: string): Promise<void> {
     const row = await db
       .selectFrom('bookings as b')

@@ -301,11 +301,15 @@ export class BusinessBookingService {
       user_id: userId,
     });
 
-    // Push notification to client when business cancels
+    // Push notifications to client
     if (isCancelling) {
+      // Push notification when business cancels
       void notificationService
         .notifyClientBookingCancelledByBusiness(bookingId)
         .catch(() => undefined);
+    } else if (status === 'confirmed') {
+      // Push notification when business confirms
+      void notificationService.notifyClientBookingConfirmed(bookingId).catch(() => undefined);
     }
 
     // Fetch updated booking

@@ -47,6 +47,11 @@ export type BookingsStackParamList = {
   LeaveReview: { bookingId: string; businessName: string };
 };
 
+// Notification data payload type
+export interface PushNotificationData {
+  booking_id?: string;
+}
+
 // Profile stack navigator params
 export type ProfileStackParamList = {
   ProfileMain: undefined;

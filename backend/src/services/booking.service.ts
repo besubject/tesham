@@ -178,6 +178,11 @@ export class BookingService {
       .notifyBookingCreated(booking.newBooking.id)
       .catch(() => undefined);
 
+    // Notify client: booking confirmed (fire-and-forget)
+    void notificationService
+      .notifyClientBookingConfirmed(booking.newBooking.id)
+      .catch(() => undefined);
+
     // Fetch full booking details for response
     const detail = await this.getBookingDetail(booking.newBooking.id);
     if (!detail) {
