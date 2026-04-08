@@ -17,8 +17,10 @@ jest.mock('kysely', () => ({ sql: mockSqlFn }));
 
 jest.mock('../services/notification.service', () => ({
   notificationService: {
-    notifyBookingCreated: jest.fn(),
-    notifyBookingCancelled: jest.fn(),
+    notifyBookingCreated: jest.fn().mockResolvedValue(undefined),
+    notifyBookingCancelled: jest.fn().mockResolvedValue(undefined),
+    notifyClientBookingConfirmed: jest.fn().mockResolvedValue(undefined),
+    notifyClientBookingCancelledByBusiness: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -193,6 +195,10 @@ beforeEach(() => {
   reinitChainable();
   (notificationService.notifyBookingCreated as jest.Mock).mockResolvedValue(undefined);
   (notificationService.notifyBookingCancelled as jest.Mock).mockResolvedValue(undefined);
+  (notificationService.notifyClientBookingConfirmed as jest.Mock).mockResolvedValue(undefined);
+  (notificationService.notifyClientBookingCancelledByBusiness as jest.Mock).mockResolvedValue(
+    undefined,
+  );
 });
 
 // ─── GET /businesses/:id/slots ────────────────────────────────────────────────
