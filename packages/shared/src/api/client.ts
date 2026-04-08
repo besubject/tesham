@@ -2,7 +2,9 @@ import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosE
 import { tokenStorage } from '../storage/token';
 import type { AuthResponseDto } from '../types';
 
-const BASE_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+const BASE_URL =
+  (typeof process !== 'undefined' && process.env['EXPO_PUBLIC_API_URL']) ||
+  'http://localhost:3000';
 
 export function createApiClient(): AxiosInstance {
   const client = axios.create({
