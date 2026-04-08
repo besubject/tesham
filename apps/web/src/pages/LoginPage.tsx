@@ -7,9 +7,7 @@ type Step = 'phone' | 'code';
 
 function LoginPage(): React.JSX.Element {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore((state) => ({
-    setAuth: state.setAuth,
-  }));
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');

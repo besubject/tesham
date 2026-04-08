@@ -5,12 +5,10 @@ import './ProfilePage.css';
 
 function ProfilePage(): React.JSX.Element {
   const navigate = useNavigate();
-  const { user, logout, updateProfile, deleteAccount } = useAuthStore((state) => ({
-    user: state.user,
-    logout: state.logout,
-    updateProfile: state.updateProfile,
-    deleteAccount: state.deleteAccount,
-  }));
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const updateProfile = useAuthStore((state) => state.updateProfile);
+  const deleteAccount = useAuthStore((state) => state.deleteAccount);
 
   const [name, setName] = useState(user?.name || '');
   const [language, setLanguage] = useState<UserLanguage>(user?.language || 'ru');

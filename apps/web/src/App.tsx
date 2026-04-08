@@ -11,11 +11,11 @@ import Layout from './components/Layout';
 const queryClient = new QueryClient();
 
 function ProtectedRoute(): React.JSX.Element {
-  const { user, isLoading, isAuthenticated } = useAuthStore((state) => ({
-    user: state.user,
-    isLoading: state.isLoading,
-    isAuthenticated: state.isAuthenticated,
-  }));
+  // Каждое поле — отдельный selector. Если возвращать объект одним селектором,
+  // Zustand сравнивает по ссылке и видит новый {} на каждом рендере → infinite loop.
+  const user = useAuthStore((state) => state.user);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   if (isLoading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>Загрузка...</div>;
@@ -29,7 +29,7 @@ function ProtectedRoute(): React.JSX.Element {
 }
 
 function App(): React.JSX.Element {
-  const { initialize } = useAuthStore();
+  const initialize = useAuthStore((state) => state.initialize);
 
   useEffect(() => {
     initialize();
@@ -37,7 +37,9 @@ function App(): React.JSX.Element {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>

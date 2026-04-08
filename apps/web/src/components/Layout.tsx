@@ -5,10 +5,8 @@ import './Layout.css';
 
 function Layout(): React.JSX.Element {
   const location = useLocation();
-  const { user, logout } = useAuthStore((state) => ({
-    user: state.user,
-    logout: state.logout,
-  }));
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
 
   const handleLogout = async () => {
     await logout();
