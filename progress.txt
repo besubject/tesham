@@ -1519,3 +1519,57 @@
 
 ---
 
+
+## [TASK-034] S3-совместимое хранилище для фото
+**Дата:** 2026-04-08
+**Статус:** done
+
+### Что сделано
+- Реализовано бэкенд-решение для генерации подписанных URL (GET /upload-url)
+- Создан S3Service для работы с Yandex Object Storage / MinIO / AWS S3
+- Реализовано сжатие и ресайз фото на клиенте (expo-image-manipulator)
+- Реализована прямая загрузка фото из клиента на S3 через подписанный URL
+- Добавлена полная конфигурация для S3 (endpoints, credentials, expiration)
+
+### Архитектура
+1. **Backend API**: GET /upload-url?type=photo|portfolio&fileName=...
+   - Генерирует подписанный PUT URL для S3
+   - Требует authentication и business_id
+   - Возвращает signed URL с expiration (по умолчанию 1 час)
+
+2. **Client-side compression**: image-compression.ts
+   - expo-image-manipulator для сжатия
+   - Ресайз до max 1200px
+   - JPEG quality 0.8
+
+3. **Photo upload**: photo-upload.ts
+   - Сжимает изображение
+   - Получает подписанный URL от бэкенда
+   - Загружает blob файла через PUT запрос
+   - Возвращает публичный URL фото
+
+### Поддерживаемые хранилища
+- Yandex Object Storage (default)
+- MinIO (S3-compatible)
+- AWS S3 (через конфигурацию)
+
+### Environment переменные
+- S3_ENDPOINT — S3 API endpoint (default: https://storage.yandexcloud.net)
+- S3_REGION — регион (default: us-east-1)
+- S3_BUCKET — bucket name (default: mettig-photos)
+- S3_ACCESS_KEY_ID — AWS-style access key
+- S3_SECRET_ACCESS_KEY — AWS-style secret key
+- S3_URL_EXPIRATION — signed URL lifetime in seconds (default: 3600)
+
+### Зависимости
+- @aws-sdk/client-s3 — AWS S3 SDK (S3-compatible)
+- @aws-sdk/s3-request-presigner — подписание URL
+
+### Acceptance criteria
+- [x] Бэкенд-эндпоинт возвращает signed PUT URL
+- [x] Клиент загружает фото напрямую в S3 через signed URL
+- [x] Сжатие на клиенте работает корректно
+- [x] Поддержка S3-совместимых хранилищ
+
+---
+
