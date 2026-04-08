@@ -1728,3 +1728,156 @@
 - Стили написаны в чистом CSS без препроцессоров (простота и скорость)
 - Адаптивный дизайн работает на всех устройствах
 - Готово к развёртыванию (npm run build создаёт dist/)
+
+## TASK-037 — Docker-compose для локальной разработки
+
+**Статус:** ✅ DONE
+
+**Что реализовано:**
+
+### Docker Compose конфигурация
+- **docker-compose.yml** (2.5 KB):
+  - PostgreSQL 16 + PostGIS 3.4 с volume persistence
+  - MinIO (S3-совместимое хранилище) с console на порту 9001
+  - Backend сервис на Node.js с автоматическим перезагрузкой
+  - Health checks для всех сервисов
+  - Networks для внутренней коммуникации контейнеров
+  - Environment variables из .env файла
+
+### Backend контейнеризация
+- **backend/Dockerfile**:
+  - Node.js 20 Alpine образ (минимальный размер)
+  - npm install для dependencies
+  - Режим разработки: npm run dev с ts-node-dev
+  - Автоматический перезапуск при изменении файлов
+
+### Конфигурация окружения
+- **.env.example** (1.2 KB):
+  - Database: PostgreSQL credentials и параметры подключения
+  - Backend: PORT, NODE_ENV, JWT_SECRET
+  - S3/MinIO: endpoint, bucket, credentials
+  - SMS/Notifications: API ключи для SMS.ru и WhatsApp
+  - Web app: VITE_API_BASE_URL
+  - Production домены (закомментированы)
+
+### Автоматический setup скрипт
+- **scripts/setup.sh** (2.9 KB):
+  - Проверка установки Docker и docker-compose
+  - Создание .env из .env.example
+  - Запуск docker-compose up с проверкой здоровья сервисов
+  - Ожидание готовности PostgreSQL и MinIO
+  - Запуск миграций БД (npm run db:migrate)
+  - Заполнение БД тестовыми данными (npm run db:seed)
+  - Красивый вывод с эмодзи и инструкциями
+
+### Database инициализация
+- **backend/src/db/init.sql**:
+  - CREATE EXTENSION postgis для пространственных функций
+  - CREATE EXTENSION uuid-ossp для UUID типов
+  - Проверка PostGIS версии
+
+### Документация
+- **README.md** (12 KB):
+  - Полное описание проекта и стека
+  - 3 способа быстрого старта (Docker script, Docker manual, Local)
+  - Таблица с доступными сервисами и портами
+  - Справочник команд (Docker, dev, database, monorepo)
+  - Структура проекта
+  - Описание всех env переменных
+  - Тестирование и миграции
+  - Отладка и решение проблем
+  - API документация
+  - Правила контрибьютинга
+
+### Архитектура Docker setup
+
+```
+docker-compose.yml
+├── postgres (postgis/postgis:16-3.4)
+│   ├── Ports: 5432:5432
+│   ├── Volume: postgres_data/
+│   └── Health: pg_isready check
+├── minio (minio/minio:latest)
+│   ├── API Port: 9000:9000
+│   ├── Console Port: 9001:9001
+│   ├── Volume: minio_data/
+│   └── Health: curl healthcheck
+└── backend (Node.js Dockerfile)
+    ├── Port: 3000:3000
+    ├── Depends on: postgres, minio
+    ├── Volumes: src/ для hot reload
+    └── Command: npm run dev
+```
+
+### Тестовые данные
+- Database seed (npm run db:seed) создаёт:
+  - Тестовые категории услуг
+  - Тестовые заведения (businesses)
+  - Тестовые мастеров (staff)
+  - Тестовые услуги (services)
+  - Тестовые клиентские записи (bookings)
+
+### Управление сервисами
+
+**Запуск:**
+```bash
+./scripts/setup.sh
+# или
+docker-compose up -d
+```
+
+**Остановка:**
+```bash
+docker-compose down
+```
+
+**Просмотр логов:**
+```bash
+docker-compose logs -f
+docker-compose logs -f backend
+```
+
+**Полный reset (потеря всех данных):**
+```bash
+docker-compose down -v
+./scripts/setup.sh
+```
+
+### Интеграция с приложениями
+
+После запуска docker-compose:
+
+**Backend API:**
+- Доступен на http://localhost:3000
+- Миграции выполнены
+- База данных инициализирована
+
+**PostgreSQL для локальной разработки:**
+- Connection string: postgres://mettig:mettig_dev_password@localhost:5432/mettig
+- Возможно подключение из IDE (DBeaver, TablePlus, etc.)
+
+**MinIO для S3 операций:**
+- Console: http://localhost:9001 (minioadmin/minioadmin)
+- API endpoint: http://localhost:9000
+- Автоматическое создание bucket через backend startup
+
+### Acceptance criteria ✅
+
+✅ docker-compose.yml: postgres+postgis, minio
+✅ Volumes для персистентности данных
+✅ .env.example с дефолтными значениями для Docker
+✅ Скрипт scripts/setup.sh: docker-compose up → db:migrate → db:seed
+✅ README с инструкциями по запуску
+
+### Test steps ✅
+
+✅ docker-compose.yml валидный YAML (проверено через PyYAML)
+✅ Services определены: postgres, minio, backend
+✅ backend/Dockerfile существует и корректен
+✅ scripts/setup.sh исполняемый (chmod +x)
+✅ .env.example содержит все необходимые переменные
+✅ Health checks настроены для postgres и minio
+✅ Volume persistence включена
+✅ Документация полная и подробная
+
+**Примечание:** Полное тестирование docker-compose up невозможно в этой среде (нет Docker), но конфигурация синтаксически корректна и готова к использованию на локальной машине разработчика.
