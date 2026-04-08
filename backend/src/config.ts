@@ -30,10 +30,10 @@ export const config = {
   analyticsSalt: process.env['ANALYTICS_SALT'] ?? 'dev-analytics-salt',
   s3: {
     endpoint: process.env['S3_ENDPOINT'] ?? 'https://storage.yandexcloud.net',
-    region: process.env['S3_REGION'] ?? 'us-east-1',
-    bucket: process.env['S3_BUCKET'] ?? 'mettig-photos',
-    accessKeyId: process.env['S3_ACCESS_KEY_ID'] ?? '',
-    secretAccessKey: process.env['S3_SECRET_ACCESS_KEY'] ?? '',
+    region: process.env['S3_REGION'] ?? 'ru-central1',
+    bucket: process.env['S3_BUCKET'] ?? 'mettig',
+    accessKeyId: process.env['S3_ACCESS_KEY'] ?? '',
+    secretAccessKey: process.env['S3_SECRET_KEY'] ?? '',
     urlExpiration: parseInt(process.env['S3_URL_EXPIRATION'] ?? '3600', 10), // 1 hour
   },
 } as const;
