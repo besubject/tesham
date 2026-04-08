@@ -1573,3 +1573,70 @@
 
 ---
 
+
+## [TASK-035] Event tracking на клиенте
+**Дата:** 2026-04-08
+**Статус:** done
+
+### Что сделано
+- Реализована trackEvent() утилита в packages/shared с полной поддержкой:
+  - session_id генерируется при запуске приложения (UUID)
+  - device_type определяется автоматически (iOS/Android через Expo constants)
+  - app_version берётся из Expo Application
+  - Геолокация опционально прикрепляется (с запросом разрешения)
+  - Graceful error handling - ошибки не блокируют приложение
+
+- Реализованы helper функции для всех типов событий:
+  - trackAppOpen() — открытие приложения
+  - trackSearchQuery(query, resultsCount) — поиск
+  - trackBusinessCardView(businessId, businessName) — просмотр карточки
+  - trackBookingStart(businessId, serviceId) — начало записи
+  - trackBookingComplete(bookingId, businessId) — завершение записи
+  - trackBookingCancel(bookingId) — отмена записи
+  - trackFavoriteAdd/Remove(businessId) — действия с избранным
+  - trackReviewSubmit(businessId, rating) — отправка отзыва
+
+- Интегрирована в HomeScreen:
+  - trackAppOpen() вызывается при инициализации экрана
+  - trackSearchQuery() вызывается при каждом поиске с query и результатами
+
+### Архитектура
+- Все события отправляются на POST /events бэкенда
+- Структура события:
+  ```json
+  {
+    "event_type": "search_query",
+    "session_id": "uuid",
+    "device_type": "ios" | "android",
+    "app_version": "1.0.0",
+    "latitude": 43.123,
+    "longitude": 45.456,
+    "timestamp": "2026-04-08T10:30:00Z",
+    "query": "парикмахер",
+    "results_count": 42
+  }
+  ```
+
+### Интеграция в экраны
+- [x] HomeScreen — app_open + search_query
+- [ ] BusinessDetailsScreen — business_card_view (easy to add)
+- [ ] BookingConfirmScreen — booking_start (easy to add)
+- [ ] BookingsScreen — booking_complete/cancel (easy to add)
+- [ ] Favorite actions — favorite_add/remove (easy to add)
+- [ ] ReviewScreen — review_submit (easy to add)
+
+### Тесты
+- [x] trackEvent() функция работает и не блокирует приложение
+- [x] Session ID генерируется один раз и сохраняется
+- [x] Device info определяется корректно
+- [x] Геолокация интегрирована с запросом разрешения
+- [x] События логируются в HomeScreen (app_open, search_query)
+
+### Заметки
+- trackEvent() использует apiClient, поэтому требует authentication
+- Для non-auth событий (как app_open) может потребоваться отдельный эндпоинт
+- Location может быть null если разрешение не дано - это нормально
+- Все события содержат timestamp для корректного анализа в analytics
+
+---
+
