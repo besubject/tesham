@@ -14,6 +14,7 @@ import eventsRouter from './routes/events';
 import categoriesRouter from './routes/categories';
 import favoritesRouter from './routes/favorites';
 import businessRouter from './routes/business';
+import uploadRouter from './routes/upload';
 
 const app: Application = express();
 
@@ -48,6 +49,7 @@ app.use('/events', eventsRouter);
 app.use('/categories', categoriesRouter);
 app.use('/favorites', favoritesRouter);
 app.use('/business', businessRouter);
+app.use('/', uploadRouter);
 
 // Global error handler (must be last)
 app.use(errorHandler);
