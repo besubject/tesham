@@ -14,8 +14,8 @@ export async function sendCode(req: Request, res: Response, next: NextFunction):
 export async function verifyCode(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { phone, code } = req.body as { phone: string; code: string };
-    const result = await authService.verifyCode(phone, code);
-    res.json(result);
+    const { tokens, user } = await authService.verifyCode(phone, code);
+    res.json({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user });
   } catch (err) {
     next(err);
   }

@@ -46,7 +46,7 @@ function LoginPage(): React.JSX.Element {
     try {
       await sendCode(`+7${phone}`);
       setStep('code');
-    } catch (err) {
+    } catch {
       setError('Не удалось отправить код. Попробуйте снова.');
     } finally {
       setLoading(false);

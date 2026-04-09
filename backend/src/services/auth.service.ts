@@ -69,7 +69,17 @@ export class AuthService {
       attempts: 0,
     });
 
-    await this.sms.sendOtp(phone, code);
+    if (config.nodeEnv === 'development') {
+      console.log(`[DEV] OTP for ${phone}: ${code}`);
+    }
+
+    await this.sms.sendOtp(phone, code).catch((err: unknown) => {
+      if (config.nodeEnv === 'development') {
+        console.warn('[DEV] SMS send failed (using console code above):', err);
+      } else {
+        throw err;
+      }
+    });
 
     // Log event (fire-and-forget)
     void db

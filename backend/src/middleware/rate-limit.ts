@@ -13,6 +13,7 @@ export const authRateLimit = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env['NODE_ENV'] === 'development',
   message: {
     error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many auth requests, try again later' },
   },
