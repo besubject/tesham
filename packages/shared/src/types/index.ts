@@ -6,6 +6,8 @@ export interface UserDto {
   phone: string;
   name: string;
   language: UserLanguage;
+  email: string | null;
+  email_verified: boolean;
 }
 
 export interface CategoryDto {
@@ -127,11 +129,9 @@ export interface GetFavoritesResponseDto {
   staff: FavoriteStaffItemDto[];
 }
 
-export interface AuthResponseDto {
-  accessToken: string;
-  refreshToken: string;
-  user: UserDto;
-}
+export type AuthResponseDto =
+  | { requiresEmailVerification: true }
+  | { requiresEmailVerification: false; accessToken: string; refreshToken: string; user: UserDto };
 
 export interface PaginatedResponseDto<T> {
   data: T[];

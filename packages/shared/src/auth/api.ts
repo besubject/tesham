@@ -10,6 +10,25 @@ export async function verifyCode(phone: string, code: string): Promise<AuthRespo
   return data;
 }
 
+export async function verifyEmailLogin(
+  phone: string,
+  code: string,
+): Promise<Extract<AuthResponseDto, { requiresEmailVerification: false }>> {
+  const { data } = await apiClient.post<Extract<AuthResponseDto, { requiresEmailVerification: false }>>(
+    '/auth/verify-email-login',
+    { phone, code },
+  );
+  return data;
+}
+
+export async function setEmail(email: string): Promise<void> {
+  await apiClient.post('/user/email', { email });
+}
+
+export async function verifyUserEmail(code: string): Promise<void> {
+  await apiClient.post('/user/email/verify', { code });
+}
+
 export async function updateProfile(params: {
   name?: string;
   language?: UserLanguage;

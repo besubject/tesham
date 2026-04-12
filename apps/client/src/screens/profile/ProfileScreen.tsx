@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import {
   ScrollView,
   StyleSheet,
@@ -36,6 +37,22 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEmailBanner, setShowEmailBanner] = useState(false);
+
+  const EMAIL_BANNER_KEY = 'mettig_email_banner_count';
+  const EMAIL_BANNER_MAX = 5;
+
+  useEffect(() => {
+    if (!user || (user.email && user.email_verified)) return;
+    void (async () => {
+      const raw = await SecureStore.getItemAsync(EMAIL_BANNER_KEY);
+      const count = raw ? parseInt(raw, 10) : 0;
+      if (count < EMAIL_BANNER_MAX) {
+        setShowEmailBanner(true);
+        await SecureStore.setItemAsync(EMAIL_BANNER_KEY, String(count + 1));
+      }
+    })();
+  }, [user]);
 
   // ── Handlers ────────────────────────────────────────────────────────────
 
@@ -120,6 +137,30 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
           { paddingBottom: insets.bottom + spacing.xl },
         ]}
       >
+        {/* Email protection banner */}
+        {showEmailBanner && (
+          <View style={styles.emailBanner}>
+            <View style={styles.emailBannerContent}>
+              <Text style={styles.emailBannerTitle}>Защитите аккаунт</Text>
+              <Text style={styles.emailBannerText}>
+                Если ваш номер перейдёт другому человеку — аккаунт будет потерян. Привяжите email, чтобы этого не произошло.
+              </Text>
+              <TouchableOpacity
+                style={styles.emailBannerButton}
+                onPress={() => {
+                  setShowEmailBanner(false);
+                  navigation.navigate('EmailSetup');
+                }}
+              >
+                <Text style={styles.emailBannerButtonText}>Привязать email</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => setShowEmailBanner(false)} style={styles.emailBannerClose}>
+              <Text style={styles.emailBannerCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* User Info Section */}
         <View style={styles.section}>
           <View style={styles.infoCard}>
@@ -132,6 +173,20 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
               <Text style={styles.infoLabel}>{t('profile.phoneLabel')}</Text>
               <Text style={styles.infoValue}>{user.phone}</Text>
             </View>
+            <View style={styles.divider} />
+            <TouchableOpacity
+              style={styles.infoRow}
+              onPress={() => navigation.navigate('EmailSetup')}
+            >
+              <Text style={styles.infoLabel}>Email</Text>
+              {user.email && user.email_verified ? (
+                <Text style={styles.infoValue}>{user.email}</Text>
+              ) : (
+                <Text style={styles.infoValueAccent}>
+                  {user.email ? 'Не подтверждён →' : 'Не привязан →'}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -394,5 +449,44 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  emailBanner: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    backgroundColor: '#FFF8E7',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#F0D080',
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  emailBannerContent: { flex: 1 },
+  emailBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#7A5800',
+    marginBottom: 4,
+  },
+  emailBannerText: {
+    fontSize: 13,
+    color: '#7A5800',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  emailBannerButton: {
+    backgroundColor: '#1D6B4F',
+    borderRadius: borderRadius.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+  },
+  emailBannerButtonText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
+  emailBannerClose: { padding: 4, marginLeft: 8 },
+  emailBannerCloseText: { fontSize: 14, color: '#7A5800' },
+  infoValueAccent: {
+    ...typography.body,
+    color: colors.accent,
+    fontWeight: '500',
   },
 });

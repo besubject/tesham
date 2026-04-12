@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { CodeScreen } from '../screens/auth/CodeScreen';
+import { EmailLoginScreen } from '../screens/auth/EmailLoginScreen';
 import { NameScreen } from '../screens/auth/NameScreen';
 import { PhoneScreen } from '../screens/auth/PhoneScreen';
 import type { AuthStackParamList } from './types';
@@ -13,6 +14,7 @@ export function AuthStackNavigator(): React.JSX.Element {
       <Stack.Screen name="PhoneScreen" component={PhoneScreen} />
       <Stack.Screen name="CodeScreen" component={CodeScreen} />
       <Stack.Screen name="NameScreen" component={NameScreen} />
+      <Stack.Screen name="EmailLoginScreen" component={EmailLoginScreen} />
     </Stack.Navigator>
   );
 }

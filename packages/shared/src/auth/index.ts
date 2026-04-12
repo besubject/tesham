@@ -1,2 +1,2 @@
-export { sendCode, verifyCode, updateProfile, deleteAccount } from './api';
+export { sendCode, verifyCode, verifyEmailLogin, setEmail, verifyUserEmail, updateProfile, deleteAccount } from './api';
 export { useAuthStore } from './store';

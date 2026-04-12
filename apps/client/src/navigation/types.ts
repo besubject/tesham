@@ -13,6 +13,7 @@ export type AuthStackParamList = {
   PhoneScreen: undefined;
   CodeScreen: { phone: string };
   NameScreen: { phone: string; accessToken: string; refreshToken: string };
+  EmailLoginScreen: { phone: string };
 };
 
 // Bottom tab navigator params
@@ -57,6 +58,7 @@ export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditProfile: undefined;
   Favorites: undefined;
+  EmailSetup: undefined;
 };
 
 // Screen props types

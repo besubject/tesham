@@ -1,6 +1,8 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosError } from 'axios';
 import { tokenStorage } from '../storage/token';
-import type { AuthResponseDto } from '../types';
+interface RefreshResponseDto {
+  tokens: { accessToken: string; refreshToken: string };
+}
 
 const BASE_URL =
   (typeof process !== 'undefined' && process.env['EXPO_PUBLIC_API_URL']) ||
@@ -56,14 +58,14 @@ export function createApiClient(): AxiosInstance {
           const refreshToken = await tokenStorage.getRefreshToken();
           if (!refreshToken) throw new Error('No refresh token');
 
-          const { data } = await axios.post<AuthResponseDto>(`${BASE_URL}/auth/refresh`, { refreshToken });
+          const { data } = await axios.post<RefreshResponseDto>(`${BASE_URL}/auth/refresh`, { refreshToken });
 
-          await tokenStorage.setAccessToken(data.accessToken);
-          await tokenStorage.setRefreshToken(data.refreshToken);
+          await tokenStorage.setAccessToken(data.tokens.accessToken);
+          await tokenStorage.setRefreshToken(data.tokens.refreshToken);
 
-          processQueue(null, data.accessToken);
+          processQueue(null, data.tokens.accessToken);
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${data.tokens.accessToken}`;
           }
           return client(originalRequest);
         } catch (refreshError) {

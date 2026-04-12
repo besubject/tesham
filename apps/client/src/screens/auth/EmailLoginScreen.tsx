@@ -1,4 +1,4 @@
-import { sendCode, verifyCode, useAuthStore } from '@mettig/shared';
+import { verifyEmailLogin, useAuthStore } from '@mettig/shared';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,30 +16,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthStackScreenProps } from '../../navigation/types';
 
 const CODE_LENGTH = 6;
-const RESEND_TIMEOUT = 60;
 
-type Props = AuthStackScreenProps<'CodeScreen'>;
+type Props = AuthStackScreenProps<'EmailLoginScreen'>;
 
-export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
+export function EmailLoginScreen({ navigation, route }: Props): React.JSX.Element {
   const { phone } = route.params;
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_TIMEOUT);
 
   const inputRefs = useRef<Array<TextInput | null>>(Array(CODE_LENGTH).fill(null));
 
-  // Countdown timer
-  useEffect(() => {
-    if (secondsLeft <= 0) return;
-    const timer = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [secondsLeft]);
-
-  // Auto-verify when all digits filled
   useEffect(() => {
     const full = code.every((c) => c !== '');
     if (full) {
@@ -53,16 +42,9 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
       setIsVerifying(true);
       setError(null);
       try {
-        const response = await verifyCode(phone, codeString);
-
-        if (response.requiresEmailVerification) {
-          navigation.navigate('EmailLoginScreen', { phone });
-          return;
-        }
-
+        const response = await verifyEmailLogin(phone, codeString);
         await setAuth(response.user, response.accessToken, response.refreshToken);
 
-        // If user has no name yet — go to NameScreen
         if (!response.user.name) {
           navigation.navigate('NameScreen', {
             phone,
@@ -70,9 +52,8 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
             refreshToken: response.refreshToken,
           });
         }
-        // Otherwise setAuth triggers isAuthenticated → RootNavigator handles navigation
       } catch {
-        setError('Неверный код. Попробуйте ещё раз');
+        setError('Неверный код. Проверьте почту и попробуйте снова.');
         setCode(Array(CODE_LENGTH).fill(''));
         requestAnimationFrame(() => {
           inputRefs.current[0]?.focus();
@@ -91,7 +72,6 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
       next[index] = digit;
       setCode(next);
       if (error) setError(null);
-
       if (digit && index < CODE_LENGTH - 1) {
         inputRefs.current[index + 1]?.focus();
       }
@@ -111,26 +91,6 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
     [code],
   );
 
-  const handleResend = useCallback(async () => {
-    if (secondsLeft > 0 || isResending) return;
-    setIsResending(true);
-    setError(null);
-    try {
-      await sendCode(phone);
-      setSecondsLeft(RESEND_TIMEOUT);
-      setCode(Array(CODE_LENGTH).fill(''));
-      requestAnimationFrame(() => {
-        inputRefs.current[0]?.focus();
-      });
-    } catch {
-      setError('Не удалось отправить код. Попробуйте снова.');
-    } finally {
-      setIsResending(false);
-    }
-  }, [phone, secondsLeft, isResending]);
-
-  const displayPhone = phone.replace(/(\+7)(\d{3})(\d{3})(\d{2})(\d{2})/, '$1 ($2) $3-$4-$5');
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -146,10 +106,13 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
             <Text style={styles.backText}>← Назад</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Введите код</Text>
+          <Text style={styles.title}>Подтверждение личности</Text>
           <Text style={styles.subtitle}>
-            Мы отправили SMS с кодом на{'\n'}
-            <Text style={styles.phoneHighlight}>{displayPhone}</Text>
+            Прошло больше года с вашего последнего входа.{'\n\n'}
+            Мы отправили код на вашу почту, чтобы убедиться, что это вы.
+          </Text>
+          <Text style={styles.note}>
+            Если это не вы — просто закройте приложение. Без подтверждения почты войти нельзя.
           </Text>
 
           <View style={styles.codeRow}>
@@ -178,30 +141,7 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {isVerifying ? (
-            <ActivityIndicator style={styles.loader} color="#1D6B4F" />
-          ) : null}
-
-          <View style={styles.resendWrapper}>
-            {secondsLeft > 0 ? (
-              <Text style={styles.resendTimer}>
-                Повторная отправка через {secondsLeft} сек
-              </Text>
-            ) : (
-              <TouchableOpacity
-                onPress={handleResend}
-                disabled={isResending}
-                accessibilityLabel="Отправить код повторно"
-              >
-                {isResending ? (
-                  <ActivityIndicator color="#1D6B4F" />
-                ) : (
-                  <Text style={styles.resendLink}>Отправить код повторно</Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
+          {isVerifying ? <ActivityIndicator style={styles.loader} color="#1D6B4F" /> : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -209,46 +149,23 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAF8',
-  },
-  inner: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  backButton: {
-    marginBottom: 32,
-  },
-  backText: {
-    fontSize: 16,
-    color: '#1D6B4F',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A18',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#5C5C58',
-    lineHeight: 22,
+  container: { flex: 1, backgroundColor: '#FAFAF8' },
+  inner: { flex: 1 },
+  content: { flex: 1, paddingHorizontal: 24, paddingTop: 16 },
+  backButton: { marginBottom: 32 },
+  backText: { fontSize: 16, color: '#1D6B4F' },
+  title: { fontSize: 28, fontWeight: '700', color: '#1A1A18', marginBottom: 8 },
+  subtitle: { fontSize: 15, color: '#5C5C58', lineHeight: 22, marginBottom: 12 },
+  note: {
+    fontSize: 13,
+    color: '#8A8A86',
+    lineHeight: 18,
     marginBottom: 40,
+    padding: 12,
+    backgroundColor: '#F5F5F0',
+    borderRadius: 8,
   },
-  phoneHighlight: {
-    color: '#1A1A18',
-    fontWeight: '600',
-  },
-  codeRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
+  codeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   codeInput: {
     flex: 1,
     aspectRatio: 1,
@@ -261,31 +178,8 @@ const styles = StyleSheet.create({
     color: '#1A1A18',
     textAlign: 'center',
   },
-  codeInputFilled: {
-    borderColor: '#1D6B4F',
-  },
-  codeInputError: {
-    borderColor: '#C4462A',
-  },
-  errorText: {
-    fontSize: 13,
-    color: '#C4462A',
-    marginBottom: 8,
-  },
-  loader: {
-    marginVertical: 12,
-  },
-  resendWrapper: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  resendTimer: {
-    fontSize: 14,
-    color: '#8A8A86',
-  },
-  resendLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1D6B4F',
-  },
+  codeInputFilled: { borderColor: '#1D6B4F' },
+  codeInputError: { borderColor: '#C4462A' },
+  errorText: { fontSize: 13, color: '#C4462A', marginBottom: 8 },
+  loader: { marginVertical: 12 },
 });
