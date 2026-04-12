@@ -33,12 +33,12 @@ import {
   spacing,
   typography,
 } from '@mettig/shared';
-import type { HomeTabScreenProps } from '../../navigation/types';
-
 // MapLibre doesn't require an access token for OSM tiles
 void setAccessToken(null);
 
-type Props = HomeTabScreenProps<'Map'>;
+// MapScreen устарел — карта встроена в HomeScreen. Файл оставлен для истории.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Props = { navigation: any };
 
 // Free MapLibre demo style using OpenStreetMap tiles
 const OSM_STYLE_URL = 'https://demotiles.maplibre.org/style.json';

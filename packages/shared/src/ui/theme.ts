@@ -17,6 +17,8 @@ export const colors = {
   textMuted: '#8A8A86',
   white: '#FFFFFF',
   overlay: 'rgba(0,0,0,0.5)',
+  error: '#C4462A',
+  errorLight: '#FDECEA',
 } as const;
 
 export const typography = {

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-// @ts-expect-error expo-notifications not in devDependencies
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -11,6 +10,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 

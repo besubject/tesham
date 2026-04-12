@@ -1,31 +1,10 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-// MapScreen использует @maplibre/maplibre-react-native — требует нативной сборки (не работает в Expo Go)
-// import { MapScreen } from '../screens/map/MapScreen';
+import { Text } from 'react-native';
 import { BookingsStackNavigator } from './BookingsStackNavigator';
 import { HomeStackNavigator } from './HomeStackNavigator';
 import { ProfileStackNavigator } from './ProfileStackNavigator';
 import type { RootTabParamList } from './types';
-
-function MapPlaceholder(): React.JSX.Element {
-  return (
-    <View style={placeholderStyles.container}>
-      <Text style={placeholderStyles.icon}>🗺️</Text>
-      <Text style={placeholderStyles.title}>Карта недоступна в Expo Go</Text>
-      <Text style={placeholderStyles.subtitle}>
-        Для карты нужна нативная сборка.{'\n'}Запусти через «expo run:ios» или EAS Build.
-      </Text>
-    </View>
-  );
-}
-
-const placeholderStyles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  icon: { fontSize: 48 },
-  title: { fontSize: 18, fontWeight: '600', textAlign: 'center', color: '#1D1D1B' },
-  subtitle: { fontSize: 14, textAlign: 'center', color: '#8A8A86', lineHeight: 20 },
-});
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -54,15 +33,6 @@ export function MainTabNavigator(): React.JSX.Element {
           tabBarLabel: 'Главная',
           tabBarIcon: () => <TabIcon label="🏠" />,
           tabBarAccessibilityLabel: 'Главная',
-        }}
-      />
-      <Tab.Screen
-        name="Map"
-        component={MapPlaceholder}
-        options={{
-          tabBarLabel: 'Карта',
-          tabBarIcon: () => <TabIcon label="🗺" />,
-          tabBarAccessibilityLabel: 'Карта',
         }}
       />
       <Tab.Screen

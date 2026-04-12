@@ -51,7 +51,7 @@ export async function uploadPhoto(
     }
 
     // Step 4: Return the public URL (without query params)
-    const publicUrl = uploadUrl.split('?')[0];
+    const publicUrl = uploadUrl.split('?')[0] ?? uploadUrl;
     console.log('[PhotoUpload] Upload successful:', publicUrl);
 
     return publicUrl;
