@@ -52,6 +52,13 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
       setError(null);
       try {
         const response = await verifyCode(phone, codeString);
+
+        if (response.requiresEmailVerification) {
+          setError('Требуется подтверждение по email. Обратитесь в поддержку.');
+          setCode(Array(CODE_LENGTH).fill(''));
+          return;
+        }
+
         await setAuth(response.user, response.accessToken, response.refreshToken);
 
         if (!response.user.name) {
@@ -61,8 +68,19 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
             refreshToken: response.refreshToken,
           });
         }
-      } catch {
-        setError('Неверный код. Попробуйте ещё раз');
+      } catch (err: unknown) {
+        const axiosErr = err as { response?: { data?: { error?: { message?: string } }; status?: number } };
+        const serverMsg = axiosErr?.response?.data?.error?.message;
+        const status = axiosErr?.response?.status;
+
+        if (status === 429) {
+          setError('Слишком много попыток. Попробуйте через 10 минут.');
+        } else if (status === 401 || serverMsg?.toLowerCase().includes('invalid') || serverMsg?.toLowerCase().includes('expired')) {
+          setError('Неверный или устаревший код. Попробуйте ещё раз.');
+        } else {
+          setError('Ошибка при проверке кода. Попробуйте снова.');
+        }
+
         setCode(Array(CODE_LENGTH).fill(''));
         requestAnimationFrame(() => {
           inputRefs.current[0]?.focus();

@@ -287,8 +287,8 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
     if (selectedStaffId) params['staff_id'] = selectedStaffId;
 
     apiClient
-      .get<SlotItemDto[]>(`/businesses/${businessId}/slots`, { params })
-      .then((res) => setSlots(res.data.filter((s) => !s.is_booked)))
+      .get<{ slots: SlotItemDto[] }>(`/businesses/${businessId}/slots`, { params })
+      .then((res) => setSlots((res.data.slots ?? []).filter((s) => !s.is_booked)))
       .catch(() => setSlots([]))
       .finally(() => setIsLoadingSlots(false));
   }, [businessId, selectedDate, selectedStaffId]);
@@ -299,18 +299,19 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
     setIsBooking(true);
     setBookingError(null);
     try {
-      const res = await apiClient.post<BookingCreateResponse>('/bookings', {
+      const res = await apiClient.post<{ booking: BookingCreateResponse }>('/bookings', {
         slot_id: selectedSlotId,
         service_id: selectedServiceId,
       });
+      const b = res.data.booking;
       navigation.replace('BookingConfirm', {
-        bookingId: res.data.id,
-        businessName: res.data.business_name,
-        staffName: res.data.staff_name,
-        serviceName: res.data.service_name,
-        date: res.data.slot_date,
-        startTime: res.data.slot_start_time,
-        price: res.data.service_price,
+        bookingId: b.id,
+        businessName: b.business_name,
+        staffName: b.staff_name,
+        serviceName: b.service_name,
+        date: b.slot_date,
+        startTime: b.slot_start_time,
+        price: b.service_price,
       });
     } catch {
       setBookingError('Не удалось создать запись. Попробуйте другой слот.');

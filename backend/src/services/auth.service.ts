@@ -51,8 +51,19 @@ function signRefreshToken(payload: Pick<TokenPayload, 'id' | 'phone'>): string {
   });
 }
 
-function makeTokenPair(user: User): TokenPair {
+async function makeTokenPair(user: User): Promise<TokenPair> {
+  const staffRecord = await db
+    .selectFrom('staff')
+    .select(['business_id', 'role'])
+    .where('user_id', '=', user.id)
+    .executeTakeFirst();
+
   const payload: TokenPayload = { id: user.id, phone: user.phone };
+  if (staffRecord) {
+    payload.businessId = staffRecord.business_id;
+    payload.role = staffRecord.role;
+  }
+
   return {
     accessToken: signAccessToken(payload),
     refreshToken: signRefreshToken(payload),
@@ -177,7 +188,7 @@ export class AuthService {
       .returningAll()
       .executeTakeFirstOrThrow();
 
-    const tokens = makeTokenPair(user);
+    const tokens = await makeTokenPair(user);
 
     // Log event (fire-and-forget)
     void db
@@ -230,7 +241,7 @@ export class AuthService {
       throw new AppError(401, 'User not found', 'USER_NOT_FOUND');
     }
 
-    return makeTokenPair(user);
+    return await makeTokenPair(user);
   }
 
   async verifyEmailLoginCode(
@@ -266,7 +277,7 @@ export class AuthService {
       .catch(() => undefined);
 
     return {
-      tokens: makeTokenPair(user),
+      tokens: await makeTokenPair(user),
       user: {
         id: user.id,
         phone: user.phone,
