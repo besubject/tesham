@@ -307,13 +307,13 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
         params: { limit: 3, page: 1 },
       }),
       apiClient
-        .get<SlotItemDto[]>(`/businesses/${businessId}/slots`, { params: { date: today } })
-        .catch(() => ({ data: [] as SlotItemDto[] })),
+        .get<{ slots: SlotItemDto[] }>(`/businesses/${businessId}/slots`, { params: { date: today } })
+        .catch(() => ({ data: { slots: [] as SlotItemDto[] } })),
     ])
       .then(([bizRes, revRes, slotsRes]) => {
         setBusiness(bizRes.data);
-        setReviews(revRes.data.data);
-        setSlots(slotsRes.data);
+        setReviews(revRes.data.data ?? []);
+        setSlots(slotsRes.data.slots ?? []);
       })
       .finally(() => setIsLoading(false));
   }, [businessId]);

@@ -19,7 +19,7 @@ export function CategoryChip({ label, icon, selected = false, onPress }: Categor
       accessibilityRole="button"
       accessibilityState={{ selected }}
     >
-      {icon ? <Text style={styles.icon}>{icon}</Text> : null}
+      {/* {icon ? <Text style={styles.icon}>{icon}</Text> : null} */}
       <Text style={[styles.text, selected && styles.textSelected]}>{label}</Text>
     </TouchableOpacity>
   );
