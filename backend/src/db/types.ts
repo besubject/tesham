@@ -14,6 +14,9 @@ export interface UserTable {
   phone: string;
   name: string;
   language: ColumnType<UserLanguage, UserLanguage | undefined, UserLanguage>;
+  email: string | null;
+  email_verified: ColumnType<boolean, boolean | undefined, boolean>;
+  last_login_at: ColumnType<Date | null, Date | null | undefined, Date | null>;
   created_at: ColumnType<Date, never, never>;
 }
 

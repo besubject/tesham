@@ -28,6 +28,15 @@ export const config = {
     phoneNumberId: process.env['WHATSAPP_PHONE_NUMBER_ID'] ?? '',
   },
   analyticsSalt: process.env['ANALYTICS_SALT'] ?? 'dev-analytics-salt',
+  email: {
+    host: process.env['SMTP_HOST'] ?? 'smtp.yandex.ru',
+    port: parseInt(process.env['SMTP_PORT'] ?? '465', 10),
+    secure: (process.env['SMTP_SECURE'] ?? 'true') === 'true',
+    user: process.env['SMTP_USER'] ?? '',
+    pass: process.env['SMTP_PASS'] ?? '',
+    from: process.env['SMTP_FROM'] ?? 'noreply@mettig.ru',
+  },
+  appUrl: process.env['APP_URL'] ?? 'https://mettig.ru',
   s3: {
     endpoint: process.env['S3_ENDPOINT'] ?? 'https://storage.yandexcloud.net',
     region: process.env['S3_REGION'] ?? 'ru-central1',

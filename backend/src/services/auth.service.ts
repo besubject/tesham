@@ -3,7 +3,10 @@ import { db } from '../db';
 import { config } from '../config';
 import { AppError } from '../middleware/error';
 import { createSmsProvider, ISmsProvider } from './sms';
+import { emailService } from './email.service';
 import type { User } from '../db/types';
+
+const INACTIVITY_THRESHOLD_MS = 12 * 30 * 24 * 60 * 60 * 1000; // ~12 months
 
 // ─── OTP store (in-memory) ───────────────────────────────────────────────────
 
@@ -98,7 +101,10 @@ export class AuthService {
   async verifyCode(
     phone: string,
     code: string,
-  ): Promise<{ tokens: TokenPair; user: Omit<User, 'created_at'> }> {
+  ): Promise<
+    | { requiresEmailVerification: true }
+    | { requiresEmailVerification: false; tokens: TokenPair; user: Omit<User, 'created_at'> }
+  > {
     const entry = otpStore.get(phone);
 
     if (!entry) {
@@ -123,19 +129,53 @@ export class AuthService {
     otpStore.delete(phone);
 
     // Get or create user
-    let user = await db
+    const isNewUser = !(await db
       .selectFrom('users')
-      .selectAll()
+      .select('id')
       .where('phone', '=', phone)
-      .executeTakeFirst();
+      .executeTakeFirst());
 
-    if (!user) {
-      user = await db
-        .insertInto('users')
-        .values({ phone, name: '', language: 'ru' })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    let user = isNewUser
+      ? await db
+          .insertInto('users')
+          .values({ phone, name: '', language: 'ru', last_login_at: new Date() })
+          .returningAll()
+          .executeTakeFirstOrThrow()
+      : await db
+          .selectFrom('users')
+          .selectAll()
+          .where('phone', '=', phone)
+          .executeTakeFirstOrThrow();
+
+    // Phone recycling protection: if user has a verified email and has been
+    // inactive for 12+ months, require email confirmation before issuing tokens.
+    if (!isNewUser && user.email && user.email_verified) {
+      const lastLogin = user.last_login_at ? new Date(user.last_login_at).getTime() : 0;
+      const inactive = Date.now() - lastLogin > INACTIVITY_THRESHOLD_MS;
+      if (inactive) {
+        await emailService.sendLoginEmailCode(phone, user.email);
+        void db
+          .insertInto('events')
+          .values({
+            event_type: 'auth.email_verification_required',
+            payload: JSON.stringify({}),
+            session_id: null,
+            anonymous_user_hash: null,
+            user_id: user.id,
+          })
+          .execute()
+          .catch(() => undefined);
+        return { requiresEmailVerification: true };
+      }
     }
+
+    // Update last_login_at
+    user = await db
+      .updateTable('users')
+      .set({ last_login_at: new Date() })
+      .where('id', '=', user.id)
+      .returningAll()
+      .executeTakeFirstOrThrow();
 
     const tokens = makeTokenPair(user);
 
@@ -144,7 +184,7 @@ export class AuthService {
       .insertInto('events')
       .values({
         event_type: 'auth.verify_code',
-        payload: JSON.stringify({ is_new_user: !user }),
+        payload: JSON.stringify({ is_new_user: isNewUser }),
         session_id: null,
         anonymous_user_hash: null,
         user_id: user.id,
@@ -153,12 +193,16 @@ export class AuthService {
       .catch(() => undefined);
 
     return {
+      requiresEmailVerification: false,
       tokens,
       user: {
         id: user.id,
         phone: user.phone,
         name: user.name,
         language: user.language,
+        email: user.email,
+        email_verified: user.email_verified,
+        last_login_at: user.last_login_at,
       },
     };
   }
@@ -187,6 +231,52 @@ export class AuthService {
     }
 
     return makeTokenPair(user);
+  }
+
+  async verifyEmailLoginCode(
+    phone: string,
+    code: string,
+  ): Promise<{ tokens: TokenPair; user: Omit<User, 'created_at'> }> {
+    const ok = emailService.checkLoginEmailCode(phone, code);
+    if (!ok) {
+      throw new AppError(400, 'Invalid or expired code', 'INVALID_CODE');
+    }
+
+    const user = await db
+      .updateTable('users')
+      .set({ last_login_at: new Date() })
+      .where('phone', '=', phone)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!user) {
+      throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+    }
+
+    void db
+      .insertInto('events')
+      .values({
+        event_type: 'auth.email_login_verified',
+        payload: JSON.stringify({}),
+        session_id: null,
+        anonymous_user_hash: null,
+        user_id: user.id,
+      })
+      .execute()
+      .catch(() => undefined);
+
+    return {
+      tokens: makeTokenPair(user),
+      user: {
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        language: user.language,
+        email: user.email,
+        email_verified: user.email_verified,
+        last_login_at: user.last_login_at,
+      },
+    };
   }
 }
 

@@ -14,7 +14,25 @@ export async function sendCode(req: Request, res: Response, next: NextFunction):
 export async function verifyCode(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { phone, code } = req.body as { phone: string; code: string };
-    const { tokens, user } = await authService.verifyCode(phone, code);
+    const result = await authService.verifyCode(phone, code);
+
+    if (result.requiresEmailVerification) {
+      // User has a verified email and has been inactive for 12+ months.
+      // We need to confirm it's the original owner before issuing tokens.
+      res.json({ requiresEmailVerification: true });
+      return;
+    }
+
+    res.json({ accessToken: result.tokens.accessToken, refreshToken: result.tokens.refreshToken, user: result.user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function verifyEmailLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { phone, code } = req.body as { phone: string; code: string };
+    const { tokens, user } = await authService.verifyEmailLoginCode(phone, code);
     res.json({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user });
   } catch (err) {
     next(err);

@@ -211,6 +211,8 @@ describe('AuthService unit tests', () => {
     mockDb.execute.mockResolvedValue([]);
 
     const result = await service.verifyCode('+79001234571', code);
+    expect(result.requiresEmailVerification).toBe(false);
+    if (result.requiresEmailVerification) throw new Error('unexpected');
     expect(result.user.phone).toBe('+79001234571');
     expect(result.tokens.accessToken).toBeDefined();
     expect(result.tokens.refreshToken).toBeDefined();

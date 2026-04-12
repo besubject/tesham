@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
 import { authRateLimit } from '../middleware/rate-limit';
-import { sendCode, verifyCode, refresh } from '../controllers/auth.controller';
+import { sendCode, verifyCode, refresh, verifyEmailLogin } from '../controllers/auth.controller';
 
 const router = Router();
 
@@ -29,5 +29,8 @@ router.post('/verify-code', validate({ body: verifySchema }), verifyCode);
 
 // POST /auth/refresh
 router.post('/refresh', validate({ body: refreshSchema }), refresh);
+
+// POST /auth/verify-email-login — confirm identity via email code after long inactivity
+router.post('/verify-email-login', validate({ body: verifySchema }), verifyEmailLogin);
 
 export default router;
