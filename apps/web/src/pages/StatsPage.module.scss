@@ -213,7 +213,6 @@
   border-bottom: none;
 }
 
-/* Responsive for tablets */
 @media (max-width: 1024px) {
   .stats-page {
     gap: 24px;
@@ -236,7 +235,6 @@
   }
 }
 
-/* Responsive for mobile */
 @media (max-width: 768px) {
   .stats-page {
     gap: 20px;

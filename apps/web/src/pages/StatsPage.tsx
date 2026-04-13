@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient, type BusinessStatsDto } from '@mettig/shared';
-import './StatsPage.css';
+import styles from './StatsPage.module.scss';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -25,27 +25,27 @@ function StatsPage(): React.JSX.Element {
   };
 
   return (
-    <div className="stats-page">
-      <div className="page-header">
-        <h1 className="page-title">Статистика</h1>
-        <p className="page-subtitle">Анализ деятельности вашего бизнеса</p>
+    <div className={styles.statsPage}>
+      <div className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Статистика</h1>
+        <p className={styles.pageSubtitle}>Анализ деятельности вашего бизнеса</p>
       </div>
 
-      <div className="period-selector">
+      <div className={styles.periodSelector}>
         <button
-          className={`period-btn ${period === 'day' ? 'active' : ''}`}
+          className={[styles.periodBtn, period === 'day' ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => setPeriod('day')}
         >
           День
         </button>
         <button
-          className={`period-btn ${period === 'week' ? 'active' : ''}`}
+          className={[styles.periodBtn, period === 'week' ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => setPeriod('week')}
         >
           Неделя
         </button>
         <button
-          className={`period-btn ${period === 'month' ? 'active' : ''}`}
+          className={[styles.periodBtn, period === 'month' ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => setPeriod('month')}
         >
           Месяц
@@ -53,45 +53,45 @@ function StatsPage(): React.JSX.Element {
       </div>
 
       {isLoading ? (
-        <div className="loading">Загрузка...</div>
+        <div className={styles.loading}>Загрузка...</div>
       ) : stats ? (
         <>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-value">{stats.bookings_count}</div>
-              <div className="stat-label">Записи</div>
+          <div className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <div className={styles.statValue}>{stats.bookings_count}</div>
+              <div className={styles.statLabel}>Записи</div>
             </div>
 
             {stats.avg_rating !== null && (
-              <div className="stat-card">
-                <div className="stat-value">
+              <div className={styles.statCard}>
+                <div className={styles.statValue}>
                   {stats.avg_rating.toFixed(1)}
-                  <span className="star">⭐</span>
+                  <span className={styles.star}>⭐</span>
                 </div>
-                <div className="stat-label">Средняя оценка</div>
+                <div className={styles.statLabel}>Средняя оценка</div>
               </div>
             )}
 
-            <div className="stat-card">
-              <div className="stat-value">{stats.show_rate_pct}%</div>
-              <div className="stat-label">Явка клиентов</div>
+            <div className={styles.statCard}>
+              <div className={styles.statValue}>{stats.show_rate_pct}%</div>
+              <div className={styles.statLabel}>Явка клиентов</div>
             </div>
           </div>
 
-          <div className="sources-section">
-            <h2 className="section-title">Источники записей</h2>
-            <div className="sources-grid">
-              <div className="source-card">
-                <div className="source-label">Мобильное приложение</div>
-                <div className="source-value">
+          <div className={styles.sourcesSection}>
+            <h2 className={styles.sectionTitle}>Источники записей</h2>
+            <div className={styles.sourcesGrid}>
+              <div className={styles.sourceCard}>
+                <div className={styles.sourceLabel}>Мобильное приложение</div>
+                <div className={styles.sourceValue}>
                   {stats.by_source.app}
-                  <span className="source-percentage">
+                  <span className={styles.sourcePercentage}>
                     {getSourcePercentage(stats.by_source.app, stats.bookings_count)}%
                   </span>
                 </div>
-                <div className="progress-bar">
+                <div className={styles.progressBar}>
                   <div
-                    className="progress-fill"
+                    className={styles.progressFill}
                     style={{
                       width: `${getSourcePercentage(stats.by_source.app, stats.bookings_count)}%`,
                     }}
@@ -99,17 +99,17 @@ function StatsPage(): React.JSX.Element {
                 </div>
               </div>
 
-              <div className="source-card">
-                <div className="source-label">Приём без записи</div>
-                <div className="source-value">
+              <div className={styles.sourceCard}>
+                <div className={styles.sourceLabel}>Приём без записи</div>
+                <div className={styles.sourceValue}>
                   {stats.by_source.walk_in}
-                  <span className="source-percentage">
+                  <span className={styles.sourcePercentage}>
                     {getSourcePercentage(stats.by_source.walk_in, stats.bookings_count)}%
                   </span>
                 </div>
-                <div className="progress-bar">
+                <div className={styles.progressBar}>
                   <div
-                    className="progress-fill"
+                    className={styles.progressFill}
                     style={{
                       width: `${getSourcePercentage(stats.by_source.walk_in, stats.bookings_count)}%`,
                     }}
@@ -120,10 +120,10 @@ function StatsPage(): React.JSX.Element {
           </div>
 
           {stats.by_staff.length > 0 && (
-            <div className="staff-section">
-              <h2 className="section-title">Статистика по мастерам</h2>
-              <div className="staff-table-wrapper">
-                <table className="staff-table">
+            <div className={styles.staffSection}>
+              <h2 className={styles.sectionTitle}>Статистика по мастерам</h2>
+              <div className={styles.staffTableWrapper}>
+                <table className={styles.staffTable}>
                   <thead>
                     <tr>
                       <th>Мастер</th>
@@ -146,7 +146,7 @@ function StatsPage(): React.JSX.Element {
           )}
         </>
       ) : (
-        <div className="empty-state">Нет данных</div>
+        <div className={styles.emptyState}>Нет данных</div>
       )}
     </div>
   );

@@ -1,15 +1,28 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "typeRoots": ["../../node_modules/@types"],
+    "types": ["react", "react-dom", "node"],
+    "paths": {
+      "react": ["../../node_modules/@types/react"],
+      "react/jsx-runtime": ["../../node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": ["../../node_modules/@types/react/jsx-dev-runtime.d.ts"],
+      "react-dom": ["../../node_modules/@types/react-dom"],
+      "react-dom/*": ["../../node_modules/@types/react-dom/*"],
+      "expo-application": ["./src/shims/expo-application.ts"],
+      "expo-location": ["./src/shims/expo-location.ts"],
+      "expo-secure-store": ["./src/shims/expo-secure-store.ts"]
+    },
     "outDir": "dist",
     "rootDir": "src",
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

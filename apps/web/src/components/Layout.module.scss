@@ -119,7 +119,6 @@
   overflow-y: auto;
 }
 
-/* Responsive for tablets */
 @media (max-width: 1024px) {
   .sidebar {
     width: 240px;
@@ -144,7 +143,6 @@
   }
 }
 
-/* Responsive for mobile */
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;

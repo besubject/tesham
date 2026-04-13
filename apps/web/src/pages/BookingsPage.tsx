@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient, type BusinessBookingItemDto } from '@mettig/shared';
-import './BookingsPage.css';
+import styles from './BookingsPage.module.scss';
 
 function BookingsPage(): React.JSX.Element {
   const [status, setStatus] = useState<'all' | 'confirmed' | 'completed' | 'cancelled'>('all');
@@ -21,13 +21,13 @@ function BookingsPage(): React.JSX.Element {
   const getStatusBadgeClass = (bookingStatus: string): string => {
     switch (bookingStatus) {
       case 'confirmed':
-        return 'badge-confirmed';
+        return styles.badgeConfirmed || '';
       case 'completed':
-        return 'badge-completed';
+        return styles.badgeCompleted || '';
       case 'cancelled':
-        return 'badge-cancelled';
+        return styles.badgeCancelled || '';
       case 'no_show':
-        return 'badge-no-show';
+        return styles.badgeNoShow || '';
       default:
         return '';
     }
@@ -58,33 +58,33 @@ function BookingsPage(): React.JSX.Element {
   };
 
   return (
-    <div className="bookings-page">
-      <div className="page-header">
-        <h1 className="page-title">Записи</h1>
-        <p className="page-subtitle">Управление записями клиентов</p>
+    <div className={styles.bookingsPage}>
+      <div className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Записи</h1>
+        <p className={styles.pageSubtitle}>Управление записями клиентов</p>
       </div>
 
-      <div className="filter-tabs">
+      <div className={styles.filterTabs}>
         <button
-          className={`filter-tab ${status === 'all' ? 'active' : ''}`}
+          className={[styles.filterTab, status === 'all' ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => setStatus('all')}
         >
           Все
         </button>
         <button
-          className={`filter-tab ${status === 'confirmed' ? 'active' : ''}`}
+          className={[styles.filterTab, status === 'confirmed' ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => setStatus('confirmed')}
         >
           Подтверждены
         </button>
         <button
-          className={`filter-tab ${status === 'completed' ? 'active' : ''}`}
+          className={[styles.filterTab, status === 'completed' ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => setStatus('completed')}
         >
           Завершены
         </button>
         <button
-          className={`filter-tab ${status === 'cancelled' ? 'active' : ''}`}
+          className={[styles.filterTab, status === 'cancelled' ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => setStatus('cancelled')}
         >
           Отменены
@@ -92,52 +92,52 @@ function BookingsPage(): React.JSX.Element {
       </div>
 
       {isLoading ? (
-        <div className="loading">Загрузка...</div>
+        <div className={styles.loading}>Загрузка...</div>
       ) : bookings.length === 0 ? (
-        <div className="empty-state">
+        <div className={styles.emptyState}>
           <p>Нет записей</p>
         </div>
       ) : (
-        <div className="bookings-grid">
+        <div className={styles.bookingsGrid}>
           {bookings.map((booking) => (
-            <div key={booking.id} className="booking-card">
-              <div className="booking-header">
-                <div className="booking-date-time">
-                  <span className="booking-date">{formatDate(booking.slot_date)}</span>
-                  <span className="booking-time">{booking.slot_start_time}</span>
+            <div key={booking.id} className={styles.bookingCard}>
+              <div className={styles.bookingHeader}>
+                <div className={styles.bookingDateTime}>
+                  <span className={styles.bookingDate}>{formatDate(booking.slot_date)}</span>
+                  <span className={styles.bookingTime}>{booking.slot_start_time}</span>
                 </div>
-                <span className={`status-badge ${getStatusBadgeClass(booking.status)}`}>
+                <span className={[styles.statusBadge, getStatusBadgeClass(booking.status)].filter(Boolean).join(' ')}>
                   {getStatusLabel(booking.status)}
                 </span>
               </div>
 
-              <div className="booking-details">
-                <div className="detail-row">
-                  <span className="detail-label">Услуга:</span>
-                  <span className="detail-value">{booking.service_name}</span>
+              <div className={styles.bookingDetails}>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Услуга:</span>
+                  <span className={styles.detailValue}>{booking.service_name}</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Цена:</span>
-                  <span className="detail-value">{booking.service_price.toLocaleString('ru-RU')} ₽</span>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Цена:</span>
+                  <span className={styles.detailValue}>{booking.service_price.toLocaleString('ru-RU')} ₽</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Клиент:</span>
-                  <span className="detail-value">{booking.client_name}</span>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Клиент:</span>
+                  <span className={styles.detailValue}>{booking.client_name}</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Телефон:</span>
-                  <span className="detail-value">{booking.client_phone}</span>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Телефон:</span>
+                  <span className={styles.detailValue}>{booking.client_phone}</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Мастер:</span>
-                  <span className="detail-value">{booking.staff_name}</span>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Мастер:</span>
+                  <span className={styles.detailValue}>{booking.staff_name}</span>
                 </div>
               </div>
 
               {booking.status === 'confirmed' && (
-                <div className="booking-actions">
-                  <button className="action-btn action-complete">Завершить</button>
-                  <button className="action-btn action-cancel">Отменить</button>
+                <div className={styles.bookingActions}>
+                  <button className={[styles.actionBtn, styles.actionComplete].join(' ')}>Завершить</button>
+                  <button className={[styles.actionBtn, styles.actionCancel].join(' ')}>Отменить</button>
                 </div>
               )}
             </div>

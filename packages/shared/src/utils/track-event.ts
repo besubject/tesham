@@ -63,11 +63,13 @@ async function getDeviceInfo(): Promise<{
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status === 'granted') {
       const location = await Location.getCurrentPositionAsync({});
-      return {
-        ...info,
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
+      if (location) {
+        return {
+          ...info,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+      }
     }
   } catch (error) {
     // Location not available, continue without it

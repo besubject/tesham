@@ -7,6 +7,8 @@ export async function requestForegroundPermissionsAsync(): Promise<{ status: str
   return { status: 'denied' };
 }
 
-export async function getCurrentPositionAsync(): Promise<null> {
+export async function getCurrentPositionAsync(
+  _options?: Record<string, unknown>,
+): Promise<{ coords: { latitude: number; longitude: number } } | null> {
   return null;
 }

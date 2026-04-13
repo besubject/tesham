@@ -4,6 +4,11 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    modules: {
+      localsConvention: 'camelCaseOnly',
+    },
+  },
   define: {
     // react-native-web и его зависимости ожидают Node.js-глобал `global`.
     // В браузере его нет — подменяем на window.
