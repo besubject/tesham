@@ -21,6 +21,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'src': path.resolve(__dirname, './src'),
       '@mettig/shared': path.resolve(__dirname, '../../packages/shared/src'),
       // react-native → web-реализация примитивов (View, Text, StyleSheet…)
       'react-native': 'react-native-web',

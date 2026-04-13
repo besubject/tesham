@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, Box, Button, Paper, PinInput, Stack, Text, Title, Input } from '@mantine/core';
+import { Alert, Box, Button, Input, Paper, PinInput, Stack, Text, Title } from '@mantine/core';
 import { IMaskInput } from 'react-imask';
 import { useNavigate } from 'react-router-dom';
-import { sendCode, verifyCode, useAuthStore } from '@mettig/shared';
-
-type Step = 'phone' | 'code';
-
-const PHONE_MASK = '+{7} (000) 000-00-00';
+import { sendCode, useAuthStore, verifyCode } from '@mettig/shared';
+import { Step } from 'src/types';
+import { PHONE_MASK } from 'src/constants';
 
 function getPhoneDigits(value: string): string {
   const digits = value.replace(/\D/g, '');
@@ -26,6 +24,7 @@ function LoginPage(): React.JSX.Element {
   const phoneDigits = getPhoneDigits(phone);
   const isPhoneValid = phoneDigits.length === 10;
   const isCodeValid = code.length === 6;
+  const isPhoneStep = step === 'phone';
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,9 +89,9 @@ function LoginPage(): React.JSX.Element {
             </Text>
           </Stack>
 
-          <form onSubmit={step === 'phone' ? handleSendCode : handleVerifyCode}>
+          <form onSubmit={isPhoneStep ? handleSendCode : handleVerifyCode}>
             <Stack gap="md">
-              {step === 'phone' ? (
+              {isPhoneStep ? (
                 <Input
                   component={IMaskInput}
                   mask={PHONE_MASK}
@@ -121,6 +120,7 @@ function LoginPage(): React.JSX.Element {
                     length={6}
                     oneTimeCode
                     type="number"
+                    autoFocus
                     value={code}
                     onChange={(value: string) => {
                       setCode(value);
@@ -143,9 +143,9 @@ function LoginPage(): React.JSX.Element {
                 fullWidth
                 size="md"
                 loading={loading}
-                disabled={step === 'phone' ? !isPhoneValid : !isCodeValid}
+                disabled={isPhoneStep ? !isPhoneValid : !isCodeValid}
               >
-                {step === 'phone' ? 'Отправить код' : 'Подтвердить'}
+                {isPhoneStep ? 'Отправить код' : 'Подтвердить'}
               </Button>
 
               {step === 'code' ? (

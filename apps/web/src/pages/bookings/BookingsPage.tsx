@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { Badge, Button, Card, Group, SimpleGrid, Stack, Tabs, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient, type BusinessBookingItemDto } from '@mettig/shared';
 import styles from './BookingsPage.module.scss';
-import { TStatus } from './types';
-import { getStatusBadge } from './utils/get-status-badge';
+
+import { getStatusBadge } from '../../utils/get-status-badge';
+import { TStatus } from 'src/types';
 
 interface BusinessBookingsResponseDto {
   bookings: BusinessBookingItemDto[];
 }
 
-function BookingsPage() {
+function BookingsPage(): React.JSX.Element {
   const [status, setStatus] = useState<TStatus>('all');
 
   const { data: bookings = [], isLoading } = useQuery({
@@ -35,107 +37,118 @@ function BookingsPage() {
 
   return (
     <div className={styles.bookingsPage}>
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Записи</h1>
-        <p className={styles.pageSubtitle}>Управление записями клиентов</p>
-      </div>
+      <Stack gap="xs">
+        <Title order={1}>Записи</Title>
+        <Text c="dimmed">Управление записями клиентов</Text>
+      </Stack>
 
-      <div className={styles.filterTabs}>
-        <button
-          className={[styles.filterTab, status === 'all' ? styles.active : '']
-            .filter(Boolean)
-            .join(' ')}
-          onClick={() => setStatus('all')}
-        >
-          Все
-        </button>
-        <button
-          className={[styles.filterTab, status === 'confirmed' ? styles.active : '']
-            .filter(Boolean)
-            .join(' ')}
-          onClick={() => setStatus('confirmed')}
-        >
-          Подтверждены
-        </button>
-        <button
-          className={[styles.filterTab, status === 'completed' ? styles.active : '']
-            .filter(Boolean)
-            .join(' ')}
-          onClick={() => setStatus('completed')}
-        >
-          Завершены
-        </button>
-        <button
-          className={[styles.filterTab, status === 'cancelled' ? styles.active : '']
-            .filter(Boolean)
-            .join(' ')}
-          onClick={() => setStatus('cancelled')}
-        >
-          Отменены
-        </button>
-      </div>
+      <Tabs
+        value={status}
+        onChange={(value) => setStatus((value as TStatus) ?? 'all')}
+        keepMounted={false}
+      >
+        <Tabs.List>
+          <Tabs.Tab value="all">Все</Tabs.Tab>
+          <Tabs.Tab value="confirmed">Подтверждены</Tabs.Tab>
+          <Tabs.Tab value="completed">Завершены</Tabs.Tab>
+          <Tabs.Tab value="cancelled">Отменены</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
 
       {isLoading ? (
-        <div className={styles.loading}>Загрузка...</div>
+        <Card withBorder radius="lg" padding="xl">
+          <Text c="dimmed" ta="center">
+            Загрузка...
+          </Text>
+        </Card>
       ) : bookings?.length === 0 ? (
-        <div className={styles.emptyState}>
-          <p>Нет записей</p>
-        </div>
+        <Card withBorder radius="lg" padding="xl">
+          <Stack gap={4} align="center">
+            <Text fw={600}>Нет записей</Text>
+            <Text size="sm" c="dimmed" ta="center">
+              Когда появятся бронирования, они будут отображаться здесь.
+            </Text>
+          </Stack>
+        </Card>
       ) : (
-        <div className={styles.bookingsGrid}>
+        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="lg">
           {bookings.map((booking) => {
-            const { className, label } = getStatusBadge(booking.status);
+            const { color, label } = getStatusBadge(booking.status);
             return (
-              <div key={booking.id} className={styles.bookingCard}>
-                <div className={styles.bookingHeader}>
-                  <div className={styles.bookingDateTime}>
-                    <span className={styles.bookingDate}>{formatDate(booking.slot_date)}</span>
-                    <span className={styles.bookingTime}>{booking.slot_start_time}</span>
-                  </div>
-                  <span className={[styles.statusBadge, className].filter(Boolean).join(' ')}>
-                    {label}
-                  </span>
-                </div>
+              <Card key={booking.id} withBorder radius="xl" padding="lg" shadow="sm">
+                <Stack gap="lg">
+                  <Group justify="space-between" align="flex-start" wrap="nowrap">
+                    <Stack gap={2}>
+                      <Text size="sm" fw={600}>
+                        {formatDate(booking.slot_date)}
+                      </Text>
+                      <Text size="1.75rem" fw={700} c="red.6" lh={1}>
+                        {booking.slot_start_time}
+                      </Text>
+                    </Stack>
+                    <Badge color={color} variant="light" radius="xl" tt="none">
+                      {label}
+                    </Badge>
+                  </Group>
 
-                <div className={styles.bookingDetails}>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Услуга:</span>
-                    <span className={styles.detailValue}>{booking.service_name}</span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Цена:</span>
-                    <span className={styles.detailValue}>
-                      {booking.service_price.toLocaleString('ru-RU')} ₽
-                    </span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Клиент:</span>
-                    <span className={styles.detailValue}>{booking.client_name}</span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Телефон:</span>
-                    <span className={styles.detailValue}>{booking.client_phone}</span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Мастер:</span>
-                    <span className={styles.detailValue}>{booking.staff_name}</span>
-                  </div>
-                </div>
+                  <Stack gap="sm">
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Text c="dimmed" fw={600} size="sm">
+                        Услуга:
+                      </Text>
+                      <Text ta="right" fw={500} size="sm">
+                        {booking.service_name}
+                      </Text>
+                    </Group>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Text c="dimmed" fw={600} size="sm">
+                        Цена:
+                      </Text>
+                      <Text ta="right" fw={500} size="sm">
+                        {booking.service_price.toLocaleString('ru-RU')} ₽
+                      </Text>
+                    </Group>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Text c="dimmed" fw={600} size="sm">
+                        Клиент:
+                      </Text>
+                      <Text ta="right" fw={500} size="sm">
+                        {booking.client_name}
+                      </Text>
+                    </Group>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Text c="dimmed" fw={600} size="sm">
+                        Телефон:
+                      </Text>
+                      <Text ta="right" fw={500} size="sm">
+                        {booking.client_phone}
+                      </Text>
+                    </Group>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Text c="dimmed" fw={600} size="sm">
+                        Мастер:
+                      </Text>
+                      <Text ta="right" fw={500} size="sm">
+                        {booking.staff_name}
+                      </Text>
+                    </Group>
+                  </Stack>
 
-                {booking.status === 'confirmed' && (
-                  <div className={styles.bookingActions}>
-                    <button className={[styles.actionBtn, styles.actionComplete].join(' ')}>
-                      Завершить
-                    </button>
-                    <button className={[styles.actionBtn, styles.actionCancel].join(' ')}>
-                      Отменить
-                    </button>
-                  </div>
-                )}
-              </div>
+                  {booking.status === 'confirmed' && (
+                    <Group grow>
+                      <Button color="teal" variant="light">
+                        Завершить
+                      </Button>
+                      <Button color="red" variant="light">
+                        Отменить
+                      </Button>
+                    </Group>
+                  )}
+                </Stack>
+              </Card>
             );
           })}
-        </div>
+        </SimpleGrid>
       )}
     </div>
   );
