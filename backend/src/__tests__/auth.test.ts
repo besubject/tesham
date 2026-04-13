@@ -12,7 +12,10 @@ jest.mock('../db', () => {
   const chainable = {
     selectFrom: jest.fn(),
     insertInto: jest.fn(),
+    updateTable: jest.fn(),
+    select: jest.fn(),
     selectAll: jest.fn(),
+    set: jest.fn(),
     where: jest.fn(),
     values: jest.fn(),
     returningAll: jest.fn(),
@@ -47,7 +50,10 @@ import { MockSmsProvider } from '../services/sms';
 const mockDb = db as unknown as {
   selectFrom: jest.Mock;
   insertInto: jest.Mock;
+  updateTable: jest.Mock;
+  select: jest.Mock;
   selectAll: jest.Mock;
+  set: jest.Mock;
   where: jest.Mock;
   values: jest.Mock;
   returningAll: jest.Mock;
@@ -82,7 +88,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   // Re-configure chain after clearAllMocks
   const chain = mockDb as Record<string, jest.Mock | undefined>;
-  ['selectFrom', 'insertInto', 'selectAll', 'where', 'values', 'returningAll'].forEach((k) => {
+  ['selectFrom', 'insertInto', 'updateTable', 'select', 'selectAll', 'set', 'where', 'values', 'returningAll'].forEach((k) => {
     chain[k]?.mockReturnValue(mockDb);
   });
   chain['execute']?.mockResolvedValue([]);
@@ -207,7 +213,12 @@ describe('AuthService unit tests', () => {
 
     const createdUser = { ...mockUser, phone: '+79001234571' };
     mockDb.executeTakeFirst.mockResolvedValueOnce(undefined);
-    mockDb.executeTakeFirstOrThrow.mockResolvedValueOnce(createdUser);
+    mockDb.executeTakeFirstOrThrow
+      .mockResolvedValueOnce(createdUser)
+      .mockResolvedValueOnce({
+        ...createdUser,
+        last_login_at: new Date(),
+      });
     mockDb.execute.mockResolvedValue([]);
 
     const result = await service.verifyCode('+79001234571', code);
