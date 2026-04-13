@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@mettig/shared';
-import LoginPage from './pages/LoginPage';
-import BookingsPage from './pages/bookings/BookingsPage';
-import StatsPage from './pages/StatsPage';
-import ProfilePage from './pages/ProfilePage';
+import { LoginPage } from './pages/login/LoginPage';
+import { BookingsPage } from './pages/bookings/BookingsPage';
+import { StatsPage } from './pages/stats/StatsPage';
+import { ProfilePage } from './pages/profile/ProfilePage';
 import Layout from './components/Layout';
 
 const queryClient = new QueryClient();

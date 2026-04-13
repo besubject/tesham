@@ -1,0 +1,18 @@
+.stats-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.metric-value {
+  font-size: clamp(2.25rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mantine-color-red-6);
+}
+
+@media (max-width: 768px) {
+  .stats-page {
+    gap: 16px;
+  }
+}

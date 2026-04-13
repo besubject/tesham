@@ -1,0 +1,17 @@
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.danger-zone {
+  border-top: 3px solid var(--mantine-color-red-5);
+}
+
+@media (max-width: 768px) {
+  .profile-page {
+    gap: 16px;
+  }
+}
