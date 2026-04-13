@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@mettig/shared';
 import LoginPage from './pages/LoginPage';
-import BookingsPage from './pages/BookingsPage';
+import BookingsPage from './pages/bookings/BookingsPage';
 import StatsPage from './pages/StatsPage';
 import ProfilePage from './pages/ProfilePage';
 import Layout from './components/Layout';
@@ -18,7 +18,18 @@ function ProtectedRoute(): React.JSX.Element {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   if (isLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>Загрузка...</div>;
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+        }}
+      >
+        Загрузка...
+      </div>
+    );
   }
 
   if (!isAuthenticated || !user) {
@@ -37,9 +48,7 @@ function App(): React.JSX.Element {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>

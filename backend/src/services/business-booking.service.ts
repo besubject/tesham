@@ -23,6 +23,7 @@ export interface BusinessBookingItem {
   service_name: string;
   service_price: number;
   client_name: string;
+  client_phone: string;
   staff_id: string;
   staff_name: string;
   created_at: Date;
@@ -175,6 +176,7 @@ export class BusinessBookingService {
         'sv.name as service_name',
         'sv.price as service_price',
         'u.name as client_name',
+        'u.phone as client_phone',
         'b.staff_id',
         'st.name as staff_name',
         sql<Date>`b.created_at`.as('created_at'),
@@ -207,6 +209,7 @@ export class BusinessBookingService {
       service_name: r.service_name,
       service_price: r.service_price,
       client_name: r.client_name,
+      client_phone: r.client_phone,
       staff_id: r.staff_id,
       staff_name: r.staff_name,
       created_at: r.created_at,
@@ -332,6 +335,7 @@ export class BusinessBookingService {
         'sv.name as service_name',
         'sv.price as service_price',
         'u.name as client_name',
+        'u.phone as client_phone',
         'b.staff_id',
         'st.name as staff_name',
         sql<Date>`b.created_at`.as('created_at'),
@@ -350,6 +354,7 @@ export class BusinessBookingService {
       service_name: row.service_name,
       service_price: row.service_price,
       client_name: row.client_name,
+      client_phone: row.client_phone,
       staff_id: row.staff_id,
       staff_name: row.staff_name,
       created_at: row.created_at,
