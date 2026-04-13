@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Badge, Button, Card, Group, SimpleGrid, Stack, Tabs, Text, Title } from '@mantine/core';
+import {
+  Badge,
+  Button,
+  Card,
+  Group,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient, type BusinessBookingItemDto } from '@mettig/shared';
 import styles from './BookingsPage.module.scss';
@@ -22,6 +33,7 @@ export const BookingsPage = () => {
           status: status === 'all' ? undefined : status,
         },
       });
+      console.log({ data });
       return data.bookings;
     },
   });
@@ -43,6 +55,7 @@ export const BookingsPage = () => {
       </Stack>
 
       <Tabs
+        variant="pills"
         value={status}
         onChange={(value) => setStatus((value as TStatus) ?? 'all')}
         keepMounted={false}
@@ -56,10 +69,8 @@ export const BookingsPage = () => {
       </Tabs>
 
       {isLoading ? (
-        <Card withBorder radius="lg" padding="xl">
-          <Text c="dimmed" ta="center">
-            Загрузка...
-          </Text>
+        <Card withBorder className={styles.loader} radius="lg" padding="xl">
+          <Loader size={30} />
         </Card>
       ) : bookings?.length === 0 ? (
         <Card withBorder radius="lg" padding="xl">
