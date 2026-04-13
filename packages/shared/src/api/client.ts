@@ -4,9 +4,36 @@ interface RefreshResponseDto {
   tokens: { accessToken: string; refreshToken: string };
 }
 
-const BASE_URL =
-  (typeof process !== 'undefined' && process.env['EXPO_PUBLIC_API_URL']) ||
-  'http://localhost:3000';
+function resolveExpoBaseUrl(): string | null {
+  try {
+    // `expo-constants` is available in Expo apps and lets us derive the host
+    // machine IP from the dev server URL when no explicit API URL is set.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Constants = require('expo-constants').default as {
+      expoConfig?: { hostUri?: string };
+      manifest2?: { extra?: { expoGo?: { debuggerHost?: string } } };
+    };
+
+    const hostUri =
+      Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
+    if (!hostUri) return null;
+
+    const host = hostUri.split(':')[0];
+    return host ? `http://${host}:3000` : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveBaseUrl(): string {
+  if (typeof process !== 'undefined' && process.env['EXPO_PUBLIC_API_URL']) {
+    return process.env['EXPO_PUBLIC_API_URL'];
+  }
+
+  return resolveExpoBaseUrl() || 'http://localhost:3000';
+}
+
+const BASE_URL = resolveBaseUrl();
 
 export function createApiClient(): AxiosInstance {
   const client = axios.create({

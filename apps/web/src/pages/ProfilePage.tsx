@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, type UserLanguage } from '@mettig/shared';
-import './ProfilePage.css';
+import styles from './ProfilePage.module.scss';
 
 function ProfilePage(): React.JSX.Element {
   const navigate = useNavigate();
@@ -63,34 +63,34 @@ function ProfilePage(): React.JSX.Element {
   };
 
   return (
-    <div className="profile-page">
-      <div className="page-header">
-        <h1 className="page-title">Профиль</h1>
-        <p className="page-subtitle">Управление вашим профилем</p>
+    <div className={styles.profilePage}>
+      <div className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Профиль</h1>
+        <p className={styles.pageSubtitle}>Управление вашим профилем</p>
       </div>
 
-      <div className="profile-container">
-        <div className="profile-card">
-          <h2 className="card-title">Информация профиля</h2>
+      <div className={styles.profileContainer}>
+        <div className={styles.profileCard}>
+          <h2 className={styles.cardTitle}>Информация профиля</h2>
 
-          <form onSubmit={handleUpdateProfile} className="profile-form">
-            <div className="form-group">
-              <label htmlFor="phone" className="form-label">
+          <form onSubmit={handleUpdateProfile} className={styles.profileForm}>
+            <div className={styles.formGroup}>
+              <label htmlFor="phone" className={styles.formLabel}>
                 Номер телефона
               </label>
               <input
                 id="phone"
                 type="tel"
                 value={user?.phone || ''}
-                className="form-input"
+                className={styles.formInput}
                 disabled
                 readOnly
               />
-              <p className="form-hint">Телефон невозможно изменить</p>
+              <p className={styles.formHint}>Телефон невозможно изменить</p>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="name" className="form-label">
+            <div className={styles.formGroup}>
+              <label htmlFor="name" className={styles.formLabel}>
                 Ваше имя
               </label>
               <input
@@ -99,20 +99,20 @@ function ProfilePage(): React.JSX.Element {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Введите ваше имя"
-                className="form-input"
+                className={styles.formInput}
                 disabled={loading}
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="language" className="form-label">
+            <div className={styles.formGroup}>
+              <label htmlFor="language" className={styles.formLabel}>
                 Язык интерфейса
               </label>
               <select
                 id="language"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as UserLanguage)}
-                className="form-input"
+                className={styles.formInput}
                 disabled={loading}
               >
                 <option value="ru">Русский</option>
@@ -120,22 +120,22 @@ function ProfilePage(): React.JSX.Element {
               </select>
             </div>
 
-            {error && <div className="error-message">{error}</div>}
-            {success && <div className="success-message">{success}</div>}
+            {error && <div className={styles.errorMessage}>{error}</div>}
+            {success && <div className={styles.successMessage}>{success}</div>}
 
-            <button type="submit" className="save-btn" disabled={loading}>
+            <button type="submit" className={styles.saveBtn} disabled={loading}>
               {loading ? 'Сохраняю...' : 'Сохранить изменения'}
             </button>
           </form>
         </div>
 
-        <div className="profile-card danger-zone">
-          <h2 className="card-title">Безопасность</h2>
+        <div className={[styles.profileCard, styles.dangerZone].join(' ')}>
+          <h2 className={styles.cardTitle}>Безопасность</h2>
 
-          <div className="logout-section">
-            <p className="section-description">Выход из аккаунта</p>
+          <div className={styles.logoutSection}>
+            <p className={styles.sectionDescription}>Выход из аккаунта</p>
             <button
-              className="logout-btn"
+              className={styles.logoutBtn}
               onClick={handleLogout}
               disabled={loading}
             >
@@ -143,33 +143,33 @@ function ProfilePage(): React.JSX.Element {
             </button>
           </div>
 
-          <div className="delete-section">
-            <p className="section-description">Удаление аккаунта</p>
-            <p className="delete-warning">
+          <div className={styles.deleteSection}>
+            <p className={styles.sectionDescription}>Удаление аккаунта</p>
+            <p className={styles.deleteWarning}>
               Это действие необратимо. Все ваши данные будут удалены.
             </p>
 
             {!showDeleteConfirm ? (
               <button
-                className="delete-btn"
+                className={styles.deleteBtn}
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={loading}
               >
                 Удалить аккаунт
               </button>
             ) : (
-              <div className="delete-confirm">
-                <p className="confirm-message">Вы уверены? Это действие необратимо.</p>
-                <div className="confirm-buttons">
+              <div className={styles.deleteConfirm}>
+                <p className={styles.confirmMessage}>Вы уверены? Это действие необратимо.</p>
+                <div className={styles.confirmButtons}>
                   <button
-                    className="cancel-btn"
+                    className={styles.cancelBtn}
                     onClick={() => setShowDeleteConfirm(false)}
                     disabled={loading}
                   >
                     Отмена
                   </button>
                   <button
-                    className="confirm-delete-btn"
+                    className={styles.confirmDeleteBtn}
                     onClick={handleDeleteAccount}
                     disabled={loading}
                   >

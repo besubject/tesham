@@ -218,7 +218,6 @@
   color: white;
 }
 
-/* Responsive for tablets */
 @media (max-width: 1024px) {
   .bookings-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -229,7 +228,6 @@
   }
 }
 
-/* Responsive for mobile */
 @media (max-width: 768px) {
   .bookings-page {
     gap: 16px;
