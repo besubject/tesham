@@ -11,7 +11,7 @@ function getPhoneDigits(value: string): string {
   return digits.startsWith('7') ? digits.slice(1) : digits;
 }
 
-function LoginPage(): React.JSX.Element {
+export const LoginPage = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -180,6 +180,4 @@ function LoginPage(): React.JSX.Element {
       </Paper>
     </Box>
   );
-}
-
-export default LoginPage;
+};

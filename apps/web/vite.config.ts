@@ -39,7 +39,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     // expo (сам пакет-оркестратор) не бандлим — он нужен только Metro
-    exclude: ['expo'],
+    exclude: ['expo', '@mettig/shared'],
     include: ['invariant', 'react-native-web'],
   },
   ssr: {

@@ -11,7 +11,7 @@ interface BusinessBookingsResponseDto {
   bookings: BusinessBookingItemDto[];
 }
 
-function BookingsPage(): React.JSX.Element {
+export const BookingsPage = () => {
   const [status, setStatus] = useState<TStatus>('all');
 
   const { data: bookings = [], isLoading } = useQuery({
@@ -152,6 +152,4 @@ function BookingsPage(): React.JSX.Element {
       )}
     </div>
   );
-}
-
-export default BookingsPage;
+};

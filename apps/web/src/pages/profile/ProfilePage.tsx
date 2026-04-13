@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore, type UserLanguage } from '@mettig/shared';
 import styles from './ProfilePage.module.scss';
 
-function ProfilePage(): React.JSX.Element {
+export const ProfilePage = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -159,7 +159,12 @@ function ProfilePage(): React.JSX.Element {
 
               {!showDeleteConfirm ? (
                 <Group>
-                  <Button variant="light" color="red" onClick={() => setShowDeleteConfirm(true)} disabled={loading}>
+                  <Button
+                    variant="light"
+                    color="red"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={loading}
+                  >
                     Удалить аккаунт
                   </Button>
                 </Group>
@@ -168,7 +173,11 @@ function ProfilePage(): React.JSX.Element {
                   <Stack gap="md">
                     <Text size="sm">Вы уверены? Это действие необратимо.</Text>
                     <Group>
-                      <Button variant="default" onClick={() => setShowDeleteConfirm(false)} disabled={loading}>
+                      <Button
+                        variant="default"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={loading}
+                      >
                         Отмена
                       </Button>
                       <Button color="red" onClick={handleDeleteAccount} loading={loading}>
@@ -184,6 +193,6 @@ function ProfilePage(): React.JSX.Element {
       </Stack>
     </div>
   );
-}
+};
 
 export default ProfilePage;

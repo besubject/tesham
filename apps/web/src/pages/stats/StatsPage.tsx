@@ -14,7 +14,7 @@ function getSourcePercentage(source: number, total: number): number {
   return Math.round((source / total) * 100);
 }
 
-function StatsPage(): React.JSX.Element {
+export const StatsPage = () => {
   const [period, setPeriod] = useState<Period>('month');
 
   const { data: stats, isLoading } = useQuery({
@@ -105,9 +105,15 @@ function StatsPage(): React.JSX.Element {
                       <Text fz="2rem" fw={700}>
                         {stats.by_source.app}
                       </Text>
-                      <Text c="dimmed">{getSourcePercentage(stats.by_source.app, stats.bookings_count)}%</Text>
+                      <Text c="dimmed">
+                        {getSourcePercentage(stats.by_source.app, stats.bookings_count)}%
+                      </Text>
                     </Group>
-                    <Progress value={getSourcePercentage(stats.by_source.app, stats.bookings_count)} color="red" radius="xl" />
+                    <Progress
+                      value={getSourcePercentage(stats.by_source.app, stats.bookings_count)}
+                      color="red"
+                      radius="xl"
+                    />
                   </Stack>
                 </Card>
 
@@ -118,7 +124,9 @@ function StatsPage(): React.JSX.Element {
                       <Text fz="2rem" fw={700}>
                         {stats.by_source.walk_in}
                       </Text>
-                      <Text c="dimmed">{getSourcePercentage(stats.by_source.walk_in, stats.bookings_count)}%</Text>
+                      <Text c="dimmed">
+                        {getSourcePercentage(stats.by_source.walk_in, stats.bookings_count)}%
+                      </Text>
                     </Group>
                     <Progress
                       value={getSourcePercentage(stats.by_source.walk_in, stats.bookings_count)}
@@ -162,6 +170,4 @@ function StatsPage(): React.JSX.Element {
       )}
     </div>
   );
-}
-
-export default StatsPage;
+};
