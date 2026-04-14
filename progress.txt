@@ -2488,3 +2488,49 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированы задачи
 - Нет прямых зависимостей от TASK-048
+
+---
+## TASK-049 — Backend API: чат между мастером и клиентом [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### backend/src/services/chat.service.ts (новый файл)
+- `ChatService.getMessages()` — список сообщений с cursor-based пагинацией по `created_at` ASC; курсор = ISO-строка last seen `created_at`; лимит 1–100 (default 50)
+- `ChatService.sendMessage()` — отправка `text`/`image` сообщения; проверяет `booking.status === 'confirmed'` (иначе 403 `BOOKING_NOT_ACTIVE`)
+- `ChatService.markAsRead()` — помечает все непрочитанные от другой стороны как прочитанные; возвращает `{ updated: N }`
+- `ChatService.getUnreadCount()` — возвращает `{ unread_count: N }` непрочитанных от другой стороны
+- `resolveAccess()` — RBAC: client (booking.user_id), staff (st.user_id совпадает), admin бизнеса (staff.role='admin'). Иначе 403 FORBIDDEN
+- Event tracking: `chat_message_sent` с payload `{ booking_id, sender_role, message_type }`
+- Push через `notifyNewChatMessage` (fire-and-forget)
+
+#### backend/src/controllers/chat.controller.ts (новый файл)
+- `getMessages`, `sendMessage`, `markAsRead`, `getUnreadCount` — тонкие контроллеры, делегируют в chatService
+
+#### backend/src/routes/bookings.ts
+- `GET /bookings/:id/messages` — список сообщений
+- `GET /bookings/:id/messages/unread-count` — количество непрочитанных
+- `POST /bookings/:id/messages` — отправить сообщение (Zod: message_type enum, content min(1))
+- `PATCH /bookings/:id/messages/read` — пометить как прочитанные
+
+#### backend/src/services/notification.service.ts
+- Добавлен `notifyNewChatMessage(bookingId, senderRole, clientUserId, staffUserId)` — отправляет Expo Push другой стороне; если sender=client → уведомляет staffUserId; если sender=staff → уведомляет clientUserId (если не null)
+
+#### backend/src/__tests__/chat.test.ts (новый файл)
+- 12 тестов: POST send text, 403 completed, 403 unrelated, 400 empty content, 401 no auth, GET messages client/staff/admin, PATCH read + 403, GET unread-count 2/0
+
+### Тесты
+- `npm run lint` — 0 ошибок (17 pre-existing warnings) ✅
+- `npm test` — 183/183 passed ✅
+- POST отправляет текстовое сообщение ✅
+- GET возвращает сообщения в хронологическом порядке ✅
+- PATCH обнуляет unread-count ✅
+- POST на завершённую запись → 403 ✅
+- Пользователь без доступа → 403 ✅
+- Admin бизнеса имеет доступ ✅
+- Push-уведомление через notifyNewChatMessage ✅
+- Event tracking: chat_message_sent ✅
+
+### Разблокированы задачи
+- **TASK-050** (UI чата в мобильном приложении Mettig Client) — если есть
+- Любая задача с зависимостью от TASK-049
