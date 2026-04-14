@@ -2335,3 +2335,34 @@ TASK-041 — E2E тест основного флоу — DONE
 
 **Разблокированы задачи:**
 - TASK-045 (веб-страница публичной записи) — зависела от TASK-044
+
+---
+## TASK-045 — DONE [2026-04-14]
+
+**Задача:** Веб-страница публичной записи: mettig.ru/b/:slug и mettig.ru/b/:slug/:staffSlug
+
+**Что сделано:**
+- `apps/web/src/pages/public-booking/PublicBookingPage.tsx` — основной компонент страницы
+- `apps/web/src/pages/public-booking/PublicBookingPage.module.scss` — mobile-first стили
+- Маршруты `/b/:slug` и `/b/:slug/:staffSlug` добавлены в `App.tsx` вне ProtectedRoute
+- Пошаговый флоу: мастер → услуга → дата/слот → телефон+SMS → подтверждение
+- `Любой мастер` — опция без фильтра по staff
+- Pre-select мастера через `staffSlug` в URL (поиск по UUID или по имени)
+- Open Graph теги (og:title, og:description, og:image) через `useEffect` на document.head
+- Горизонтальный скролл 14 дней, сетка слотов 4 колонки, mobile-first
+- CTA экран: ссылки на App Store / Google Play после успешной записи
+- i18n: `initI18n('ru')` в main.tsx, поддержка `?lang=ce` через useSearchParams
+- Новые ключи `publicBooking.*` в ru.json и ce.json (17 ключей)
+- Graceful 404: при BUSINESS_NOT_FOUND показывается страница "Не найдено"
+
+**Результаты тестирования:**
+- npx tsc --noEmit в apps/web/ — ✅ (0 errors)
+- npm run lint — ✅ (0 errors, 1 pre-existing warning)
+- Роуты /b/:slug и /b/:slug/:staffSlug добавлены ✅
+- Компонент реализует все шаги флоу ✅
+- OG теги проставляются через useEffect ✅
+- i18n поддержка ru/ce ✅
+- CTA с App Store / Google Play ✅
+
+**Разблокированы задачи:**
+- Нет прямых зависимостей от TASK-045 в tasks.json
