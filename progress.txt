@@ -2417,3 +2417,25 @@ TASK-041 — E2E тест основного флоу — DONE
 **Разблокированы задачи:**
 - Нет прямых зависимостей от TASK-046 в tasks.json
 
+
+## TASK-047 — Backend API: walk-in (оффлайн-клиент) [2026-04-14]
+**Статус:** done
+
+### Что сделано
+- Миграция 008: `bookings.user_id` стала nullable; добавлены `client_name`, `client_phone`
+- `POST /business/bookings/walk-in` — новый эндпоинт
+  - Автоматически создаёт Slot (is_booked=true) + Booking (source=walk_in, status=completed)
+  - Если `time` не указан — берётся текущее время
+  - Если `client_phone` совпадает с существующим юзером — `booking.user_id` привязывается
+  - Если юзера нет — `user_id=null`, телефон в `client_phone`
+- RBAC: employee может только свой staffId, admin — любой
+- Event tracking: `walk_in_booking_created` с payload `{ business_id, staff_id, has_phone }`
+- Zod-валидация полей запроса
+- `getBusinessBookings` и `getBookingDetail` переведены на LEFT JOIN + COALESCE для поддержки walk-in
+
+### Тесты
+- `npm run lint` — 0 ошибок (17 warnings в уже существующем коде)
+- `npm test` — 171/171 passed
+
+### Разблокированы
+- **TASK-048** (UI walk-in в Mettig Business) — теперь backend готов
