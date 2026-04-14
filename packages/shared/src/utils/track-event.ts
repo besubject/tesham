@@ -17,7 +17,9 @@ export type EventType =
   | 'instagram_click'
   | 'review_submit'
   | 'link_copied'
-  | 'link_shared';
+  | 'link_shared'
+  | 'walk_in_form_opened'
+  | 'walk_in_booking_created';
 
 export interface EventPayload {
   [key: string]: unknown;

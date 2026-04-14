@@ -181,9 +181,9 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
           {/* Client info */}
           <Text style={styles.sectionTitle}>Клиент</Text>
           <View style={styles.card}>
-            <InfoRow label="Имя" value={booking.client_name} />
+            <InfoRow label="Имя" value={booking.client_name ?? 'Клиент'} />
             <View style={styles.divider} />
-            <InfoRow label="Телефон" value={booking.client_phone} />
+            <InfoRow label="Телефон" value={booking.client_phone ?? '—'} />
           </View>
 
           {/* Staff */}

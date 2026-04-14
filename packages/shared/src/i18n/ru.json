@@ -158,6 +158,22 @@
       "addStaff": "Добавить сотрудника",
       "addService": "Добавить услугу"
     },
+    "walkIn": {
+      "fab": "+ Клиент",
+      "title": "Оффлайн-клиент",
+      "selectMaster": "Выберите мастера",
+      "selectService": "Выберите услугу",
+      "clientName": "Имя клиента (необязательно)",
+      "clientNamePlaceholder": "Клиент",
+      "clientPhone": "Телефон (необязательно)",
+      "clientPhonePlaceholder": "+7 (___) ___-__-__",
+      "timeNow": "Сейчас",
+      "timeCustom": "Другое время",
+      "add": "Добавить",
+      "success": "Клиент добавлен",
+      "walkinBadge": "Walk-in",
+      "serviceRequired": "Выберите услугу"
+    },
     "publicLink": {
       "sectionTitle": "Ссылка для записи",
       "copy": "Копировать",

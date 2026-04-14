@@ -153,12 +153,13 @@ export interface ApiErrorDto {
 export interface BusinessBookingItemDto {
   id: string;
   status: BookingStatus;
+  source: string;
   slot_date: string;
   slot_start_time: string;
   service_name: string;
   service_price: number;
-  client_name: string;
-  client_phone: string;
+  client_name: string | null;
+  client_phone: string | null;
   staff_id: string;
   staff_name: string;
   created_at: string;
