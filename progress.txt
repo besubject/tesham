@@ -2585,3 +2585,51 @@ TASK-041 — E2E тест основного флоу — DONE
 ### Разблокированы задачи
 - Задачи UI чата для Mettig Business (если планируются)
 - Любые задачи с зависимостью от TASK-050
+
+---
+## TASK-051 — UI чата для Mettig Business и веб-панели [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### apps/business
+- `navigation/types.ts` — `BookingsStackParamList` расширён экраном `Chat: { bookingId, clientName, isReadOnly }`
+- `navigation/BookingsStackNavigator.tsx` — зарегистрирован `ChatScreen`
+- `screens/bookings/ChatScreen.tsx` (новый файл):
+  - `isOwn = sender_role === 'staff'` — сообщения персонала справа, клиента слева
+  - Polling каждые 5 сек, `PATCH /bookings/:id/messages/read` при монтировании
+  - Отправка текста и фото через S3 (uploadPhoto + compressImage)
+  - Read-only баннер для завершённых записей
+  - Event tracking: `chat_opened`, `chat_message_sent` (sender_role='staff')
+- `screens/bookings/BookingsScreen.tsx`:
+  - Загрузка `unread_count` для всех confirmed-записей через `Promise.allSettled`
+  - Кнопка `💬 Чат` на карточке каждой confirmed-записи с бейджем непрочитанных
+  - Admin и employee оба видят кнопку чата (employee видит только свои записи — backend RBAC)
+  - `handleOpenChat` → навигация на `Chat` с нужными параметрами
+- `screens/bookings/BookingDetailsScreen.tsx`:
+  - Кнопка «💬 Открыть чат с клиентом» для confirmed-записей
+- `utils/image-compression.ts` — expo-image-manipulator
+- `utils/photo-upload.ts` — загрузка через signed S3 URL
+- `package.json` — `expo-image-picker ~16.0.6`, `expo-image-manipulator ~13.0.6`
+
+#### apps/web
+- `pages/bookings/BookingsPage.tsx`:
+  - `ChatModal` компонент: ScrollArea с историей, Textarea + отправка (Enter/кнопка), polling 5s
+  - Кнопка «💬 Чат с клиентом» на каждой confirmed-записи с бейджем unread
+  - Загрузка unread counts при монтировании страницы
+  - Read-only режим для завершённых записей
+  - Event tracking: `chat_opened`, `chat_message_sent` (sender_role='staff')
+
+### Тесты
+- `npx tsc --noEmit` в `apps/business/` — 0 ошибок ✅
+- `npx tsc --noEmit` в `apps/web/` — 0 ошибок ✅
+- Иконка чата на карточке confirmed-записи в Mettig Business ✅
+- Мастер (employee) видит только свои записи — backend RBAC ✅
+- Admin видит чаты всех записей бизнеса ✅
+- ChatScreen открывается с историей сообщений, поле ввода, кнопка фото ✅
+- На веб-панели чат работает корректно через ChatModal ✅
+- Бейдж непрочитанных отображается на иконке чата ✅
+- Event tracking: chat_opened, chat_message_sent ✅
+
+### Разблокированы задачи
+- Задачи, зависящие от TASK-051 (если появятся)
