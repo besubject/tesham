@@ -100,6 +100,7 @@ export type ProfileStackScreenProps<T extends keyof ProfileStackParamList> = Com
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace ReactNavigation {
-    type RootParamList = RootStackParamList;
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    interface RootParamList extends RootStackParamList {}
   }
 }

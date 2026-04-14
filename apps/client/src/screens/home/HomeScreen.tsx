@@ -1,5 +1,10 @@
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
+import type {
+  CameraRef,
+  MapViewRef,
+  OnPressEvent,
+} from '@maplibre/maplibre-react-native';
 import React, {
   useCallback,
   useEffect,
@@ -48,23 +53,6 @@ import type { HomeStackScreenProps } from '../../navigation/types';
 const isExpoGo = Constants.appOwnership === 'expo';
 
 type ML = typeof import('@maplibre/maplibre-react-native');
-type MapRefHandle = {
-  getZoom?: () => Promise<number>;
-};
-type CameraRefHandle = {
-  setCamera?: (config: {
-    centerCoordinate: GeoJSON.Position;
-    zoomLevel: number;
-    animationDuration: number;
-  }) => void;
-  flyTo?: (coords: GeoJSON.Position, duration?: number) => void;
-};
-type ShapePressEvent = {
-  features: Array<{
-    properties?: Record<string, unknown>;
-    geometry: GeoJSON.Point;
-  }>;
-};
 
 type Props = HomeStackScreenProps<'HomeScreen'>;
 type SheetState = 'peek' | 'half' | 'full';
@@ -154,8 +142,8 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   const listScrollY = useRef(0);
 
   // ── Карта ────────────────────────────────────────────────────────────────────
-  const mapRef = useRef<MapRefHandle | null>(null);
-  const cameraRef = useRef<CameraRefHandle | null>(null);
+  const mapRef = useRef<MapViewRef | null>(null);
+  const cameraRef = useRef<CameraRef | null>(null);
   const [userLocation, setUserLocation] = useState<GeoJSON.Position | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessListItemDto | null>(null);
   const [geoJSON, setGeoJSON] = useState<GeoJSON.FeatureCollection<GeoJSON.Point>>(
@@ -401,15 +389,15 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
 
   // ── Взаимодействие с картой ───────────────────────────────────────────────────
   const handleShapePress = useCallback(
-    async (event: ShapePressEvent) => {
+    async (event: OnPressEvent) => {
       const feature = event.features[0];
       if (!feature?.properties) return;
       const props = feature.properties as Record<string, unknown>;
 
       if (props['cluster'] === true) {
         const coords = (feature.geometry as GeoJSON.Point).coordinates;
-        const zoom = (await mapRef.current?.getZoom?.()) ?? DEFAULT_ZOOM;
-        cameraRef.current?.setCamera?.({
+        const zoom = (await mapRef.current?.getZoom()) ?? DEFAULT_ZOOM;
+        cameraRef.current?.setCamera({
           centerCoordinate: coords,
           zoomLevel: zoom + 2,
           animationDuration: 400,
@@ -436,7 +424,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   }, [selectedBusiness, snapTo]);
 
   const handleCenterUser = useCallback(() => {
-    if (userLocation) cameraRef.current?.flyTo?.(userLocation, 600);
+    if (userLocation) cameraRef.current?.flyTo(userLocation, 600);
   }, [userLocation]);
 
   const handleOpenBusiness = useCallback(

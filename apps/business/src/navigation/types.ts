@@ -27,6 +27,7 @@ export type BookingsStackParamList = {
   BookingsList: undefined;
   BookingDetails: { bookingId: string };
   CreateSlots: { staffId?: string } | undefined;
+  Chat: { bookingId: string; clientName: string; isReadOnly: boolean };
 };
 
 // Stats stack navigator params

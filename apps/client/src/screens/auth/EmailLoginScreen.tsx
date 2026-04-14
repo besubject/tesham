@@ -29,13 +29,6 @@ export function EmailLoginScreen({ navigation, route }: Props): React.JSX.Elemen
 
   const inputRefs = useRef<Array<TextInput | null>>(Array(CODE_LENGTH).fill(null));
 
-  useEffect(() => {
-    const full = code.every((c) => c !== '');
-    if (full) {
-      void handleVerify(code.join(''));
-    }
-  }, [code, handleVerify]);
-
   const handleVerify = useCallback(
     async (codeString: string) => {
       setIsVerifying(true);
@@ -63,6 +56,13 @@ export function EmailLoginScreen({ navigation, route }: Props): React.JSX.Elemen
     },
     [phone, navigation, setAuth],
   );
+
+  useEffect(() => {
+    const full = code.every((c) => c !== '');
+    if (full) {
+      void handleVerify(code.join(''));
+    }
+  }, [code, handleVerify]);
 
   const handleChangeAt = useCallback(
     (index: number, value: string) => {

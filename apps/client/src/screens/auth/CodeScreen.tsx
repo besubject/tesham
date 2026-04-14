@@ -39,14 +39,6 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
     return () => clearTimeout(timer);
   }, [secondsLeft]);
 
-  // Auto-verify when all digits filled
-  useEffect(() => {
-    const full = code.every((c) => c !== '');
-    if (full) {
-      void handleVerify(code.join(''));
-    }
-  }, [code, handleVerify]);
-
   const handleVerify = useCallback(
     async (codeString: string) => {
       setIsVerifying(true);
@@ -82,6 +74,14 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
     },
     [phone, navigation, setAuth],
   );
+
+  // Auto-verify when all digits filled
+  useEffect(() => {
+    const full = code.every((c) => c !== '');
+    if (full) {
+      void handleVerify(code.join(''));
+    }
+  }, [code, handleVerify]);
 
   const handleChangeAt = useCallback(
     (index: number, value: string) => {
