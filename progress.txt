@@ -2244,3 +2244,37 @@ TASK-041 — E2E тест основного флоу — DONE
 - BookingSource enum уже содержит 'app' | 'walk_in', нужно добавить 'link'
 - Таблица chat_messages — новая, модель в PRD секция 3.17
 - Для walk-in: user_id в bookings может быть null (анонимный walk-in), возможно потребуется ALTER COLUMN SET NULL
+
+---
+## TASK-042 — DONE [2026-04-14]
+
+**Задача:** Миграция БД: slug, chat_messages, BookingSource расширение
+
+**Что сделано:**
+- Создан файл `backend/src/db/migrations/007_public_links_chat.ts`
+- Добавлена колонка `businesses.slug` (varchar(255), unique, nullable)
+- Создан уникальный индекс `businesses_slug_idx`
+- Создана таблица `chat_messages` (id, booking_id, sender_id, sender_role, message_type, content, is_read, created_at)
+- Индексы: composite `chat_messages_booking_created_idx` (booking_id, created_at), B-tree `chat_messages_sender_idx` (sender_id)
+- `types.ts` обновлён: `ChatMessageTable`, `ChatSenderRole`, `ChatMessageType`, `ChatMessage`, `NewChatMessage`
+- `BookingSource` расширен: 'app' | 'walk_in' | 'link' (поле varchar в БД, не enum тип — ALTER TYPE не нужен)
+- Rollback корректно удаляет таблицу и колонку
+
+**Результаты тестирования:**
+- `npm run db:migrate` — ✅
+- `npm run db:rollback` — ✅
+- `npx tsc --noEmit` в backend/ — ✅
+- `npm run lint` — ✅ (только существующие warnings)
+- SELECT slug в businesses — ✅ строка возвращается
+- SELECT chat_messages — ✅ таблица существует
+
+**Разблокированы задачи:**
+- TASK-043 (Backend: генерация slug для бизнесов)
+- TASK-044 (Backend API: публичная запись через ссылку)
+- TASK-047 (Backend API: walk-in клиент)
+- TASK-049 (Backend API: чат между мастером и клиентом)
+
+**Важно для следующих задач:**
+- BookingSource — varchar(20), не PostgreSQL enum. Значение 'link' допустимо без изменений схемы БД
+- `businesses.slug` nullable — заполняется при генерации в TASK-043
+- `sender_role` в chat_messages — varchar(20), значения: 'client' | 'staff'

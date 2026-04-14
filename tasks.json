@@ -1048,7 +1048,7 @@
         "SELECT * FROM information_schema.tables WHERE table_name='chat_messages' — таблица существует"
       ],
       "dependencies": [],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-043",
@@ -1073,7 +1073,9 @@
         "npm run db:seed заполняет slug для всех бизнесов",
         "npm run lint && npm test проходят"
       ],
-      "dependencies": ["TASK-042"],
+      "dependencies": [
+        "TASK-042"
+      ],
       "status": "pending"
     },
     {
@@ -1101,7 +1103,9 @@
         "Event booking_via_link записывается в таблицу events",
         "npm run lint && npm test проходят"
       ],
-      "dependencies": ["TASK-043"],
+      "dependencies": [
+        "TASK-043"
+      ],
       "status": "pending"
     },
     {
@@ -1127,7 +1131,9 @@
         "Вставить ссылку в WhatsApp — корректное превью (OG теги)",
         "npx tsc --noEmit в apps/web/ проходит"
       ],
-      "dependencies": ["TASK-044"],
+      "dependencies": [
+        "TASK-044"
+      ],
       "status": "pending"
     },
     {
@@ -1153,7 +1159,10 @@
         "Дублирующий slug показывает ошибку",
         "npx tsc --noEmit в apps/business/ и apps/web/ проходит"
       ],
-      "dependencies": ["TASK-044", "TASK-045"],
+      "dependencies": [
+        "TASK-044",
+        "TASK-045"
+      ],
       "status": "pending"
     },
     {
@@ -1180,7 +1189,9 @@
         "Event walk_in_booking_created записан",
         "npm run lint && npm test проходят"
       ],
-      "dependencies": ["TASK-042"],
+      "dependencies": [
+        "TASK-042"
+      ],
       "status": "pending"
     },
     {
@@ -1207,7 +1218,9 @@
         "Запись появляется в списке с пометкой 'Walk-in'",
         "npx tsc --noEmit в apps/business/ и apps/web/ проходит"
       ],
-      "dependencies": ["TASK-047"],
+      "dependencies": [
+        "TASK-047"
+      ],
       "status": "pending"
     },
     {
@@ -1238,7 +1251,9 @@
         "Пуш-уведомление отправляется при новом сообщении",
         "npm run lint && npm test проходят"
       ],
-      "dependencies": ["TASK-042"],
+      "dependencies": [
+        "TASK-042"
+      ],
       "status": "pending"
     },
     {
@@ -1266,7 +1281,9 @@
         "Бейдж непрочитанных обновляется",
         "npx tsc --noEmit в apps/client/ проходит"
       ],
-      "dependencies": ["TASK-049"],
+      "dependencies": [
+        "TASK-049"
+      ],
       "status": "pending"
     },
     {
@@ -1291,7 +1308,10 @@
         "На веб-панели чат работает корректно",
         "npx tsc --noEmit в apps/business/ и apps/web/ проходит"
       ],
-      "dependencies": ["TASK-049", "TASK-050"],
+      "dependencies": [
+        "TASK-049",
+        "TASK-050"
+      ],
       "status": "pending"
     }
   ]
