@@ -4,6 +4,12 @@
   gap: 24px;
 }
 
+.loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 @media (max-width: 1024px) {
   .bookings-page {
     gap: 20px;

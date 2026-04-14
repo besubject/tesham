@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { FormEvent, useState } from 'react';
 import { Alert, Box, Button, Input, Paper, PinInput, Stack, Text, Title } from '@mantine/core';
 import { IMaskInput } from 'react-imask';
 import { useNavigate } from 'react-router-dom';
@@ -26,8 +26,7 @@ export const LoginPage = () => {
   const isCodeValid = code.length === 6;
   const isPhoneStep = step === 'phone';
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendCode = async () => {
     if (!isPhoneValid) {
       setError('Введите корректный номер телефона');
       return;
@@ -45,8 +44,7 @@ export const LoginPage = () => {
     }
   };
 
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyCode = async () => {
     if (!isCodeValid) {
       setError('Введите 6-значный код');
       return;
@@ -69,6 +67,18 @@ export const LoginPage = () => {
     }
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+
+    if (isPhoneStep) {
+      handleSendCode();
+
+      return;
+    }
+
+    handleVerifyCode();
+  };
+
   return (
     <Box
       style={{
@@ -89,7 +99,7 @@ export const LoginPage = () => {
             </Text>
           </Stack>
 
-          <form onSubmit={isPhoneStep ? handleSendCode : handleVerifyCode}>
+          <form onSubmit={handleSubmit}>
             <Stack gap="md">
               {isPhoneStep ? (
                 <Input
@@ -148,7 +158,7 @@ export const LoginPage = () => {
                 {isPhoneStep ? 'Отправить код' : 'Подтвердить'}
               </Button>
 
-              {step === 'code' ? (
+              {!isPhoneStep ? (
                 <Button
                   type="button"
                   variant="subtle"
