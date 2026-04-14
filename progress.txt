@@ -2278,3 +2278,31 @@ TASK-041 — E2E тест основного флоу — DONE
 - BookingSource — varchar(20), не PostgreSQL enum. Значение 'link' допустимо без изменений схемы БД
 - `businesses.slug` nullable — заполняется при генерации в TASK-043
 - `sender_role` в chat_messages — varchar(20), значения: 'client' | 'staff'
+
+---
+## TASK-043 — DONE [2026-04-14]
+
+**Задача:** Backend: генерация и управление slug для бизнесов
+
+**Что сделано:**
+- Создана утилита `backend/src/utils/transliterate.ts`
+  - CHAR_MAP кириллица → латиница (полное покрытие русского алфавита)
+  - transliterate('Барбершоп Султан') → 'barbershop-sultan' ✅
+  - Символы вне a-z0-9 заменяются на дефис, дубликаты схлопываются
+- `BusinessProfileService.generateUniqueSlug(name, excludeId?)` — проверяет уникальность, добавляет суффикс (-2, -3...) при конфликтах
+- `PATCH /business/profile` — поддерживает slug в теле запроса
+  - Zod валидация: `/^[a-z0-9-]{3,50}$/`
+  - 409 Conflict при занятом slug
+  - 400 при невалидном формате
+- `GET /businesses/:id` — возвращает `slug` в ответе (поле добавлено в `BusinessDetail`)
+- `Seed` — при `db:seed` все 7 существующих бизнесов получили slug, новые бизнесы получают slug автоматически при создании
+
+**Результаты тестирования:**
+- transliterate('Барбершоп Султан') → 'barbershop-sultan' ✅
+- npm run db:seed — все 7 бизнесов получили slug ✅
+- npx tsc --noEmit — ✅
+- npm run lint — ✅ (0 errors, только pre-existing warnings)
+- npm test — 171/171 ✅
+
+**Разблокированы задачи:**
+- TASK-044 (Backend API: публичная запись через ссылку) — зависит от TASK-043
