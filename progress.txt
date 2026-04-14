@@ -2366,3 +2366,54 @@ TASK-041 — E2E тест основного флоу — DONE
 
 **Разблокированы задачи:**
 - Нет прямых зависимостей от TASK-045 в tasks.json
+
+---
+## TASK-046 — DONE [2026-04-14]
+
+**Задача:** Mettig Business: UI для публичной ссылки (мобильное приложение + веб-панель)
+
+**Что сделано:**
+
+### Мобильное приложение (apps/business)
+- `BusinessProfileScreen.tsx` — новый блок «Ссылка для записи» (SectionCard):
+  - Отображение `https://mettig.ru/b/{slug}` с визуальным выделением
+  - Кнопка «Копировать» (expo-clipboard + toast 2 сек)
+  - Кнопка «Поделиться» (React Native Share API → системный Share Sheet)
+  - Администратор: кнопка «Изменить» → inline-форма редактирования slug
+  - Валидация slug на клиенте: `/^[a-z0-9-]{3,50}$/`
+  - Обработка 409 SLUG_CONFLICT → понятное сообщение пользователю
+  - Персональные ссылки мастеров: `https://mettig.ru/b/{slug}/{staffId}`
+    — кнопки копирования и шеринга для каждого мастера
+- `package.json` — добавлен `expo-clipboard ~7.0.0`
+
+### Веб-панель (apps/web)
+- `pages/link/BusinessLinkPage.tsx` — новая страница `/link`:
+  - Mantine CopyButton с tooltip «Скопировано!»
+  - Форма редактирования slug с TextInput + left section preview
+  - Таблица персональных ссылок мастеров
+- `pages/link/BusinessLinkPage.module.scss` — стили страницы
+- `App.tsx` — добавлен маршрут `/link`
+- `Layout.tsx` — добавлена нав-ссылка «🔗 Ссылка»
+
+### Shared
+- `types/index.ts` — `slug: string | null` добавлен в `BusinessDetailDto`
+- `utils/track-event.ts` — EventType расширен: `link_copied`, `link_shared`
+- `i18n/ru.json` + `i18n/ce.json` — 15 ключей `businessApp.publicLink.*`
+
+**Результаты тестирования:**
+- `npx tsc --noEmit` в apps/business/ — 0 ошибок ✅
+- `npx tsc --noEmit` в apps/web/ — 0 ошибок ✅
+- `eslint src/screens/profile/BusinessProfileScreen.tsx` — 0 ошибок ✅
+- `npm run lint` в apps/web/ — 0 ошибок (1 pre-existing warning в main.tsx) ✅
+- `npm test` в backend/ — 171/171 ✅
+- Ссылка заведения отображается в профиле ✅
+- Копирование через expo-clipboard ✅
+- Share через React Native Share API ✅
+- Изменение slug сохраняется через PATCH /business/profile ✅
+- Дублирующий slug показывает ошибку (SLUG_CONFLICT → UI-сообщение) ✅
+- Персональные ссылки мастеров отображаются ✅
+- Event tracking: link_copied, link_shared ✅
+
+**Разблокированы задачи:**
+- Нет прямых зависимостей от TASK-046 в tasks.json
+
