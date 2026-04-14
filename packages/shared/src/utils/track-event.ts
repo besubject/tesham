@@ -19,7 +19,9 @@ export type EventType =
   | 'link_copied'
   | 'link_shared'
   | 'walk_in_form_opened'
-  | 'walk_in_booking_created';
+  | 'walk_in_booking_created'
+  | 'chat_opened'
+  | 'chat_message_sent';
 
 export interface EventPayload {
   [key: string]: unknown;

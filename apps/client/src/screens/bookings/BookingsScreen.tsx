@@ -19,7 +19,7 @@ import {
   typography,
   WarningBanner,
 } from '@mettig/shared';
-import type { BookingItemDto } from '@mettig/shared';
+import type { BookingItemDto, ChatUnreadCountDto } from '@mettig/shared';
 import type { BookingsStackScreenProps } from '../../navigation/types';
 
 type Props = BookingsStackScreenProps<'BookingsList'>;
@@ -148,12 +148,29 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const cancelTarget =
     cancelTargetId != null ? (bookings.find((b) => b.id === cancelTargetId) ?? null) : null;
   const isLateCancellation = cancelTarget != null && isWithinCancellationThreshold(cancelTarget);
 
   // ── Data fetching ────────────────────────────────────────────────────────
+
+  const fetchUnreadCounts = useCallback(async (confirmedIds: string[]) => {
+    if (confirmedIds.length === 0) return;
+    const results = await Promise.allSettled(
+      confirmedIds.map((id) =>
+        apiClient.get<ChatUnreadCountDto>(`/bookings/${id}/messages/unread-count`),
+      ),
+    );
+    const counts: Record<string, number> = {};
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        counts[confirmedIds[index] ?? ''] = result.value.data.unread_count;
+      }
+    });
+    setUnreadCounts(counts);
+  }, []);
 
   const fetchBookings = useCallback(async (refresh = false) => {
     if (refresh) {
@@ -164,13 +181,17 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
     try {
       const res = await apiClient.get<{ bookings: BookingItemDto[] }>('/bookings/my');
       setBookings(res.data.bookings);
+      const confirmedIds = res.data.bookings
+        .filter((b) => b.status === 'confirmed')
+        .map((b) => b.id);
+      void fetchUnreadCounts(confirmedIds);
     } catch {
       // keep existing state on error
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [fetchUnreadCounts]);
 
   useEffect(() => {
     void fetchBookings();
@@ -213,6 +234,18 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
       navigation.navigate('Home', {
         screen: 'BusinessDetails',
         params: { businessId },
+      });
+    },
+    [navigation],
+  );
+
+  const handleOpenChat = useCallback(
+    (booking: BookingItemDto) => {
+      navigation.navigate('Chat', {
+        bookingId: booking.id,
+        businessName: booking.business_name,
+        staffName: booking.staff_name,
+        isReadOnly: booking.status !== 'confirmed',
       });
     },
     [navigation],
@@ -307,6 +340,26 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
                       : undefined
                   }
                 />
+
+                {/* Chat button for confirmed bookings */}
+                {item.status === 'confirmed' && (
+                  <TouchableOpacity
+                    style={styles.chatBtn}
+                    onPress={() => handleOpenChat(item)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Открыть чат с мастером"
+                  >
+                    <Text style={styles.chatBtnIcon}>💬</Text>
+                    <Text style={styles.chatBtnText}>Чат с мастером</Text>
+                    {(unreadCounts[item.id] ?? 0) > 0 && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>
+                          {unreadCounts[item.id]}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
 
                 {/* Action buttons for past bookings */}
                 {isPastSection && (
@@ -445,5 +498,40 @@ const styles = StyleSheet.create({
   leaveReviewBtnText: {
     ...typography.buttonSmall,
     color: colors.amber,
+  },
+  chatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.accentLight,
+    alignSelf: 'flex-start',
+  },
+  chatBtnIcon: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  chatBtnText: {
+    ...typography.buttonSmall,
+    color: colors.accent,
+  },
+  unreadBadge: {
+    backgroundColor: colors.accent,
+    borderRadius: borderRadius.full,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  unreadBadgeText: {
+    ...typography.caption,
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

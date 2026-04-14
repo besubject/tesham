@@ -150,6 +150,28 @@ export interface ApiErrorDto {
   };
 }
 
+export type ChatMessageType = 'text' | 'image';
+export type ChatSenderRole = 'client' | 'staff';
+
+export interface ChatMessageDto {
+  id: string;
+  booking_id: string;
+  sender_role: ChatSenderRole;
+  message_type: ChatMessageType;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface ChatMessagesResponseDto {
+  messages: ChatMessageDto[];
+  next_cursor: string | null;
+}
+
+export interface ChatUnreadCountDto {
+  unread_count: number;
+}
+
 export interface BusinessBookingItemDto {
   id: string;
   status: BookingStatus;
