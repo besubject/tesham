@@ -18,12 +18,13 @@ export interface CreatedSlot {
 export interface BusinessBookingItem {
   id: string;
   status: BookingStatus;
+  source: string;
   slot_date: string;
   slot_start_time: string;
   service_name: string;
   service_price: number;
-  client_name: string;
-  client_phone: string;
+  client_name: string | null;
+  client_phone: string | null;
   staff_id: string;
   staff_name: string;
   created_at: Date;
@@ -167,16 +168,17 @@ export class BusinessBookingService {
       .innerJoin('slots as sl', 'sl.id', 'b.slot_id')
       .innerJoin('services as sv', 'sv.id', 'b.service_id')
       .innerJoin('staff as st', 'st.id', 'b.staff_id')
-      .innerJoin('users as u', 'u.id', 'b.user_id')
+      .leftJoin('users as u', 'u.id', 'b.user_id')
       .select([
         'b.id',
         'b.status',
+        'b.source',
         sql<string>`sl.date::text`.as('slot_date'),
         'sl.start_time as slot_start_time',
         'sv.name as service_name',
         'sv.price as service_price',
-        'u.name as client_name',
-        'u.phone as client_phone',
+        sql<string | null>`COALESCE(u.name, b.client_name)`.as('client_name'),
+        sql<string | null>`COALESCE(u.phone, b.client_phone)`.as('client_phone'),
         'b.staff_id',
         'st.name as staff_name',
         sql<Date>`b.created_at`.as('created_at'),
@@ -204,6 +206,7 @@ export class BusinessBookingService {
     return rows.map((r) => ({
       id: r.id,
       status: r.status as BookingStatus,
+      source: r.source,
       slot_date: r.slot_date,
       slot_start_time: r.slot_start_time,
       service_name: r.service_name,
@@ -215,6 +218,114 @@ export class BusinessBookingService {
       created_at: r.created_at,
       cancelled_at: r.cancelled_at,
     }));
+  }
+
+  async createWalkInBooking(params: {
+    userId: string;
+    businessId: string;
+    staffId: string;
+    serviceId: string;
+    clientName?: string;
+    clientPhone?: string;
+    time?: string;
+  }): Promise<BusinessBookingItem> {
+    const { userId, businessId, staffId, serviceId, clientName, clientPhone, time } = params;
+
+    const { staffId: requestorStaffId, role } = await this.resolveStaff(userId, businessId);
+
+    // RBAC: employee can only create walk-in for themselves
+    if (role === 'employee' && staffId !== requestorStaffId) {
+      throw new AppError(403, 'Employees can only create walk-in bookings for themselves', 'FORBIDDEN');
+    }
+
+    // Validate target staff belongs to this business
+    const targetStaff = await db
+      .selectFrom('staff')
+      .select(['id'])
+      .where('id', '=', staffId)
+      .where('business_id', '=', businessId)
+      .where('is_active', '=', true)
+      .executeTakeFirst();
+
+    if (!targetStaff) {
+      throw new AppError(404, 'Staff member not found in this business', 'STAFF_NOT_FOUND');
+    }
+
+    // Validate service belongs to this business
+    const service = await db
+      .selectFrom('services')
+      .select(['id', 'duration_minutes'])
+      .where('id', '=', serviceId)
+      .where('business_id', '=', businessId)
+      .where('is_active', '=', true)
+      .executeTakeFirst();
+
+    if (!service) {
+      throw new AppError(404, 'Service not found in this business', 'SERVICE_NOT_FOUND');
+    }
+
+    // Determine booking time
+    const now = new Date();
+    const bookingDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const bookingTime = time ?? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; // HH:MM
+
+    // Try to find existing user by phone
+    let linkedUserId: string | null = null;
+    if (clientPhone) {
+      const existingUser = await db
+        .selectFrom('users')
+        .select(['id'])
+        .where('phone', '=', clientPhone)
+        .executeTakeFirst();
+      if (existingUser) {
+        linkedUserId = existingUser.id;
+      }
+    }
+
+    // Create slot + booking in a transaction
+    const booking = await db.transaction().execute(async (trx) => {
+      const slot = await trx
+        .insertInto('slots')
+        .values({
+          staff_id: staffId,
+          date: bookingDate,
+          start_time: bookingTime,
+          is_booked: true,
+        })
+        .returning(['id'])
+        .executeTakeFirstOrThrow();
+
+      const inserted = await trx
+        .insertInto('bookings')
+        .values({
+          user_id: linkedUserId,
+          slot_id: slot.id,
+          service_id: serviceId,
+          business_id: businessId,
+          staff_id: staffId,
+          status: 'completed',
+          source: 'walk_in',
+          cancelled_at: null,
+          client_name: clientName ?? null,
+          client_phone: clientPhone ?? null,
+        })
+        .returning(['id'])
+        .executeTakeFirstOrThrow();
+
+      return inserted;
+    });
+
+    trackEvent({
+      event_type: 'walk_in_booking_created',
+      payload: { business_id: businessId, staff_id: staffId, has_phone: !!clientPhone },
+      user_id: userId,
+    });
+
+    const detail = await this.getBookingDetail(booking.id);
+    if (!detail) {
+      throw new AppError(500, 'Failed to fetch created walk-in booking', 'INTERNAL_ERROR');
+    }
+    return detail;
   }
 
   async updateBookingStatus(params: {
@@ -326,16 +437,17 @@ export class BusinessBookingService {
       .innerJoin('slots as sl', 'sl.id', 'b.slot_id')
       .innerJoin('services as sv', 'sv.id', 'b.service_id')
       .innerJoin('staff as st', 'st.id', 'b.staff_id')
-      .innerJoin('users as u', 'u.id', 'b.user_id')
+      .leftJoin('users as u', 'u.id', 'b.user_id')
       .select([
         'b.id',
         'b.status',
+        'b.source',
         sql<string>`sl.date::text`.as('slot_date'),
         'sl.start_time as slot_start_time',
         'sv.name as service_name',
         'sv.price as service_price',
-        'u.name as client_name',
-        'u.phone as client_phone',
+        sql<string | null>`COALESCE(u.name, b.client_name)`.as('client_name'),
+        sql<string | null>`COALESCE(u.phone, b.client_phone)`.as('client_phone'),
         'b.staff_id',
         'st.name as staff_name',
         sql<Date>`b.created_at`.as('created_at'),
@@ -349,6 +461,7 @@ export class BusinessBookingService {
     return {
       id: row.id,
       status: row.status as BookingStatus,
+      source: row.source,
       slot_date: row.slot_date,
       slot_start_time: row.slot_start_time,
       service_name: row.service_name,

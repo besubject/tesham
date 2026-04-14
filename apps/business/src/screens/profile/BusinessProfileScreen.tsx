@@ -4,6 +4,7 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -12,11 +13,15 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiClient, tokenStorage } from '@mettig/shared';
+import * as Clipboard from 'expo-clipboard';
+import { apiClient, tokenStorage, trackEvent } from '@mettig/shared';
 import type { BusinessDetailDto, ServiceItemDto, StaffItemDto } from '@mettig/shared';
 import type { BusinessProfileStackScreenProps } from '../../navigation/types';
 
 type Props = BusinessProfileStackScreenProps<'ProfileMain'>;
+
+const BASE_URL = 'https://mettig.ru';
+const SLUG_REGEX = /^[a-z0-9-]{3,50}$/;
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 type Day = (typeof DAYS)[number];
@@ -207,6 +212,12 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [slugEditMode, setSlugEditMode] = useState(false);
+  const [slugInput, setSlugInput] = useState('');
+  const [slugSaving, setSlugSaving] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const [editMode, setEditMode] = useState(false);
   const [editFields, setEditFields] = useState<EditFields>({
@@ -468,6 +479,54 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
       },
     ]);
   }, []);
+
+  // ─── Public link handlers ────────────────────────────────────────────────────
+
+  const handleCopyLink = useCallback(async (url: string, key: string) => {
+    await Clipboard.setStringAsync(url);
+    setCopiedKey(key);
+    void trackEvent({ event_type: 'link_copied', payload: { url } });
+    setTimeout(() => setCopiedKey(null), 2000);
+  }, []);
+
+  const handleShareLink = useCallback(async (url: string) => {
+    try {
+      await Share.share({ message: url });
+      void trackEvent({ event_type: 'link_shared', payload: { url } });
+    } catch {
+      // User cancelled share — no error needed
+    }
+  }, []);
+
+  const handleOpenSlugEdit = useCallback(() => {
+    setSlugInput(profile?.slug ?? '');
+    setSlugError(null);
+    setSlugEditMode(true);
+  }, [profile]);
+
+  const handleSaveSlug = useCallback(async () => {
+    const slug = slugInput.trim().toLowerCase();
+    if (!SLUG_REGEX.test(slug)) {
+      setSlugError('Допускаются только строчные буквы a–z, цифры 0–9 и дефис (3–50 символов)');
+      return;
+    }
+    setSlugSaving(true);
+    setSlugError(null);
+    try {
+      const { data } = await apiClient.patch<{ profile: BusinessDetailDto }>('/business/profile', { slug });
+      setProfile(data.profile);
+      setSlugEditMode(false);
+    } catch (err: unknown) {
+      const status = (err as { response?: { data?: { code?: string } } }).response?.data?.code;
+      if (status === 'SLUG_CONFLICT') {
+        setSlugError('Этот адрес уже занят. Попробуйте другой');
+      } else {
+        setSlugError('Не удалось сохранить ссылку');
+      }
+    } finally {
+      setSlugSaving(false);
+    }
+  }, [slugInput]);
 
   // ─── Render states ───────────────────────────────────────────────────────────
 
@@ -855,6 +914,129 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                 </TouchableOpacity>
               </View>
             </View>
+          )}
+        </SectionCard>
+
+        {/* ── Ссылка для записи ── */}
+        <SectionCard
+          title="Ссылка для записи"
+          action={
+            isAdmin && !slugEditMode ? (
+              <TouchableOpacity onPress={handleOpenSlugEdit} activeOpacity={0.7}>
+                <Text style={styles.sectionAction}>Изменить</Text>
+              </TouchableOpacity>
+            ) : undefined
+          }
+        >
+          {/* Ссылка заведения */}
+          <View style={styles.linkBlock}>
+            <Text style={styles.linkBlockLabel}>Ссылка заведения</Text>
+            {profile.slug ? (
+              <>
+                <Text style={styles.linkText} numberOfLines={1}>
+                  {`${BASE_URL}/b/${profile.slug}`}
+                </Text>
+                <View style={styles.linkActions}>
+                  <TouchableOpacity
+                    style={styles.linkBtn}
+                    onPress={() => { void handleCopyLink(`${BASE_URL}/b/${profile.slug}`, 'business'); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.linkBtnText}>
+                      {copiedKey === 'business' ? 'Скопировано!' : 'Копировать'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.linkBtn, styles.linkBtnShare]}
+                    onPress={() => { void handleShareLink(`${BASE_URL}/b/${profile.slug}`); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.linkBtnText, styles.linkBtnShareText]}>Поделиться</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.linkEmpty}>Ссылка ещё не задана</Text>
+            )}
+          </View>
+
+          {/* Редактирование slug */}
+          {isAdmin && slugEditMode && (
+            <View style={styles.inlineForm}>
+              <Text style={styles.inlineFormTitle}>Адрес страницы</Text>
+              <Text style={styles.slugHint}>
+                Только строчные буквы a–z, цифры 0–9 и дефис (3–50 символов)
+              </Text>
+              <TextInput
+                style={styles.formInput}
+                value={slugInput}
+                onChangeText={t => setSlugInput(t.toLowerCase())}
+                placeholder="my-barbershop"
+                placeholderTextColor="#B0B0AA"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {slugError ? <Text style={styles.slugErrorText}>{slugError}</Text> : null}
+              <View style={styles.formActions}>
+                <TouchableOpacity
+                  style={styles.formCancelBtn}
+                  onPress={() => setSlugEditMode(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.formCancelBtnText}>Отмена</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.formSaveBtn, slugSaving && styles.saveBtnDisabled]}
+                  onPress={() => { void handleSaveSlug(); }}
+                  activeOpacity={0.7}
+                  disabled={slugSaving}
+                >
+                  {slugSaving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.formSaveBtnText}>Сохранить</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Персональные ссылки мастеров */}
+          {profile.slug && staff.length > 0 && (
+            <>
+              <View style={styles.linkDivider} />
+              <Text style={styles.linkSubsectionTitle}>Ссылки мастеров</Text>
+              {staff.map(item => {
+                const staffUrl = `${BASE_URL}/b/${profile.slug}/${item.id}`;
+                const copiedId = `staff-${item.id}`;
+                return (
+                  <View key={item.id} style={styles.staffLinkRow}>
+                    <View style={styles.staffLinkInfo}>
+                      <Text style={styles.staffLinkName}>{item.name}</Text>
+                      <Text style={styles.staffLinkUrl} numberOfLines={1}>{staffUrl}</Text>
+                    </View>
+                    <View style={styles.staffLinkBtns}>
+                      <TouchableOpacity
+                        style={styles.iconLinkBtn}
+                        onPress={() => { void handleCopyLink(staffUrl, copiedId); }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.iconLinkBtnText}>
+                          {copiedKey === copiedId ? '✓' : '⎘'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.iconLinkBtn}
+                        onPress={() => { void handleShareLink(staffUrl); }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.iconLinkBtnText}>↗</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </>
           )}
         </SectionCard>
 
@@ -1275,6 +1457,118 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  linkBlock: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  linkBlockLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  linkText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  linkEmpty: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    paddingBottom: 8,
+  },
+  linkActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  linkBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    alignItems: 'center',
+  },
+  linkBtnShare: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  linkBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  linkBtnShareText: {
+    color: '#fff',
+  },
+  linkDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 8,
+  },
+  linkSubsectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  staffLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 8,
+  },
+  staffLinkInfo: {
+    flex: 1,
+  },
+  staffLinkName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  staffLinkUrl: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  staffLinkBtns: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  iconLinkBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconLinkBtnText: {
+    fontSize: 15,
+    color: COLORS.primary,
+  },
+  slugHint: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: 6,
+  },
+  slugErrorText: {
+    fontSize: 12,
+    color: COLORS.danger,
+    marginTop: 4,
   },
   bottomPad: {
     height: 40,

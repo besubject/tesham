@@ -5,7 +5,7 @@ import type { ColumnType, Generated, Insertable, Selectable, Updateable } from '
 export type UserLanguage = 'ru' | 'ce';
 export type StaffRole = 'admin' | 'employee';
 export type BookingStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_show';
-export type BookingSource = 'app' | 'walk_in';
+export type BookingSource = 'app' | 'walk_in' | 'link';
 
 // ─── Table interfaces ─────────────────────────────────────────────────────────
 
@@ -43,6 +43,7 @@ export interface BusinessTable {
   cancellation_threshold_minutes: number;
   reminder_settings: ColumnType<Record<string, unknown>, string, string>;
   is_active: ColumnType<boolean, boolean | undefined, boolean>;
+  slug: string | null;
   created_at: ColumnType<Date, never, never>;
 }
 
@@ -76,7 +77,7 @@ export interface SlotTable {
 
 export interface BookingTable {
   id: Generated<string>;
-  user_id: string;
+  user_id: string | null;
   slot_id: string;
   service_id: string;
   business_id: string;
@@ -84,6 +85,10 @@ export interface BookingTable {
   status: ColumnType<BookingStatus, BookingStatus | undefined, BookingStatus>;
   cancelled_at: Date | null;
   source: ColumnType<BookingSource, BookingSource | undefined, BookingSource>;
+  /** Walk-in client name (when user_id is null) */
+  client_name: string | null;
+  /** Walk-in client phone (when user_id is null) */
+  client_phone: string | null;
   created_at: ColumnType<Date, never, never>;
 }
 
@@ -147,6 +152,20 @@ export interface PushTokenTable {
   created_at: ColumnType<Date, never, never>;
 }
 
+export type ChatSenderRole = 'client' | 'staff';
+export type ChatMessageType = 'text' | 'image';
+
+export interface ChatMessageTable {
+  id: Generated<string>;
+  booking_id: string;
+  sender_id: string;
+  sender_role: ChatSenderRole;
+  message_type: ChatMessageType;
+  content: string;
+  is_read: ColumnType<boolean, boolean | undefined, boolean>;
+  created_at: ColumnType<Date, never, never>;
+}
+
 // ─── Database schema ──────────────────────────────────────────────────────────
 
 export interface Database {
@@ -162,6 +181,7 @@ export interface Database {
   events: EventTable;
   notification_log: NotificationLogTable;
   push_tokens: PushTokenTable;
+  chat_messages: ChatMessageTable;
 }
 
 // ─── Convenience types ────────────────────────────────────────────────────────
@@ -207,3 +227,6 @@ export type NewNotificationLog = Insertable<NotificationLogTable>;
 
 export type PushToken = Selectable<PushTokenTable>;
 export type NewPushToken = Insertable<PushTokenTable>;
+
+export type ChatMessage = Selectable<ChatMessageTable>;
+export type NewChatMessage = Insertable<ChatMessageTable>;

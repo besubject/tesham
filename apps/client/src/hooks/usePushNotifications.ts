@@ -56,13 +56,34 @@ export function usePushNotifications(isAuthenticated: boolean): void {
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
-      const bookingId = response?.notification?.request?.content?.data?.booking_id as string | undefined;
-      if (bookingId && isAuthenticated) {
-        // Navigate to BookingsList screen when user taps the notification
+      if (!isAuthenticated) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = response?.notification?.request?.content?.data as Record<string, unknown> | undefined;
+
+      const chatBookingId = data?.chat_booking_id as string | undefined;
+      const chatBusinessName = data?.chat_business_name as string | undefined;
+      const chatStaffName = data?.chat_staff_name as string | undefined;
+
+      if (chatBookingId) {
+        // Navigate directly to Chat screen
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (navigation as any).navigate('Bookings', {
+          screen: 'Chat',
+          params: {
+            bookingId: chatBookingId,
+            businessName: chatBusinessName ?? '',
+            staffName: chatStaffName ?? '',
+            isReadOnly: false,
+          },
+        });
+        return;
+      }
+
+      const bookingId = data?.booking_id as string | undefined;
+      if (bookingId) {
+        // Navigate to BookingsList screen when user taps a generic booking notification
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (navigation as any).navigate('Bookings');
-        // Optionally scroll to or highlight the specific booking
-        // This could be enhanced with a deep link parameter if needed
       }
     });
 

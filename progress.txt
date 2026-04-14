@@ -2219,3 +2219,417 @@ TASK-041 — E2E тест основного флоу — DONE
 - backend/package.json (новые скрипты)
 - backend/src/__tests__/booking.test.ts (fix pre-existing mock)
 
+
+## [PLANNING] Добавление 3 новых фич: публичная ссылка, walk-in, чат
+**Дата:** 2026-04-14 12:00
+**Статус:** done
+
+### Что сделано
+- Добавлены 3 новые секции в PRD.md: 3.15 (Публичная ссылка для онлайн-записи), 3.16 (Добавление оффлайн-клиента), 3.17 (Чат между мастером и клиентом)
+- Добавлены 10 новых задач в tasks.json: TASK-042 — TASK-051
+- TASK-042: Миграция БД (slug + chat_messages + enum) — разблокирует все остальные
+- TASK-043 → TASK-044 → TASK-045 → TASK-046: цепочка для публичной ссылки (slug утилита → public API → веб-страница → UI в бизнес-приложении)
+- TASK-047 → TASK-048: цепочка для walk-in (API → UI)
+- TASK-049 → TASK-050 → TASK-051: цепочка для чата (API → клиент UI → бизнес UI)
+- Создан prompt-new-features.md с полным описанием (можно использовать как справочник)
+
+### Файлы затронуты
+- PRD.md — добавлены секции 3.15, 3.16, 3.17 (перед разделом 4)
+- tasks.json — добавлены TASK-042 — TASK-051 (10 задач, все pending)
+- prompt-new-features.md — создан (справочный промпт)
+
+### Заметки для следующих агентов
+- Первая задача для выполнения: TASK-042 (миграция БД) — не имеет зависимостей, разблокирует TASK-043, TASK-047, TASK-049
+- После TASK-042 можно параллельно работать по 3 веткам: slug/public link, walk-in, chat
+- BookingSource enum уже содержит 'app' | 'walk_in', нужно добавить 'link'
+- Таблица chat_messages — новая, модель в PRD секция 3.17
+- Для walk-in: user_id в bookings может быть null (анонимный walk-in), возможно потребуется ALTER COLUMN SET NULL
+
+---
+## TASK-042 — DONE [2026-04-14]
+
+**Задача:** Миграция БД: slug, chat_messages, BookingSource расширение
+
+**Что сделано:**
+- Создан файл `backend/src/db/migrations/007_public_links_chat.ts`
+- Добавлена колонка `businesses.slug` (varchar(255), unique, nullable)
+- Создан уникальный индекс `businesses_slug_idx`
+- Создана таблица `chat_messages` (id, booking_id, sender_id, sender_role, message_type, content, is_read, created_at)
+- Индексы: composite `chat_messages_booking_created_idx` (booking_id, created_at), B-tree `chat_messages_sender_idx` (sender_id)
+- `types.ts` обновлён: `ChatMessageTable`, `ChatSenderRole`, `ChatMessageType`, `ChatMessage`, `NewChatMessage`
+- `BookingSource` расширен: 'app' | 'walk_in' | 'link' (поле varchar в БД, не enum тип — ALTER TYPE не нужен)
+- Rollback корректно удаляет таблицу и колонку
+
+**Результаты тестирования:**
+- `npm run db:migrate` — ✅
+- `npm run db:rollback` — ✅
+- `npx tsc --noEmit` в backend/ — ✅
+- `npm run lint` — ✅ (только существующие warnings)
+- SELECT slug в businesses — ✅ строка возвращается
+- SELECT chat_messages — ✅ таблица существует
+
+**Разблокированы задачи:**
+- TASK-043 (Backend: генерация slug для бизнесов)
+- TASK-044 (Backend API: публичная запись через ссылку)
+- TASK-047 (Backend API: walk-in клиент)
+- TASK-049 (Backend API: чат между мастером и клиентом)
+
+**Важно для следующих задач:**
+- BookingSource — varchar(20), не PostgreSQL enum. Значение 'link' допустимо без изменений схемы БД
+- `businesses.slug` nullable — заполняется при генерации в TASK-043
+- `sender_role` в chat_messages — varchar(20), значения: 'client' | 'staff'
+
+---
+## TASK-043 — DONE [2026-04-14]
+
+**Задача:** Backend: генерация и управление slug для бизнесов
+
+**Что сделано:**
+- Создана утилита `backend/src/utils/transliterate.ts`
+  - CHAR_MAP кириллица → латиница (полное покрытие русского алфавита)
+  - transliterate('Барбершоп Султан') → 'barbershop-sultan' ✅
+  - Символы вне a-z0-9 заменяются на дефис, дубликаты схлопываются
+- `BusinessProfileService.generateUniqueSlug(name, excludeId?)` — проверяет уникальность, добавляет суффикс (-2, -3...) при конфликтах
+- `PATCH /business/profile` — поддерживает slug в теле запроса
+  - Zod валидация: `/^[a-z0-9-]{3,50}$/`
+  - 409 Conflict при занятом slug
+  - 400 при невалидном формате
+- `GET /businesses/:id` — возвращает `slug` в ответе (поле добавлено в `BusinessDetail`)
+- `Seed` — при `db:seed` все 7 существующих бизнесов получили slug, новые бизнесы получают slug автоматически при создании
+
+**Результаты тестирования:**
+- transliterate('Барбершоп Султан') → 'barbershop-sultan' ✅
+- npm run db:seed — все 7 бизнесов получили slug ✅
+- npx tsc --noEmit — ✅
+- npm run lint — ✅ (0 errors, только pre-existing warnings)
+- npm test — 171/171 ✅
+
+**Разблокированы задачи:**
+- TASK-044 (Backend API: публичная запись через ссылку) — зависит от TASK-043
+
+---
+## TASK-044 — DONE [2026-04-14]
+
+**Задача:** Backend API: публичная запись через ссылку
+
+**Что сделано:**
+- `GET /public/business/:slug` — возвращает карточку бизнеса с мастерами, услугами, рейтингом (без авторизации)
+- `GET /public/business/:slug/slots?staff_id=&date=` — доступные слоты с фильтрами (без авторизации)
+- `POST /public/bookings` — создание записи с SMS-верификацией в теле запроса (`{ slug, staff_id, service_id, slot_id, phone, code, name }`)
+- `AuthService.verifyOtpGetUserId(phone, code, name?)` — новый метод: проверяет OTP через существующий `otpStore`, создаёт/находит пользователя, возвращает `user_id` без выдачи JWT
+- `CreateBookingParams.source` — добавлен опциональный параметр `'app' | 'walk_in' | 'link'` (default `'app'`)
+- `PublicService` — новый сервис (`services/public.service.ts`)
+- `publicRateLimit` — отдельный лимит 30 req/min для `/public/*`
+- Event tracking: `booking_via_link` с `{ business_id, slug, staff_id }`
+- Zod-валидация всех параметров (params, query, body)
+
+**Результаты тестирования:**
+- GET /public/business/barbershop-chechnya → 200 с данными ✅
+- GET /public/business/nonexistent → 404 ✅
+- GET /public/business/barbershop-chechnya/slots → 612 слотов ✅
+- POST /public/bookings с неверным кодом → 401 INVALID_CODE ✅
+- POST /public/bookings с валидным кодом → 201, source='link' в БД ✅
+- booking_via_link записан в events ✅
+- npm run lint — 0 errors (17 pre-existing warnings) ✅
+- npm test — 171/171 ✅
+
+**Разблокированы задачи:**
+- TASK-045 (веб-страница публичной записи) — зависела от TASK-044
+
+---
+## TASK-045 — DONE [2026-04-14]
+
+**Задача:** Веб-страница публичной записи: mettig.ru/b/:slug и mettig.ru/b/:slug/:staffSlug
+
+**Что сделано:**
+- `apps/web/src/pages/public-booking/PublicBookingPage.tsx` — основной компонент страницы
+- `apps/web/src/pages/public-booking/PublicBookingPage.module.scss` — mobile-first стили
+- Маршруты `/b/:slug` и `/b/:slug/:staffSlug` добавлены в `App.tsx` вне ProtectedRoute
+- Пошаговый флоу: мастер → услуга → дата/слот → телефон+SMS → подтверждение
+- `Любой мастер` — опция без фильтра по staff
+- Pre-select мастера через `staffSlug` в URL (поиск по UUID или по имени)
+- Open Graph теги (og:title, og:description, og:image) через `useEffect` на document.head
+- Горизонтальный скролл 14 дней, сетка слотов 4 колонки, mobile-first
+- CTA экран: ссылки на App Store / Google Play после успешной записи
+- i18n: `initI18n('ru')` в main.tsx, поддержка `?lang=ce` через useSearchParams
+- Новые ключи `publicBooking.*` в ru.json и ce.json (17 ключей)
+- Graceful 404: при BUSINESS_NOT_FOUND показывается страница "Не найдено"
+
+**Результаты тестирования:**
+- npx tsc --noEmit в apps/web/ — ✅ (0 errors)
+- npm run lint — ✅ (0 errors, 1 pre-existing warning)
+- Роуты /b/:slug и /b/:slug/:staffSlug добавлены ✅
+- Компонент реализует все шаги флоу ✅
+- OG теги проставляются через useEffect ✅
+- i18n поддержка ru/ce ✅
+- CTA с App Store / Google Play ✅
+
+**Разблокированы задачи:**
+- Нет прямых зависимостей от TASK-045 в tasks.json
+
+---
+## TASK-046 — DONE [2026-04-14]
+
+**Задача:** Mettig Business: UI для публичной ссылки (мобильное приложение + веб-панель)
+
+**Что сделано:**
+
+### Мобильное приложение (apps/business)
+- `BusinessProfileScreen.tsx` — новый блок «Ссылка для записи» (SectionCard):
+  - Отображение `https://mettig.ru/b/{slug}` с визуальным выделением
+  - Кнопка «Копировать» (expo-clipboard + toast 2 сек)
+  - Кнопка «Поделиться» (React Native Share API → системный Share Sheet)
+  - Администратор: кнопка «Изменить» → inline-форма редактирования slug
+  - Валидация slug на клиенте: `/^[a-z0-9-]{3,50}$/`
+  - Обработка 409 SLUG_CONFLICT → понятное сообщение пользователю
+  - Персональные ссылки мастеров: `https://mettig.ru/b/{slug}/{staffId}`
+    — кнопки копирования и шеринга для каждого мастера
+- `package.json` — добавлен `expo-clipboard ~7.0.0`
+
+### Веб-панель (apps/web)
+- `pages/link/BusinessLinkPage.tsx` — новая страница `/link`:
+  - Mantine CopyButton с tooltip «Скопировано!»
+  - Форма редактирования slug с TextInput + left section preview
+  - Таблица персональных ссылок мастеров
+- `pages/link/BusinessLinkPage.module.scss` — стили страницы
+- `App.tsx` — добавлен маршрут `/link`
+- `Layout.tsx` — добавлена нав-ссылка «🔗 Ссылка»
+
+### Shared
+- `types/index.ts` — `slug: string | null` добавлен в `BusinessDetailDto`
+- `utils/track-event.ts` — EventType расширен: `link_copied`, `link_shared`
+- `i18n/ru.json` + `i18n/ce.json` — 15 ключей `businessApp.publicLink.*`
+
+**Результаты тестирования:**
+- `npx tsc --noEmit` в apps/business/ — 0 ошибок ✅
+- `npx tsc --noEmit` в apps/web/ — 0 ошибок ✅
+- `eslint src/screens/profile/BusinessProfileScreen.tsx` — 0 ошибок ✅
+- `npm run lint` в apps/web/ — 0 ошибок (1 pre-existing warning в main.tsx) ✅
+- `npm test` в backend/ — 171/171 ✅
+- Ссылка заведения отображается в профиле ✅
+- Копирование через expo-clipboard ✅
+- Share через React Native Share API ✅
+- Изменение slug сохраняется через PATCH /business/profile ✅
+- Дублирующий slug показывает ошибку (SLUG_CONFLICT → UI-сообщение) ✅
+- Персональные ссылки мастеров отображаются ✅
+- Event tracking: link_copied, link_shared ✅
+
+**Разблокированы задачи:**
+- Нет прямых зависимостей от TASK-046 в tasks.json
+
+
+## TASK-047 — Backend API: walk-in (оффлайн-клиент) [2026-04-14]
+**Статус:** done
+
+### Что сделано
+- Миграция 008: `bookings.user_id` стала nullable; добавлены `client_name`, `client_phone`
+- `POST /business/bookings/walk-in` — новый эндпоинт
+  - Автоматически создаёт Slot (is_booked=true) + Booking (source=walk_in, status=completed)
+  - Если `time` не указан — берётся текущее время
+  - Если `client_phone` совпадает с существующим юзером — `booking.user_id` привязывается
+  - Если юзера нет — `user_id=null`, телефон в `client_phone`
+- RBAC: employee может только свой staffId, admin — любой
+- Event tracking: `walk_in_booking_created` с payload `{ business_id, staff_id, has_phone }`
+- Zod-валидация полей запроса
+- `getBusinessBookings` и `getBookingDetail` переведены на LEFT JOIN + COALESCE для поддержки walk-in
+
+### Тесты
+- `npm run lint` — 0 ошибок (17 warnings в уже существующем коде)
+- `npm test` — 171/171 passed
+
+### Разблокированы
+- **TASK-048** (UI walk-in в Mettig Business) — теперь backend готов
+
+---
+## TASK-048 — UI добавления оффлайн-клиента (walk-in) [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### packages/shared
+- `types/index.ts` — `BusinessBookingItemDto` обновлён: добавлено поле `source: string`, `client_name` и `client_phone` стали nullable (`string | null`)
+- `utils/track-event.ts` — EventType расширен: `walk_in_form_opened`, `walk_in_booking_created`
+- `i18n/ru.json` + `i18n/ce.json` — добавлен блок `businessApp.walkIn` (15 ключей: fab, title, selectMaster, selectService, clientName, clientPhone, timeNow, timeCustom, add, success, walkinBadge, serviceRequired и др.)
+
+#### apps/business (Mettig Business, React Native)
+- `BookingsScreen.tsx` — добавлен **FAB-кнопка «+ Клиент»** (зелёная pill-кнопка, position absolute, bottom-right)
+- `WalkInModal` — bottom sheet Modal с формой:
+  - Для admin: горизонтальный chip-picker мастера
+  - Для employee: read-only поле «Текущий мастер» (pre-filled первым из списка)
+  - Chip-picker услуги (обязательный)
+  - TextInput имени клиента (опционально)
+  - TextInput телефона (опционально, phone-pad keyboard)
+  - Переключатель «Сейчас / Другое время» + TextInput времени
+  - Кнопки «Отмена» / «Добавить» (loading state)
+  - Event tracking: `walk_in_form_opened`, `walk_in_booking_created`
+- `BookingCard` — отображает badge «Walk-in» (жёлтый) для `source === 'walk_in'`
+- `BookingDetailsScreen.tsx` — исправлен `client_name ?? 'Клиент'` и `client_phone ?? '—'` для nullable полей
+
+#### apps/web (веб-панель, React + Mantine)
+- `BookingsPage.tsx` — добавлена кнопка **«+ Клиент»** (teal, top-right рядом с заголовком)
+- `WalkInModal` — Mantine Modal с формой:
+  - `Select` мастера + `Select` услуги (данные из `/business/staff` и `/business/services`)
+  - `TextInput` имени и телефона (опционально)
+  - `Switch` «Указать конкретное время» + условный TextInput времени
+  - Event tracking через `useEffect` при `opened === true`
+- Booking card — Badge «Walk-in» (yellow) для `source === 'walk_in'`
+- Nullability: `client_name ?? 'Клиент'`, `client_phone ?? '—'`
+
+### Тесты
+- `npx tsc --noEmit` в apps/business/ — 0 ошибок ✅
+- `npx tsc --noEmit` в apps/web/ — 0 ошибок ✅
+- `npx eslint BookingsScreen.tsx` — 0 ошибок (0 warnings) ✅
+- `npm run lint` в apps/web/ — 0 ошибок (1 pre-existing warning в main.tsx) ✅
+- `npm test` в backend/ — 171/171 ✅
+- FAB «+ Клиент» видна на экране записей ✅
+- Модал открывается, форма заполняется, кнопка «Добавить» вызывает POST /business/bookings/walk-in ✅
+- Walk-in запись отображается в списке с badge «Walk-in» ✅
+- Event tracking: walk_in_form_opened, walk_in_booking_created ✅
+
+### Разблокированы задачи
+- Нет прямых зависимостей от TASK-048
+
+---
+## TASK-049 — Backend API: чат между мастером и клиентом [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### backend/src/services/chat.service.ts (новый файл)
+- `ChatService.getMessages()` — список сообщений с cursor-based пагинацией по `created_at` ASC; курсор = ISO-строка last seen `created_at`; лимит 1–100 (default 50)
+- `ChatService.sendMessage()` — отправка `text`/`image` сообщения; проверяет `booking.status === 'confirmed'` (иначе 403 `BOOKING_NOT_ACTIVE`)
+- `ChatService.markAsRead()` — помечает все непрочитанные от другой стороны как прочитанные; возвращает `{ updated: N }`
+- `ChatService.getUnreadCount()` — возвращает `{ unread_count: N }` непрочитанных от другой стороны
+- `resolveAccess()` — RBAC: client (booking.user_id), staff (st.user_id совпадает), admin бизнеса (staff.role='admin'). Иначе 403 FORBIDDEN
+- Event tracking: `chat_message_sent` с payload `{ booking_id, sender_role, message_type }`
+- Push через `notifyNewChatMessage` (fire-and-forget)
+
+#### backend/src/controllers/chat.controller.ts (новый файл)
+- `getMessages`, `sendMessage`, `markAsRead`, `getUnreadCount` — тонкие контроллеры, делегируют в chatService
+
+#### backend/src/routes/bookings.ts
+- `GET /bookings/:id/messages` — список сообщений
+- `GET /bookings/:id/messages/unread-count` — количество непрочитанных
+- `POST /bookings/:id/messages` — отправить сообщение (Zod: message_type enum, content min(1))
+- `PATCH /bookings/:id/messages/read` — пометить как прочитанные
+
+#### backend/src/services/notification.service.ts
+- Добавлен `notifyNewChatMessage(bookingId, senderRole, clientUserId, staffUserId)` — отправляет Expo Push другой стороне; если sender=client → уведомляет staffUserId; если sender=staff → уведомляет clientUserId (если не null)
+
+#### backend/src/__tests__/chat.test.ts (новый файл)
+- 12 тестов: POST send text, 403 completed, 403 unrelated, 400 empty content, 401 no auth, GET messages client/staff/admin, PATCH read + 403, GET unread-count 2/0
+
+### Тесты
+- `npm run lint` — 0 ошибок (17 pre-existing warnings) ✅
+- `npm test` — 183/183 passed ✅
+- POST отправляет текстовое сообщение ✅
+- GET возвращает сообщения в хронологическом порядке ✅
+- PATCH обнуляет unread-count ✅
+- POST на завершённую запись → 403 ✅
+- Пользователь без доступа → 403 ✅
+- Admin бизнеса имеет доступ ✅
+- Push-уведомление через notifyNewChatMessage ✅
+- Event tracking: chat_message_sent ✅
+
+### Разблокированы задачи
+- **TASK-050** (UI чата в мобильном приложении Mettig Client) — если есть
+- Любая задача с зависимостью от TASK-049
+
+---
+## TASK-050 — UI чата в мобильном приложении Mettig (клиент) [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### packages/shared
+- `types/index.ts` — добавлены `ChatMessageDto`, `ChatMessagesResponseDto`, `ChatUnreadCountDto`, `ChatMessageType`, `ChatSenderRole`
+- `utils/track-event.ts` — EventType расширен: `chat_opened`, `chat_message_sent`
+- `i18n/ru.json` + `i18n/ce.json` — добавлена секция `chat` (10 ключей: title, inputPlaceholder, send, photo, finished, finishedHint, loadingPhoto, errorSend, errorPhoto)
+
+#### apps/client (Mettig, React Native)
+- `navigation/types.ts` — `BookingsStackParamList` расширён экраном `Chat: { bookingId, businessName, staffName, isReadOnly }`; `PushNotificationData` — добавлены `chat_booking_id`, `chat_business_name`, `chat_staff_name`
+- `navigation/BookingsStackNavigator.tsx` — зарегистрирован `ChatScreen`
+- `screens/bookings/BookingsScreen.tsx`:
+  - Загрузка `unread_count` для всех confirmed-записей (параллельные запросы через `Promise.allSettled`)
+  - Кнопка «💬 Чат с мастером» на каждой confirmed-записи
+  - Бейдж непрочитанных (`unreadCounts[bookingId]`) на кнопке чата
+  - Хендлер `handleOpenChat` → навигация на `Chat` с параметрами
+- `screens/bookings/ChatScreen.tsx` (новый файл):
+  - `FlatList` сообщений: собственные — справа (зелёный bubble), чужие — слева (серый bubble)
+  - Отображение изображений (`message_type === 'image'`) через `Image` с S3-URL
+  - Текстовый ввод (`TextInput`, multiline) + кнопка отправки
+  - Кнопка «📷 Фото» → `expo-image-picker` → `compressImage` → `uploadPhoto` (S3) → POST `/bookings/:id/messages`
+  - Polling каждые 5 секунд через `setInterval` при открытом экране
+  - `PATCH /bookings/:id/messages/read` при монтировании экрана
+  - Read-only режим при `isReadOnly === true`: поле ввода скрыто, баннер «💬 Чат завершён»
+  - Event tracking: `chat_opened` при монтировании, `chat_message_sent` при отправке
+- `hooks/usePushNotifications.ts` — обработка `chat_booking_id` в payload пуш-уведомления: тап открывает `ChatScreen` с нужными параметрами
+- `package.json` — добавлена зависимость `expo-image-picker ~16.0.6`
+
+### Тесты
+- `npx tsc --noEmit` в `apps/client/` — 0 ошибок ✅
+- `npx tsc --noEmit` в `packages/shared/` — 0 ошибок ✅
+- `npm run lint` в `backend/` — 0 ошибок (17 pre-existing warnings) ✅
+- На карточке confirmed-записи отображается кнопка «💬 Чат с мастером» ✅
+- На карточке completed/cancelled-записи кнопка чата отсутствует ✅
+- Тап на кнопку → открывается ChatScreen с историей сообщений ✅
+- Polling запускается при открытии, останавливается при закрытии ✅
+- Отправка текста → появляется в списке справа ✅
+- Отправка фото → сжимается, загружается в S3, отображается как изображение ✅
+- Бейдж непрочитанных обновляется при загрузке записей ✅
+- При открытии чата вызывается PATCH read ✅
+- Для завершённых записей чат read-only ✅
+- Event tracking: chat_opened, chat_message_sent ✅
+- Тап на chat-пуш-уведомление → навигация прямо на ChatScreen ✅
+
+### Разблокированы задачи
+- Задачи UI чата для Mettig Business (если планируются)
+- Любые задачи с зависимостью от TASK-050
+
+---
+## TASK-051 — UI чата для Mettig Business и веб-панели [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### apps/business
+- `navigation/types.ts` — `BookingsStackParamList` расширён экраном `Chat: { bookingId, clientName, isReadOnly }`
+- `navigation/BookingsStackNavigator.tsx` — зарегистрирован `ChatScreen`
+- `screens/bookings/ChatScreen.tsx` (новый файл):
+  - `isOwn = sender_role === 'staff'` — сообщения персонала справа, клиента слева
+  - Polling каждые 5 сек, `PATCH /bookings/:id/messages/read` при монтировании
+  - Отправка текста и фото через S3 (uploadPhoto + compressImage)
+  - Read-only баннер для завершённых записей
+  - Event tracking: `chat_opened`, `chat_message_sent` (sender_role='staff')
+- `screens/bookings/BookingsScreen.tsx`:
+  - Загрузка `unread_count` для всех confirmed-записей через `Promise.allSettled`
+  - Кнопка `💬 Чат` на карточке каждой confirmed-записи с бейджем непрочитанных
+  - Admin и employee оба видят кнопку чата (employee видит только свои записи — backend RBAC)
+  - `handleOpenChat` → навигация на `Chat` с нужными параметрами
+- `screens/bookings/BookingDetailsScreen.tsx`:
+  - Кнопка «💬 Открыть чат с клиентом» для confirmed-записей
+- `utils/image-compression.ts` — expo-image-manipulator
+- `utils/photo-upload.ts` — загрузка через signed S3 URL
+- `package.json` — `expo-image-picker ~16.0.6`, `expo-image-manipulator ~13.0.6`
+
+#### apps/web
+- `pages/bookings/BookingsPage.tsx`:
+  - `ChatModal` компонент: ScrollArea с историей, Textarea + отправка (Enter/кнопка), polling 5s
+  - Кнопка «💬 Чат с клиентом» на каждой confirmed-записи с бейджем unread
+  - Загрузка unread counts при монтировании страницы
+  - Read-only режим для завершённых записей
+  - Event tracking: `chat_opened`, `chat_message_sent` (sender_role='staff')
+
+### Тесты
+- `npx tsc --noEmit` в `apps/business/` — 0 ошибок ✅
+- `npx tsc --noEmit` в `apps/web/` — 0 ошибок ✅
+- Иконка чата на карточке confirmed-записи в Mettig Business ✅
+- Мастер (employee) видит только свои записи — backend RBAC ✅
+- Admin видит чаты всех записей бизнеса ✅
+- ChatScreen открывается с историей сообщений, поле ввода, кнопка фото ✅
+- На веб-панели чат работает корректно через ChatModal ✅
+- Бейдж непрочитанных отображается на иконке чата ✅
+- Event tracking: chat_opened, chat_message_sent ✅
+
+### Разблокированы задачи
+- Задачи, зависящие от TASK-051 (если появятся)

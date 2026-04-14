@@ -104,6 +104,24 @@
     "deleteConfirm": "Вы уверены? Все ваши данные будут удалены",
     "version": "Версия"
   },
+  "publicBooking": {
+    "anyMaster": "Любой мастер",
+    "yourName": "Ваше имя",
+    "yourNamePlaceholder": "Как вас зовут?",
+    "downloadApp": "Скачайте Mettig",
+    "downloadHint": "Управляйте всеми записями в одном приложении",
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "notFound": "Страница не найдена",
+    "notFoundMessage": "Бизнес не найден или недоступен",
+    "stepMaster": "Мастер",
+    "stepService": "Услуга",
+    "stepDatetime": "Дата и время",
+    "stepVerify": "Подтверждение",
+    "minDuration": "мин",
+    "bookingFor": "Запись к",
+    "codeFrom": "Код отправлен на"
+  },
   "businessApp": {
     "bookings": "Записи",
     "newBooking": "Новая запись",
@@ -139,6 +157,49 @@
       "services": "Услуги",
       "addStaff": "Добавить сотрудника",
       "addService": "Добавить услугу"
+    },
+    "walkIn": {
+      "fab": "+ Клиент",
+      "title": "Оффлайн-клиент",
+      "selectMaster": "Выберите мастера",
+      "selectService": "Выберите услугу",
+      "clientName": "Имя клиента (необязательно)",
+      "clientNamePlaceholder": "Клиент",
+      "clientPhone": "Телефон (необязательно)",
+      "clientPhonePlaceholder": "+7 (___) ___-__-__",
+      "timeNow": "Сейчас",
+      "timeCustom": "Другое время",
+      "add": "Добавить",
+      "success": "Клиент добавлен",
+      "walkinBadge": "Walk-in",
+      "serviceRequired": "Выберите услугу"
+    },
+    "publicLink": {
+      "sectionTitle": "Ссылка для записи",
+      "copy": "Копировать",
+      "copied": "Скопировано!",
+      "share": "Поделиться",
+      "editSlug": "Изменить ссылку",
+      "slugLabel": "Адрес страницы",
+      "slugHint": "Только латинские буквы, цифры и дефис (3–50 символов)",
+      "slugPlaceholder": "my-barbershop",
+      "slugInvalid": "Допускаются только строчные буквы a–z, цифры 0–9 и дефис (3–50 символов)",
+      "slugConflict": "Этот адрес уже занят. Попробуйте другой",
+      "slugSaved": "Ссылка обновлена",
+      "staffLink": "Ссылка мастера",
+      "businessLink": "Ссылка заведения",
+      "noSlug": "Ссылка ещё не задана"
     }
+  },
+  "chat": {
+    "title": "Чат с мастером",
+    "inputPlaceholder": "Сообщение...",
+    "send": "Отправить",
+    "photo": "Фото",
+    "finished": "Чат завершён",
+    "finishedHint": "Запись завершена. Чат доступен только для просмотра.",
+    "loadingPhoto": "Загрузка фото...",
+    "errorSend": "Не удалось отправить сообщение",
+    "errorPhoto": "Не удалось загрузить фото"
   }
 }

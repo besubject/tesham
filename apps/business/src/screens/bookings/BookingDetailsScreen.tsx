@@ -181,9 +181,9 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
           {/* Client info */}
           <Text style={styles.sectionTitle}>Клиент</Text>
           <View style={styles.card}>
-            <InfoRow label="Имя" value={booking.client_name} />
+            <InfoRow label="Имя" value={booking.client_name ?? 'Клиент'} />
             <View style={styles.divider} />
-            <InfoRow label="Телефон" value={booking.client_phone} />
+            <InfoRow label="Телефон" value={booking.client_phone ?? '—'} />
           </View>
 
           {/* Staff */}
@@ -191,6 +191,25 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
           <View style={styles.card}>
             <InfoRow label="Имя" value={booking.staff_name} />
           </View>
+
+          {/* Chat button — for confirmed bookings */}
+          {booking.status === 'confirmed' && (
+            <>
+              <Text style={styles.sectionTitle}>Чат</Text>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.actionChat]}
+                onPress={() =>
+                  navigation.navigate('Chat', {
+                    bookingId,
+                    clientName: booking.client_name ?? 'Клиент',
+                    isReadOnly: false,
+                  })
+                }
+              >
+                <Text style={styles.actionButtonText}>💬 Открыть чат с клиентом</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           {/* Action buttons — only for confirmed bookings */}
           {booking.status === 'confirmed' && (
@@ -337,6 +356,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
+  },
+  actionChat: {
+    backgroundColor: '#E8F4EF',
+    borderColor: '#1D6B4F',
+    marginBottom: 8,
   },
   actionCompleted: {
     backgroundColor: '#E8F4EF',

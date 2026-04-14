@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { businessBookingService } from '../services/business-booking.service';
 import type { BookingStatus } from '../db/types';
 
+
 export async function createBusinessSlots(
   req: Request,
   res: Response,
@@ -77,6 +78,41 @@ export async function getBusinessBookings(
     });
 
     res.json({ bookings });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createWalkInBooking(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user?.businessId) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Business access required' } });
+      return;
+    }
+
+    const body = req.body as {
+      staff_id: string;
+      service_id: string;
+      client_name?: string;
+      client_phone?: string;
+      time?: string;
+    };
+
+    const booking = await businessBookingService.createWalkInBooking({
+      userId: req.user.id,
+      businessId: req.user.businessId,
+      staffId: body.staff_id,
+      serviceId: body.service_id,
+      clientName: body.client_name,
+      clientPhone: body.client_phone,
+      time: body.time,
+    });
+
+    res.status(201).json({ booking });
   } catch (err) {
     next(err);
   }

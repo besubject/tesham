@@ -45,11 +45,15 @@ export type BookingsStackParamList = {
   BookingDetails: { bookingId: string };
   ReviewsList: { businessId: string; businessName: string };
   LeaveReview: { bookingId: string; businessName: string };
+  Chat: { bookingId: string; businessName: string; staffName: string; isReadOnly: boolean };
 };
 
 // Notification data payload type
 export interface PushNotificationData {
   booking_id?: string;
+  chat_booking_id?: string;
+  chat_business_name?: string;
+  chat_staff_name?: string;
 }
 
 // Profile stack navigator params

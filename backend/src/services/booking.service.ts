@@ -34,6 +34,7 @@ export interface CreateBookingParams {
   user_id: string;
   slot_id: string;
   service_id: string;
+  source?: 'app' | 'walk_in' | 'link';
 }
 
 export interface CancelBookingResult {
@@ -83,7 +84,7 @@ export class BookingService {
   }
 
   async createBooking(params: CreateBookingParams): Promise<BookingItem> {
-    const { user_id, slot_id, service_id } = params;
+    const { user_id, slot_id, service_id, source = 'app' } = params;
 
     const booking = await db.transaction().execute(async (trx) => {
       // Lock slot row to prevent concurrent bookings
@@ -149,7 +150,7 @@ export class BookingService {
           staff_id: slot.staff_id,
           status: 'confirmed',
           cancelled_at: null,
-          source: 'app',
+          source,
         })
         .returning(['id', 'status', 'business_id', 'staff_id', 'created_at'])
         .executeTakeFirst();

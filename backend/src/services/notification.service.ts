@@ -207,6 +207,46 @@ export class NotificationService {
     await sendExpoPush(messages);
   }
 
+  async notifyNewChatMessage(
+    bookingId: string,
+    senderRole: 'client' | 'staff',
+    clientUserId: string | null,
+    staffUserId: string,
+  ): Promise<void> {
+    // Determine recipient: the OTHER party
+    const recipientUserId = senderRole === 'client' ? staffUserId : clientUserId;
+    if (!recipientUserId) return;
+
+    const row = await db
+      .selectFrom('bookings as b')
+      .innerJoin('businesses as biz', 'biz.id', 'b.business_id')
+      .select(['biz.name as business_name'])
+      .where('b.id', '=', bookingId)
+      .executeTakeFirst();
+
+    if (!row) return;
+
+    const tokenRows = await db
+      .selectFrom('push_tokens')
+      .select('token')
+      .where('user_id', '=', recipientUserId)
+      .execute();
+
+    if (tokenRows.length === 0) return;
+
+    const title =
+      senderRole === 'client' ? 'Новое сообщение от клиента' : `Новое сообщение — ${row.business_name}`;
+
+    const messages: ExpoPushMessage[] = tokenRows.map((t) => ({
+      to: t.token,
+      title,
+      body: 'У вас новое сообщение',
+      data: { booking_id: bookingId },
+    }));
+
+    await sendExpoPush(messages);
+  }
+
   async notifyClientBookingCancelledByBusiness(bookingId: string): Promise<void> {
     const row = await db
       .selectFrom('bookings as b')

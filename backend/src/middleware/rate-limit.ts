@@ -28,3 +28,13 @@ export const bookingsRateLimit = rateLimit({
     error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many booking requests, try again later' },
   },
 });
+
+export const publicRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests, try again later' },
+  },
+});
