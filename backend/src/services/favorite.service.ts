@@ -146,8 +146,10 @@ export class FavoriteService {
 
     if (business_id) {
       query = query.where('business_id', '=', business_id);
+    } else if (staff_id) {
+      query = query.where('staff_id', '=', staff_id);
     } else {
-      query = query.where('staff_id', '=', staff_id!);
+      throw new AppError(400, 'Either business_id or staff_id is required', 'INVALID_FAVORITE_TARGET');
     }
 
     const existing = await query.executeTakeFirst();

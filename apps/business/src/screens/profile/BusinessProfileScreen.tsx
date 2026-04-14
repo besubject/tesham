@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Clipboard,
   RefreshControl,
   ScrollView,
   Share,
@@ -13,7 +14,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Clipboard from 'expo-clipboard';
 import { apiClient, tokenStorage, trackEvent } from '@mettig/shared';
 import type { BusinessDetailDto, ServiceItemDto, StaffItemDto } from '@mettig/shared';
 import type { BusinessProfileStackScreenProps } from '../../navigation/types';
@@ -483,7 +483,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
   // ─── Public link handlers ────────────────────────────────────────────────────
 
   const handleCopyLink = useCallback(async (url: string, key: string) => {
-    await Clipboard.setStringAsync(url);
+    Clipboard.setString(url);
     setCopiedKey(key);
     void trackEvent({ event_type: 'link_copied', payload: { url } });
     setTimeout(() => setCopiedKey(null), 2000);

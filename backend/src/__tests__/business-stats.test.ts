@@ -48,7 +48,7 @@ jest.mock('../db', () => {
 
   Object.keys(chainable).forEach((key) => {
     if (!terminal.has(key)) {
-      chainable[key]!.mockReturnValue(chainable);
+      chainable[key]?.mockReturnValue(chainable);
     }
   });
 
@@ -95,6 +95,14 @@ import businessRouter from '../routes/business';
 
 const mockDb = db as unknown as Record<string, jest.Mock>;
 
+function getMock(name: string): jest.Mock {
+  const mock = mockDb[name];
+  if (!mock) {
+    throw new Error(`Mock "${name}" is not configured`);
+  }
+  return mock;
+}
+
 // ─── Test app ─────────────────────────────────────────────────────────────────
 
 const buildApp = (): Application => {
@@ -135,7 +143,7 @@ function setupChain(): void {
   for (const key of Object.keys(mockDb)) {
     const terminal = new Set(['executeTakeFirst', 'executeTakeFirstOrThrow', 'execute', 'transaction']);
     if (!terminal.has(key)) {
-      mockDb[key]!.mockReturnValue(mockDb);
+      mockDb[key]?.mockReturnValue(mockDb);
     }
   }
 }
@@ -144,7 +152,10 @@ function setupChain(): void {
 
 describe('GET /business/stats', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    mockSqlExecute.mockResolvedValue({ rows: [] });
+    mockSqlResult.as.mockReturnThis();
+    mockSqlFn.mockReturnValue(mockSqlResult);
     setupChain();
   });
 
@@ -175,7 +186,7 @@ describe('GET /business/stats', () => {
     setupChain();
 
     // Call 1: resolveStaff
-    mockDb['executeTakeFirst']!
+    getMock('executeTakeFirst')
       .mockResolvedValueOnce(mockAdminStaff)
       // Call 2: booking agg
       // (execute returns array)
@@ -183,7 +194,7 @@ describe('GET /business/stats', () => {
       .mockResolvedValueOnce({ avg_rating: '4.5' });
 
     // execute for booking agg → array of status/source rows
-    mockDb['execute']!
+    getMock('execute')
       .mockResolvedValueOnce([
         { status: 'completed', source: 'app', cnt: '5' },
         { status: 'no_show', source: 'walk_in', cnt: '1' },
@@ -214,12 +225,12 @@ describe('GET /business/stats', () => {
     setupChain();
 
     // resolveStaff → employee
-    mockDb['executeTakeFirst']!
+    getMock('executeTakeFirst')
       .mockResolvedValueOnce(mockEmployeeStaff)
       .mockResolvedValueOnce({ avg_rating: '4.0' });
 
     // booking agg for employee (filtered by staff_id)
-    mockDb['execute']!
+    getMock('execute')
       .mockResolvedValueOnce([
         { status: 'completed', source: 'app', cnt: '2' },
       ])
@@ -241,11 +252,11 @@ describe('GET /business/stats', () => {
   it('admin can filter by staff_id', async () => {
     setupChain();
 
-    mockDb['executeTakeFirst']!
+    getMock('executeTakeFirst')
       .mockResolvedValueOnce(mockAdminStaff)
       .mockResolvedValueOnce({ avg_rating: null });
 
-    mockDb['execute']!
+    getMock('execute')
       .mockResolvedValueOnce([
         { status: 'confirmed', source: 'walk_in', cnt: '1' },
       ])
@@ -265,11 +276,11 @@ describe('GET /business/stats', () => {
   it('defaults to week period when period is omitted', async () => {
     setupChain();
 
-    mockDb['executeTakeFirst']!
+    getMock('executeTakeFirst')
       .mockResolvedValueOnce(mockAdminStaff)
       .mockResolvedValueOnce({ avg_rating: null });
 
-    mockDb['execute']!
+    getMock('execute')
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
@@ -282,11 +293,41 @@ describe('GET /business/stats', () => {
     expect(res.body.stats.period).toBe('week');
   });
 
+  it('includes cancelled bookings in show rate denominator', async () => {
+    setupChain();
+
+    getMock('executeTakeFirst')
+      .mockResolvedValueOnce(mockAdminStaff)
+      .mockResolvedValueOnce({ avg_rating: null });
+
+    getMock('execute')
+      .mockResolvedValueOnce([
+        { status: 'completed', source: 'app', cnt: '1' },
+        { status: 'cancelled', source: 'app', cnt: '2' },
+      ])
+      .mockResolvedValueOnce([
+        { staff_id: 'staff-admin-1', staff_name: 'Alice', status: 'completed', cnt: '1' },
+        { staff_id: 'staff-admin-1', staff_name: 'Alice', status: 'cancelled', cnt: '2' },
+      ]);
+
+    const app = buildApp();
+    const res = await request(app)
+      .get('/business/stats?period=week')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    const { stats } = res.body as { stats: Record<string, unknown> };
+    expect(stats['show_rate_pct']).toBe(33.3);
+
+    const byStaff = stats['by_staff'] as Array<Record<string, unknown>>;
+    expect(byStaff[0]?.['show_rate_pct']).toBe(33.3);
+  });
+
   it('returns 403 if user is not a staff member of the business', async () => {
     setupChain();
 
     // resolveStaff returns null → not a staff member
-    mockDb['executeTakeFirst']!.mockResolvedValue(null);
+    getMock('executeTakeFirst').mockResolvedValue(null);
 
     const app = buildApp();
     const res = await request(app)

@@ -2,13 +2,14 @@ import React from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '@mettig/shared';
 import styles from './Layout.module.scss';
+import { SIDEBAR_NAV_ITEMS } from './Layout.constants';
 
-function Layout(): React.JSX.Element {
+const Layout = (): React.JSX.Element => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     await logout();
   };
 
@@ -21,30 +22,17 @@ function Layout(): React.JSX.Element {
         </div>
 
         <nav className={styles.sidebarNav}>
-          <Link
-            to="/bookings"
-            className={[styles.navItem, location.pathname === '/bookings' ? styles.active : ''].filter(Boolean).join(' ')}
-          >
-            📅 Записи
-          </Link>
-          <Link
-            to="/stats"
-            className={[styles.navItem, location.pathname === '/stats' ? styles.active : ''].filter(Boolean).join(' ')}
-          >
-            📊 Статистика
-          </Link>
-          <Link
-            to="/link"
-            className={[styles.navItem, location.pathname === '/link' ? styles.active : ''].filter(Boolean).join(' ')}
-          >
-            🔗 Ссылка
-          </Link>
-          <Link
-            to="/profile"
-            className={[styles.navItem, location.pathname === '/profile' ? styles.active : ''].filter(Boolean).join(' ')}
-          >
-            👤 Профиль
-          </Link>
+          {SIDEBAR_NAV_ITEMS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={[styles.navItem, location.pathname === item.to ? styles.active : '']
+                .filter(Boolean)
+                .join(' ')}
+            >
+              {item.icon} {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className={styles.sidebarFooter}>
@@ -63,6 +51,6 @@ function Layout(): React.JSX.Element {
       </main>
     </div>
   );
-}
+};
 
 export default Layout;

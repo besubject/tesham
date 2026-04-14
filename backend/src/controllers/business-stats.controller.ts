@@ -7,8 +7,13 @@ export async function getBusinessStats(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const userId = req.user!.id;
-    const businessId = req.user!.businessId;
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const userId = req.user.id;
+    const businessId = req.user.businessId;
 
     if (!businessId) {
       res.status(403).json({ error: 'No business associated with this account' });

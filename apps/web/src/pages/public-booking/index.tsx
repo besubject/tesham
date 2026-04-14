@@ -22,117 +22,14 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { apiClient, initI18n, sendCode, useTranslation } from '@mettig/shared';
 import { IMaskInput } from 'react-imask';
 import { PHONE_MASK } from 'src/constants';
-import styles from './PublicBookingPage.module.scss';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface StaffMember {
-  id: string;
-  name: string;
-  role: string | null;
-  avatar_url: string | null;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration_minutes: number;
-}
-
-interface BusinessData {
-  id: string;
-  name: string;
-  address: string;
-  phone: string | null;
-  photos: string[];
-  avg_rating: number | null;
-  review_count: number;
-  category_name: string;
-  category_icon: string;
-  slug: string;
-  staff: StaffMember[];
-  services: Service[];
-  instagram_url: string | null;
-  website_url: string | null;
-}
-
-interface SlotItem {
-  id: string;
-  staff_id: string;
-  staff_name: string;
-  date: string;
-  start_time: string;
-  is_booked: boolean;
-}
-
-type BookingStep = 'staff' | 'service' | 'datetime' | 'verify' | 'done';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getPhoneDigits(value: string): string {
-  const digits = value.replace(/\D/g, '');
-  return digits.startsWith('7') ? digits.slice(1) : digits;
-}
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} мин`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m ? `${h} ч ${m} мин` : `${h} ч`;
-}
-
-function formatPrice(price: number): string {
-  return `${price.toLocaleString('ru-RU')} ₽`;
-}
-
-function buildDays(count: number): { label: string; value: string }[] {
-  const days: { label: string; value: string }[] = [];
-  const today = new Date();
-  for (let i = 0; i < count; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() + i);
-    const value = d.toISOString().slice(0, 10);
-    const label = d
-      .toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })
-      .replace('.', '');
-    days.push({ label, value });
-  }
-  return days;
-}
-
-// Try to match staffSlug: UUID or name-based
-function findStaffBySlug(staff: StaffMember[], staffSlug: string): StaffMember | null {
-  // Try exact UUID match
-  const byId = staff.find((s) => s.id === staffSlug);
-  if (byId) return byId;
-  // Try name match (lowercased, spaces to dashes)
-  const normalized = staffSlug.toLowerCase();
-  return (
-    staff.find((s) => s.name.toLowerCase().replace(/\s+/g, '-') === normalized) ?? null
-  );
-}
-
-function setOgTags(title: string, description: string, image: string | null): void {
-  document.title = title;
-  const setMeta = (property: string, content: string) => {
-    let el = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
-    if (!el) {
-      el = document.createElement('meta');
-      el.setAttribute('property', property);
-      document.head.appendChild(el);
-    }
-    el.setAttribute('content', content);
-  };
-  setMeta('og:title', title);
-  setMeta('og:description', description);
-  setMeta('og:type', 'website');
-  if (image) setMeta('og:image', image);
-}
+import styles from './index.module.scss';
+import { buildDays, PUBLIC_BOOKING_DAYS_COUNT } from './constants';
+import { BookingStep, BusinessData, SlotItem } from './types';
+import { findStaffBySlug, formatDuration, formatPrice, getPhoneDigits, setOgTags } from './utils';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const DAYS = buildDays(14);
+const DAYS = buildDays(PUBLIC_BOOKING_DAYS_COUNT);
 
 export function PublicBookingPage(): React.JSX.Element {
   const { slug, staffSlug } = useParams<{ slug: string; staffSlug?: string }>();
@@ -463,12 +360,7 @@ export function PublicBookingPage(): React.JSX.Element {
       )}
 
       {selectedSlot ? (
-        <Button
-          fullWidth
-          size="md"
-          color="teal"
-          onClick={() => setStep('verify')}
-        >
+        <Button fullWidth size="md" color="teal" onClick={() => setStep('verify')}>
           {t('common.next')} →
         </Button>
       ) : null}

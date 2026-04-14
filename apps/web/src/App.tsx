@@ -2,17 +2,17 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@mettig/shared';
-import { LoginPage } from './pages/login/LoginPage';
-import { BookingsPage } from './pages/bookings/BookingsPage';
-import { StatsPage } from './pages/stats/StatsPage';
-import { ProfilePage } from './pages/profile/ProfilePage';
-import { BusinessLinkPage } from './pages/link/BusinessLinkPage';
-import { PublicBookingPage } from './pages/public-booking/PublicBookingPage';
+import { LoginPage } from './pages/login';
+import { BookingsPage } from './pages/bookings';
+import { StatsPage } from './pages/stats';
+import { ProfilePage } from './pages/profile';
+import { BusinessLinkPage } from './pages/link';
+import { PublicBookingPage } from './pages/public-booking';
 import Layout from './components/Layout';
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute(): React.JSX.Element {
+const ProtectedRoute = (): React.JSX.Element => {
   // Каждое поле — отдельный selector. Если возвращать объект одним селектором,
   // Zustand сравнивает по ссылке и видит новый {} на каждом рендере → infinite loop.
   const user = useAuthStore((state) => state.user);
@@ -39,9 +39,9 @@ function ProtectedRoute(): React.JSX.Element {
   }
 
   return <Outlet />;
-}
+};
 
-function App(): React.JSX.Element {
+const App = (): React.JSX.Element => {
   const initialize = useAuthStore((state) => state.initialize);
 
   useEffect(() => {
@@ -71,6 +71,6 @@ function App(): React.JSX.Element {
       </BrowserRouter>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;

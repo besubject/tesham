@@ -160,14 +160,6 @@ const futureDate = new Date();
 futureDate.setDate(futureDate.getDate() + 7);
 const futureDateStr = futureDate.toISOString().slice(0, 10);
 
-const mockUser = {
-  id: USER_ID,
-  phone: USER_PHONE,
-  name: 'Тест',
-  language: 'ru' as const,
-  created_at: new Date(),
-};
-
 const mockBusinessRow = {
   id: BIZ_ID,
   name: 'Барбершоп Грозный',

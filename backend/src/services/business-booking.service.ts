@@ -31,6 +31,14 @@ export interface BusinessBookingItem {
   cancelled_at: Date | null;
 }
 
+interface BusinessBookingsListResult {
+  bookings: BusinessBookingItem[];
+  total: number;
+  limit: number | null;
+  offset: number;
+  has_more: boolean;
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export class BusinessBookingService {
@@ -158,10 +166,28 @@ export class BusinessBookingService {
     businessId: string;
     staffId?: string;
     date?: string;
-  }): Promise<BusinessBookingItem[]> {
-    const { userId, businessId, staffId, date } = params;
+    status?: BookingStatus;
+    period?: 'today' | 'week' | 'month';
+    limit?: number;
+    offset?: number;
+  }): Promise<BusinessBookingsListResult> {
+    const { userId, businessId, staffId, date, status, period, limit, offset = 0 } = params;
 
     const { staffId: requestorStaffId, role } = await this.resolveStaff(userId, businessId);
+
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const periodEnd = new Date(today);
+
+    if (period === 'week') {
+      periodEnd.setDate(periodEnd.getDate() + 6);
+    }
+
+    if (period === 'month') {
+      periodEnd.setDate(periodEnd.getDate() + 29);
+    }
+
+    const periodEndStr = periodEnd.toISOString().slice(0, 10);
 
     let query = db
       .selectFrom('bookings as b')
@@ -186,24 +212,55 @@ export class BusinessBookingService {
       ])
       .where('b.business_id', '=', businessId);
 
+    let totalQuery = db
+      .selectFrom('bookings as b')
+      .innerJoin('slots as sl', 'sl.id', 'b.slot_id')
+      .select(sql<number>`count(*)::int`.as('count'))
+      .where('b.business_id', '=', businessId);
+
     // Employee sees only their own bookings
     if (role === 'employee') {
       query = query.where('b.staff_id', '=', requestorStaffId);
+      totalQuery = totalQuery.where('b.staff_id', '=', requestorStaffId);
     } else if (staffId) {
       // Admin can filter by a specific staff member
       query = query.where('b.staff_id', '=', staffId);
+      totalQuery = totalQuery.where('b.staff_id', '=', staffId);
     }
 
     if (date) {
       query = query.where(sql`sl.date::text`, '=', date);
+      totalQuery = totalQuery.where(sql`sl.date::text`, '=', date);
+    } else if (period) {
+      query = query
+        .where(sql`sl.date::text`, '>=', todayStr)
+        .where(sql`sl.date::text`, '<=', periodEndStr);
+      totalQuery = totalQuery
+        .where(sql`sl.date::text`, '>=', todayStr)
+        .where(sql`sl.date::text`, '<=', periodEndStr);
     }
 
-    const rows = await query
-      .orderBy('sl.date', 'asc')
-      .orderBy('sl.start_time', 'asc')
-      .execute();
+    if (status) {
+      query = query.where('b.status', '=', status);
+      totalQuery = totalQuery.where('b.status', '=', status);
+    }
 
-    return rows.map((r) => ({
+    if (typeof limit === 'number') {
+      query = query.limit(limit).offset(offset);
+    }
+
+    const [rows, totalRow] = await Promise.all([
+      query
+        .orderBy('sl.date', 'desc')
+        .orderBy('sl.start_time', 'desc')
+        .execute(),
+      totalQuery.executeTakeFirst(),
+    ]);
+
+    const total = totalRow?.count ?? 0;
+    const normalizedLimit = typeof limit === 'number' ? limit : null;
+
+    const bookings = rows.map((r) => ({
       id: r.id,
       status: r.status as BookingStatus,
       source: r.source,
@@ -218,6 +275,14 @@ export class BusinessBookingService {
       created_at: r.created_at,
       cancelled_at: r.cancelled_at,
     }));
+
+    return {
+      bookings,
+      total,
+      limit: normalizedLimit,
+      offset,
+      has_more: normalizedLimit === null ? false : offset + bookings.length < total,
+    };
   }
 
   async createWalkInBooking(params: {

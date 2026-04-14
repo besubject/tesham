@@ -19,8 +19,8 @@ export type AuthStackParamList = {
 // Bottom tab navigator params
 export type RootTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList> | undefined;
-  Bookings: undefined;
-  Profile: undefined;
+  Bookings: NavigatorScreenParams<BookingsStackParamList> | undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 // Home stack navigator params
@@ -100,6 +100,7 @@ export type ProfileStackScreenProps<T extends keyof ProfileStackParamList> = Com
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace ReactNavigation {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface RootParamList extends RootStackParamList {}
   }
 }

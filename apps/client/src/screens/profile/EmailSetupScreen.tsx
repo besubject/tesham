@@ -1,4 +1,4 @@
-import { setEmail, verifyUserEmail, useAuthStore } from '@mettig/shared';
+import { setEmail, verifyUserEmail } from '@mettig/shared';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,7 +24,6 @@ type Props = ProfileStackScreenProps<'EmailSetup'>;
 type Step = 'enter_email' | 'enter_code';
 
 export function EmailSetupScreen({ navigation }: Props): React.JSX.Element {
-  const user = useAuthStore((s) => s.user);
   const [step, setStep] = useState<Step>('enter_email');
   const [email, setEmailValue] = useState('');
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));

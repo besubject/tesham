@@ -64,7 +64,7 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
       try {
         await updateProfile({ language: newLanguage });
         await i18n.changeLanguage(newLanguage);
-      } catch (error) {
+      } catch {
         Alert.alert(t('common.error'), t('common.error'));
       } finally {
         setIsLoading(false);
@@ -83,7 +83,7 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
     try {
       await logout();
       // Navigation will be handled by RootNavigator based on auth state
-    } catch (error) {
+    } catch {
       Alert.alert(t('common.error'), t('common.error'));
       setIsLoading(false);
     }
@@ -99,7 +99,7 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
     try {
       await deleteAccount();
       // Navigation will be handled by RootNavigator based on auth state
-    } catch (error) {
+    } catch {
       Alert.alert(t('common.error'), t('common.error'));
       setIsLoading(false);
     }
@@ -120,7 +120,6 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
   }
 
   const currentLanguage = user.language || 'ru';
-  const languageIndex = currentLanguage === 'ru' ? 0 : 1;
 
   // ── Render ──────────────────────────────────────────────────────────────
 

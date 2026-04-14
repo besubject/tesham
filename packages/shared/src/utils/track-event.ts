@@ -77,7 +77,7 @@ async function getDeviceInfo(): Promise<{
         };
       }
     }
-  } catch (error) {
+  } catch {
     // Location not available, continue without it
     console.debug('[TrackEvent] Location not available');
   }

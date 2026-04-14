@@ -43,7 +43,6 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
     if (full) {
       void handleVerify(code.join(''));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
   const handleVerify = useCallback(
@@ -69,13 +68,19 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
           });
         }
       } catch (err: unknown) {
-        const axiosErr = err as { response?: { data?: { error?: { message?: string } }; status?: number } };
+        const axiosErr = err as {
+          response?: { data?: { error?: { message?: string } }; status?: number };
+        };
         const serverMsg = axiosErr?.response?.data?.error?.message;
         const status = axiosErr?.response?.status;
 
         if (status === 429) {
           setError('Слишком много попыток. Попробуйте через 10 минут.');
-        } else if (status === 401 || serverMsg?.toLowerCase().includes('invalid') || serverMsg?.toLowerCase().includes('expired')) {
+        } else if (
+          status === 401 ||
+          serverMsg?.toLowerCase().includes('invalid') ||
+          serverMsg?.toLowerCase().includes('expired')
+        ) {
           setError('Неверный или устаревший код. Попробуйте ещё раз.');
         } else {
           setError('Ошибка при проверке кода. Попробуйте снова.');
@@ -187,15 +192,11 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {isVerifying ? (
-            <ActivityIndicator style={styles.loader} color="#1D6B4F" />
-          ) : null}
+          {isVerifying ? <ActivityIndicator style={styles.loader} color="#1D6B4F" /> : null}
 
           <View style={styles.resendWrapper}>
             {secondsLeft > 0 ? (
-              <Text style={styles.resendTimer}>
-                Повторная отправка через {secondsLeft} сек
-              </Text>
+              <Text style={styles.resendTimer}>Повторная отправка через {secondsLeft} сек</Text>
             ) : (
               <TouchableOpacity
                 onPress={handleResend}
