@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config';
-import { globalRateLimit, authRateLimit, bookingsRateLimit } from './middleware/rate-limit';
+import { globalRateLimit, authRateLimit, bookingsRateLimit, publicRateLimit } from './middleware/rate-limit';
 import { errorHandler } from './middleware/error';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
@@ -16,6 +16,7 @@ import categoriesRouter from './routes/categories';
 import favoritesRouter from './routes/favorites';
 import businessRouter from './routes/business';
 import uploadRouter from './routes/upload';
+import publicRouter from './routes/public';
 
 const app: Application = express();
 
@@ -90,6 +91,7 @@ app.use('/events', eventsRouter);
 app.use('/categories', categoriesRouter);
 app.use('/favorites', favoritesRouter);
 app.use('/business', businessRouter);
+app.use('/public', publicRateLimit, publicRouter);
 app.use('/', uploadRouter);
 
 // Global error handler (must be last)

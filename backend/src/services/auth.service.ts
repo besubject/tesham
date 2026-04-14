@@ -218,6 +218,60 @@ export class AuthService {
     };
   }
 
+  /**
+   * Verify OTP and return (or create) a user.
+   * Used by public booking flow — does not issue JWT tokens.
+   * If the user is new and a name is provided, it is saved.
+   */
+  async verifyOtpGetUserId(phone: string, code: string, name?: string): Promise<string> {
+    const entry = otpStore.get(phone);
+
+    if (!entry) {
+      throw new AppError(401, 'Code not found or expired', 'INVALID_CODE');
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      otpStore.delete(phone);
+      throw new AppError(401, 'Code expired', 'CODE_EXPIRED');
+    }
+
+    entry.attempts += 1;
+    if (entry.attempts > OTP_MAX_ATTEMPTS) {
+      otpStore.delete(phone);
+      throw new AppError(429, 'Too many attempts', 'TOO_MANY_ATTEMPTS');
+    }
+
+    if (entry.code !== code) {
+      throw new AppError(401, 'Invalid code', 'INVALID_CODE');
+    }
+
+    otpStore.delete(phone);
+
+    const existing = await db
+      .selectFrom('users')
+      .select(['id', 'name'])
+      .where('phone', '=', phone)
+      .executeTakeFirst();
+
+    if (existing) {
+      // Update name if provided and user has no name
+      if (name && !existing.name) {
+        await db.updateTable('users').set({ name, last_login_at: new Date() }).where('id', '=', existing.id).execute();
+      } else {
+        await db.updateTable('users').set({ last_login_at: new Date() }).where('id', '=', existing.id).execute();
+      }
+      return existing.id;
+    }
+
+    const newUser = await db
+      .insertInto('users')
+      .values({ phone, name: name ?? '', language: 'ru', last_login_at: new Date() })
+      .returning(['id'])
+      .executeTakeFirstOrThrow();
+
+    return newUser.id;
+  }
+
   async refresh(refreshToken: string): Promise<TokenPair> {
     let payload: Pick<TokenPayload, 'id' | 'phone'>;
 
