@@ -52,6 +52,7 @@ export interface BusinessListItemDto {
 }
 
 export interface BusinessDetailDto extends BusinessListItemDto {
+  slug: string | null;
   portfolio_photos: string[];
   reminder_settings: {
     remind_24h: boolean;

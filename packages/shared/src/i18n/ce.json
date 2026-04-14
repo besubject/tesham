@@ -157,6 +157,22 @@
       "services": "Тевнаш",
       "addStaff": "Белхало тIеэца",
       "addService": "Тевнаш тIеэца"
+    },
+    "publicLink": {
+      "sectionTitle": "Язбан хьажар",
+      "copy": "Копи ян",
+      "copied": "Копи яйна!",
+      "share": "Декъа",
+      "editSlug": "Хьажар хийца",
+      "slugLabel": "АгӀонан адрес",
+      "slugHint": "Бен латинан элпаш, цифраш а, дефис а (3–50 элп)",
+      "slugPlaceholder": "my-barbershop",
+      "slugInvalid": "Бен a–z элпаш, 0–9 цифраш а, дефис а (3–50 элп)",
+      "slugConflict": "ХIара адрес дозуш ду. Кхин даладехьа",
+      "slugSaved": "Хьажар кхийцира",
+      "staffLink": "Мастеран хьажар",
+      "businessLink": "Компанин хьажар",
+      "noSlug": "Хьажар дузуш яц"
     }
   }
 }

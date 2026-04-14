@@ -34,6 +34,12 @@ function Layout(): React.JSX.Element {
             📊 Статистика
           </Link>
           <Link
+            to="/link"
+            className={[styles.navItem, location.pathname === '/link' ? styles.active : ''].filter(Boolean).join(' ')}
+          >
+            🔗 Ссылка
+          </Link>
+          <Link
             to="/profile"
             className={[styles.navItem, location.pathname === '/profile' ? styles.active : ''].filter(Boolean).join(' ')}
           >

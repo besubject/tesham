@@ -15,7 +15,9 @@ export type EventType =
   | 'favorite_remove'
   | 'navigation_click'
   | 'instagram_click'
-  | 'review_submit';
+  | 'review_submit'
+  | 'link_copied'
+  | 'link_shared';
 
 export interface EventPayload {
   [key: string]: unknown;

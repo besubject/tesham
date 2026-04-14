@@ -6,6 +6,7 @@ import { LoginPage } from './pages/login/LoginPage';
 import { BookingsPage } from './pages/bookings/BookingsPage';
 import { StatsPage } from './pages/stats/StatsPage';
 import { ProfilePage } from './pages/profile/ProfilePage';
+import { BusinessLinkPage } from './pages/link/BusinessLinkPage';
 import { PublicBookingPage } from './pages/public-booking/PublicBookingPage';
 import Layout from './components/Layout';
 
@@ -60,6 +61,7 @@ function App(): React.JSX.Element {
             <Route element={<Layout />}>
               <Route path="/bookings" element={<BookingsPage />} />
               <Route path="/stats" element={<StatsPage />} />
+              <Route path="/link" element={<BusinessLinkPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/" element={<Navigate to="/bookings" replace />} />
             </Route>
