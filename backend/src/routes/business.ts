@@ -45,6 +45,10 @@ const bookingsQuerySchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  status: z.enum(['confirmed', 'completed', 'cancelled', 'no_show']).optional(),
+  period: z.enum(['today', 'week', 'month']).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
 });
 
 const updateBookingStatusSchema = z.object({

@@ -68,16 +68,27 @@ export async function getBusinessBookings(
       return;
     }
 
-    const q = req.query as { staff_id?: string; date?: string };
+    const q = req.query as {
+      staff_id?: string;
+      date?: string;
+      status?: BookingStatus;
+      period?: 'today' | 'week' | 'month';
+      limit?: string;
+      offset?: string;
+    };
 
-    const bookings = await businessBookingService.getBusinessBookings({
+    const result = await businessBookingService.getBusinessBookings({
       userId: req.user.id,
       businessId: req.user.businessId,
       staffId: q.staff_id,
       date: q.date,
+      status: q.status,
+      period: q.period,
+      limit: q.limit ? Number(q.limit) : undefined,
+      offset: q.offset ? Number(q.offset) : undefined,
     });
 
-    res.json({ bookings });
+    res.json(result);
   } catch (err) {
     next(err);
   }

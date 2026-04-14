@@ -12,7 +12,8 @@ import {
 } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, type UserLanguage } from '@mettig/shared';
-import styles from './ProfilePage.module.scss';
+import styles from './index.module.scss';
+import { PROFILE_LANGUAGE_OPTIONS, PROFILE_MESSAGES } from './constants';
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export const ProfilePage = () => {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Введите имя');
+      setError(PROFILE_MESSAGES.emptyName);
       return;
     }
 
@@ -40,10 +41,10 @@ export const ProfilePage = () => {
     setSuccess(null);
     try {
       await updateProfile({ name: name.trim(), language });
-      setSuccess('Профиль обновлен');
+      setSuccess(PROFILE_MESSAGES.updateSuccess);
       setTimeout(() => setSuccess(null), 3000);
     } catch {
-      setError('Не удалось обновить профиль');
+      setError(PROFILE_MESSAGES.updateError);
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,7 @@ export const ProfilePage = () => {
       await logout();
       navigate('/login');
     } catch {
-      setError('Не удалось выйти');
+      setError(PROFILE_MESSAGES.logoutError);
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ export const ProfilePage = () => {
       await deleteAccount();
       navigate('/login');
     } catch {
-      setError('Не удалось удалить аккаунт');
+      setError(PROFILE_MESSAGES.deleteError);
       setLoading(false);
     }
   };
@@ -108,10 +109,7 @@ export const ProfilePage = () => {
                   label="Язык интерфейса"
                   value={language}
                   onChange={(e) => setLanguage(e.currentTarget.value as UserLanguage)}
-                  data={[
-                    { value: 'ru', label: 'Русский' },
-                    { value: 'ce', label: 'Чеченский' },
-                  ]}
+                  data={PROFILE_LANGUAGE_OPTIONS}
                   disabled={loading}
                 />
 
@@ -127,9 +125,11 @@ export const ProfilePage = () => {
                   </Alert>
                 ) : null}
 
-                <Button type="submit" loading={loading} align-self="flex-start">
-                  Сохранить изменения
-                </Button>
+                <div>
+                  <Button type="submit" loading={loading} align-self="flex-start">
+                    Сохранить изменения
+                  </Button>
+                </div>
               </Stack>
             </form>
           </Stack>

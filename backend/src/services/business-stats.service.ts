@@ -39,8 +39,8 @@ function periodToInterval(period: StatsPeriod): string {
   }
 }
 
-function calcShowRate(completed: number, no_show: number): number {
-  const total = completed + no_show;
+function calcShowRate(completed: number, no_show: number, cancelled: number): number {
+  const total = completed + no_show + cancelled;
   if (total === 0) return 0;
   return Math.round((completed / total) * 100 * 10) / 10;
 }
@@ -119,6 +119,7 @@ export class BusinessStatsService {
     let totalBookings = 0;
     let completedCount = 0;
     let noShowCount = 0;
+    let cancelledCount = 0;
     let appCount = 0;
     let walkInCount = 0;
 
@@ -127,6 +128,7 @@ export class BusinessStatsService {
       totalBookings += cnt;
       if (row.status === 'completed') completedCount += cnt;
       if (row.status === 'no_show') noShowCount += cnt;
+      if (row.status === 'cancelled') cancelledCount += cnt;
       if (row.source === 'app') appCount += cnt;
       if (row.source === 'walk_in') walkInCount += cnt;
     }
@@ -185,18 +187,28 @@ export class BusinessStatsService {
       // Group by staff_id
       const staffMap = new Map<
         string,
-        { name: string; completed: number; no_show: number; total: number }
+        { name: string; completed: number; no_show: number; cancelled: number; total: number }
       >();
 
       for (const row of staffAgg) {
         const cnt = parseInt(row.cnt, 10);
         if (!staffMap.has(row.staff_id)) {
-          staffMap.set(row.staff_id, { name: row.staff_name, completed: 0, no_show: 0, total: 0 });
+          staffMap.set(row.staff_id, {
+            name: row.staff_name,
+            completed: 0,
+            no_show: 0,
+            cancelled: 0,
+            total: 0,
+          });
         }
-        const entry = staffMap.get(row.staff_id)!;
+        const entry = staffMap.get(row.staff_id);
+        if (!entry) {
+          continue;
+        }
         entry.total += cnt;
         if (row.status === 'completed') entry.completed += cnt;
         if (row.status === 'no_show') entry.no_show += cnt;
+        if (row.status === 'cancelled') entry.cancelled += cnt;
       }
 
       for (const [sid, data] of staffMap) {
@@ -204,7 +216,7 @@ export class BusinessStatsService {
           staff_id: sid,
           staff_name: data.name,
           bookings_count: data.total,
-          show_rate_pct: calcShowRate(data.completed, data.no_show),
+          show_rate_pct: calcShowRate(data.completed, data.no_show, data.cancelled),
         });
       }
     }
@@ -219,7 +231,7 @@ export class BusinessStatsService {
       period,
       bookings_count: totalBookings,
       avg_rating: avgRating,
-      show_rate_pct: calcShowRate(completedCount, noShowCount),
+      show_rate_pct: calcShowRate(completedCount, noShowCount, cancelledCount),
       by_staff: byStaff,
       by_source: {
         app: appCount,

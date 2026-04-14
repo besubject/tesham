@@ -3,13 +3,15 @@ import { Alert, Box, Button, Input, Paper, PinInput, Stack, Text, Title } from '
 import { IMaskInput } from 'react-imask';
 import { useNavigate } from 'react-router-dom';
 import { sendCode, useAuthStore, verifyCode } from '@mettig/shared';
-import { Step } from 'src/types';
 import { PHONE_MASK } from 'src/constants';
-
-function getPhoneDigits(value: string): string {
-  const digits = value.replace(/\D/g, '');
-  return digits.startsWith('7') ? digits.slice(1) : digits;
-}
+import {
+  LOGIN_PAGE_COPY,
+  LOGIN_STEP_ACTION_LABELS,
+  VALID_CODE_LENGTH,
+  VALID_PHONE_LENGTH,
+} from './constants';
+import { Step } from './types';
+import { getPhoneDigits } from './utils';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -22,13 +24,29 @@ export const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const phoneDigits = getPhoneDigits(phone);
-  const isPhoneValid = phoneDigits.length === 10;
-  const isCodeValid = code.length === 6;
+  const isPhoneValid = phoneDigits.length === VALID_PHONE_LENGTH;
+  const isCodeValid = code.length === VALID_CODE_LENGTH;
   const isPhoneStep = step === 'phone';
+
+  const {
+    invalidPhone,
+    sendCodeError,
+    backToPhone,
+    clientHint,
+    codeTitle,
+    invalidCode,
+    phoneLabel,
+    phonePlaceholder,
+    staffCabinet,
+    verifyWithEmail,
+    subtitle,
+    title,
+    verifyCodeError,
+  } = LOGIN_PAGE_COPY;
 
   const handleSendCode = async () => {
     if (!isPhoneValid) {
-      setError('Введите корректный номер телефона');
+      setError(invalidPhone);
       return;
     }
 
@@ -38,7 +56,7 @@ export const LoginPage = () => {
       await sendCode(`+7${phoneDigits}`);
       setStep('code');
     } catch {
-      setError('Не удалось отправить код. Попробуйте снова.');
+      setError(sendCodeError);
     } finally {
       setLoading(false);
     }
@@ -46,7 +64,7 @@ export const LoginPage = () => {
 
   const handleVerifyCode = async () => {
     if (!isCodeValid) {
-      setError('Введите 6-значный код');
+      setError(invalidCode);
       return;
     }
 
@@ -55,13 +73,13 @@ export const LoginPage = () => {
     try {
       const response = await verifyCode(`+7${phoneDigits}`, code);
       if (response.requiresEmailVerification) {
-        setError('Для этого аккаунта нужен вход через подтверждение email.');
+        setError(verifyWithEmail);
         return;
       }
       await setAuth(response.user, response.accessToken, response.refreshToken);
       navigate('/bookings');
     } catch {
-      setError('Неверный код. Попробуйте снова.');
+      setError(verifyCodeError);
     } finally {
       setLoading(false);
     }
@@ -93,9 +111,9 @@ export const LoginPage = () => {
       <Paper radius="xl" shadow="xl" p={40} w="100%" maw={440} withBorder>
         <Stack gap="xl">
           <Stack gap={6} ta="center">
-            <Title order={1}>Tesham Business</Title>
+            <Title order={1}>{title}</Title>
             <Text c="dimmed" size="sm">
-              Вход в кабинет мастера
+              {subtitle}
             </Text>
           </Stack>
 
@@ -105,8 +123,8 @@ export const LoginPage = () => {
                 <Input
                   component={IMaskInput}
                   mask={PHONE_MASK}
-                  label="Номер телефона"
-                  placeholder="+7 (___) ___-__-__"
+                  label={phoneLabel}
+                  placeholder={phonePlaceholder}
                   value={phone}
                   onAccept={(value: unknown) => {
                     setPhone(String(value));
@@ -121,7 +139,7 @@ export const LoginPage = () => {
               ) : (
                 <>
                   <Text size="sm" fw={500}>
-                    Код подтверждения
+                    {codeTitle}
                   </Text>
                   <Text size="sm" c="dimmed">
                     Код отправлен на номер {`+7${phoneDigits}`}
@@ -155,7 +173,7 @@ export const LoginPage = () => {
                 loading={loading}
                 disabled={isPhoneStep ? !isPhoneValid : !isCodeValid}
               >
-                {isPhoneStep ? 'Отправить код' : 'Подтвердить'}
+                {LOGIN_STEP_ACTION_LABELS[step]}
               </Button>
 
               {!isPhoneStep ? (
@@ -172,7 +190,7 @@ export const LoginPage = () => {
                   disabled={loading}
                   styles={{ root: { alignSelf: 'center' } }}
                 >
-                  Вернуться к номеру телефона
+                  {backToPhone}
                 </Button>
               ) : null}
             </Stack>
@@ -180,10 +198,10 @@ export const LoginPage = () => {
 
           <Stack gap={4} pt="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
             <Text size="xs" c="dimmed" ta="center">
-              Это кабинет для мастеров и администраторов
+              {staffCabinet}
             </Text>
             <Text size="xs" c="dimmed" ta="center">
-              Для клиентов используйте мобильное приложение
+              {clientHint}
             </Text>
           </Stack>
         </Stack>

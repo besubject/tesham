@@ -14,18 +14,9 @@ import {
 } from '@mantine/core';
 import { apiClient } from '@mettig/shared';
 import type { BusinessDetailDto, StaffItemDto } from '@mettig/shared';
-import styles from './BusinessLinkPage.module.scss';
-
-const BASE_URL = 'https://mettig.ru';
-const SLUG_REGEX = /^[a-z0-9-]{3,50}$/;
-
-interface ProfileResponse {
-  profile: BusinessDetailDto;
-}
-
-interface StaffResponse {
-  staff: StaffItemDto[];
-}
+import styles from './index.module.scss';
+import { LINK_PAGE_BASE_URL, LINK_PAGE_SLUG_REGEX } from './constants';
+import { ProfileResponse, StaffResponse } from './types';
 
 export const BusinessLinkPage = () => {
   const [profile, setProfile] = useState<BusinessDetailDto | null>(null);
@@ -67,7 +58,7 @@ export const BusinessLinkPage = () => {
   const handleSaveSlug = async (e: React.FormEvent) => {
     e.preventDefault();
     const slug = slugInput.trim().toLowerCase();
-    if (!SLUG_REGEX.test(slug)) {
+    if (!LINK_PAGE_SLUG_REGEX.test(slug)) {
       setSlugError('Допускаются только строчные буквы a–z, цифры 0–9 и дефис (3–50 символов)');
       return;
     }
@@ -107,13 +98,15 @@ export const BusinessLinkPage = () => {
     );
   }
 
-  const businessUrl = profile.slug ? `${BASE_URL}/b/${profile.slug}` : null;
+  const businessUrl = profile.slug ? `${LINK_PAGE_BASE_URL}/b/${profile.slug}` : null;
 
   return (
     <div className={styles.linkPage}>
       <Stack gap="xs">
         <Title order={1}>Ссылка для записи</Title>
-        <Text c="dimmed">Поделитесь ссылкой с клиентами — они смогут записаться без приложения</Text>
+        <Text c="dimmed">
+          Поделитесь ссылкой с клиентами — они смогут записаться без приложения
+        </Text>
       </Stack>
 
       <Stack gap="lg">
@@ -153,7 +146,8 @@ export const BusinessLinkPage = () => {
               </Stack>
             ) : (
               <Alert color="yellow" variant="light">
-                Ссылка ещё не задана. Нажмите «Изменить адрес», чтобы задать уникальный адрес страницы.
+                Ссылка ещё не задана. Нажмите «Изменить адрес», чтобы задать уникальный адрес
+                страницы.
               </Alert>
             )}
 
@@ -168,13 +162,18 @@ export const BusinessLinkPage = () => {
               <Card withBorder radius="md" padding="md" className={styles.editSlugCard}>
                 <form onSubmit={handleSaveSlug}>
                   <Stack gap="md">
+                    <Text size="sm" c="dimmed">
+                      {LINK_PAGE_BASE_URL}/b/
+                      <Text span c="dark" fw={500}>
+                        {slugInput || 'my-barbershop'}
+                      </Text>
+                    </Text>
                     <TextInput
                       label="Адрес страницы"
                       description="Только строчные буквы a–z, цифры 0–9 и дефис (3–50 символов)"
                       placeholder="my-barbershop"
                       value={slugInput}
-                      onChange={e => setSlugInput(e.currentTarget.value.toLowerCase())}
-                      leftSection={<Text size="xs" c="dimmed">{BASE_URL}/b/</Text>}
+                      onChange={(e) => setSlugInput(e.currentTarget.value.toLowerCase())}
                       error={slugError}
                       disabled={slugSaving}
                       autoComplete="off"
@@ -207,13 +206,17 @@ export const BusinessLinkPage = () => {
                 Каждый мастер может поделиться персональной ссылкой — клиент сразу попадёт к нему
               </Text>
               <Stack gap="xs">
-                {staff.map(member => {
-                  const staffUrl = `${BASE_URL}/b/${profile.slug}/${member.id}`;
+                {staff.map((member) => {
+                  const staffUrl = `${LINK_PAGE_BASE_URL}/b/${profile.slug}/${member.id}`;
                   return (
                     <div key={member.id} className={styles.staffRow}>
                       <Stack gap={2} className={styles.staffInfo}>
-                        <Text size="sm" fw={600}>{member.name}</Text>
-                        <Text size="xs" c="dimmed">{staffUrl}</Text>
+                        <Text size="sm" fw={600}>
+                          {member.name}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {staffUrl}
+                        </Text>
                       </Stack>
                       <CopyButton value={staffUrl} timeout={2000}>
                         {({ copied, copy }) => (
