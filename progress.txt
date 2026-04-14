@@ -2439,3 +2439,52 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированы
 - **TASK-048** (UI walk-in в Mettig Business) — теперь backend готов
+
+---
+## TASK-048 — UI добавления оффлайн-клиента (walk-in) [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### packages/shared
+- `types/index.ts` — `BusinessBookingItemDto` обновлён: добавлено поле `source: string`, `client_name` и `client_phone` стали nullable (`string | null`)
+- `utils/track-event.ts` — EventType расширен: `walk_in_form_opened`, `walk_in_booking_created`
+- `i18n/ru.json` + `i18n/ce.json` — добавлен блок `businessApp.walkIn` (15 ключей: fab, title, selectMaster, selectService, clientName, clientPhone, timeNow, timeCustom, add, success, walkinBadge, serviceRequired и др.)
+
+#### apps/business (Mettig Business, React Native)
+- `BookingsScreen.tsx` — добавлен **FAB-кнопка «+ Клиент»** (зелёная pill-кнопка, position absolute, bottom-right)
+- `WalkInModal` — bottom sheet Modal с формой:
+  - Для admin: горизонтальный chip-picker мастера
+  - Для employee: read-only поле «Текущий мастер» (pre-filled первым из списка)
+  - Chip-picker услуги (обязательный)
+  - TextInput имени клиента (опционально)
+  - TextInput телефона (опционально, phone-pad keyboard)
+  - Переключатель «Сейчас / Другое время» + TextInput времени
+  - Кнопки «Отмена» / «Добавить» (loading state)
+  - Event tracking: `walk_in_form_opened`, `walk_in_booking_created`
+- `BookingCard` — отображает badge «Walk-in» (жёлтый) для `source === 'walk_in'`
+- `BookingDetailsScreen.tsx` — исправлен `client_name ?? 'Клиент'` и `client_phone ?? '—'` для nullable полей
+
+#### apps/web (веб-панель, React + Mantine)
+- `BookingsPage.tsx` — добавлена кнопка **«+ Клиент»** (teal, top-right рядом с заголовком)
+- `WalkInModal` — Mantine Modal с формой:
+  - `Select` мастера + `Select` услуги (данные из `/business/staff` и `/business/services`)
+  - `TextInput` имени и телефона (опционально)
+  - `Switch` «Указать конкретное время» + условный TextInput времени
+  - Event tracking через `useEffect` при `opened === true`
+- Booking card — Badge «Walk-in» (yellow) для `source === 'walk_in'`
+- Nullability: `client_name ?? 'Клиент'`, `client_phone ?? '—'`
+
+### Тесты
+- `npx tsc --noEmit` в apps/business/ — 0 ошибок ✅
+- `npx tsc --noEmit` в apps/web/ — 0 ошибок ✅
+- `npx eslint BookingsScreen.tsx` — 0 ошибок (0 warnings) ✅
+- `npm run lint` в apps/web/ — 0 ошибок (1 pre-existing warning в main.tsx) ✅
+- `npm test` в backend/ — 171/171 ✅
+- FAB «+ Клиент» видна на экране записей ✅
+- Модал открывается, форма заполняется, кнопка «Добавить» вызывает POST /business/bookings/walk-in ✅
+- Walk-in запись отображается в списке с badge «Walk-in» ✅
+- Event tracking: walk_in_form_opened, walk_in_booking_created ✅
+
+### Разблокированы задачи
+- Нет прямых зависимостей от TASK-048
