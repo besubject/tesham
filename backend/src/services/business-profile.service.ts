@@ -1,6 +1,7 @@
 import { db } from '../db';
 import { AppError } from '../middleware/error';
 import { trackEvent } from '../utils/track-event';
+import { transliterate } from '../utils/transliterate';
 import type { StaffRole } from '../db/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ export interface BusinessProfile {
   cancellation_threshold_minutes: number;
   reminder_settings: Record<string, unknown>;
   is_active: boolean;
+  slug: string | null;
 }
 
 export interface BusinessProfileUpdate {
@@ -30,6 +32,7 @@ export interface BusinessProfileUpdate {
   working_hours?: Record<string, unknown>;
   cancellation_threshold_minutes?: number;
   reminder_settings?: Record<string, unknown>;
+  slug?: string;
 }
 
 export interface StaffMember {
@@ -49,6 +52,10 @@ export interface ServiceItem {
   duration_minutes: number;
   is_active: boolean;
 }
+
+// ─── Slug validation ──────────────────────────────────────────────────────────
+
+const SLUG_REGEX = /^[a-z0-9-]{3,50}$/;
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
@@ -70,6 +77,37 @@ export class BusinessProfileService {
     }
     if (staff.role !== 'admin') {
       throw new AppError(403, 'Only admin can perform this action', 'FORBIDDEN');
+    }
+  }
+
+  // ─── Slug helpers ──────────────────────────────────────────────────────────
+
+  /**
+   * Generate a unique slug for the given business name.
+   * If the base slug is taken, appends -2, -3, etc.
+   * Pass excludeBusinessId to ignore the current business when checking uniqueness.
+   */
+  async generateUniqueSlug(name: string, excludeBusinessId?: string): Promise<string> {
+    const base = transliterate(name);
+    let candidate = base;
+    let counter = 2;
+
+    while (true) {
+      let qb = db
+        .selectFrom('businesses')
+        .select('id')
+        .where('slug', '=', candidate);
+
+      if (excludeBusinessId) {
+        qb = qb.where('id', '!=', excludeBusinessId);
+      }
+
+      const existing = await qb.executeTakeFirst();
+
+      if (!existing) return candidate;
+
+      candidate = `${base}-${counter}`;
+      counter++;
     }
   }
 
@@ -100,6 +138,7 @@ export class BusinessProfileService {
       cancellation_threshold_minutes: business.cancellation_threshold_minutes,
       reminder_settings: business.reminder_settings as Record<string, unknown>,
       is_active: business.is_active,
+      slug: business.slug,
     };
   }
 
@@ -131,6 +170,26 @@ export class BusinessProfileService {
     }
     if (update.reminder_settings !== undefined) {
       setValues.reminder_settings = JSON.stringify(update.reminder_settings);
+    }
+    if (update.slug !== undefined) {
+      if (!SLUG_REGEX.test(update.slug)) {
+        throw new AppError(
+          400,
+          'Slug must be 3-50 characters: lowercase letters, digits, hyphens only',
+          'VALIDATION_ERROR',
+        );
+      }
+      // Check uniqueness (excluding current business)
+      const existing = await db
+        .selectFrom('businesses')
+        .select('id')
+        .where('slug', '=', update.slug)
+        .where('id', '!=', businessId)
+        .executeTakeFirst();
+      if (existing) {
+        throw new AppError(409, 'This slug is already taken', 'SLUG_CONFLICT');
+      }
+      setValues.slug = update.slug;
     }
 
     await db

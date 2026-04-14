@@ -59,6 +59,10 @@ const updateProfileSchema = z.object({
   working_hours: z.record(z.string(), z.unknown()).optional(),
   cancellation_threshold_minutes: z.number().int().min(0).optional(),
   reminder_settings: z.record(z.string(), z.unknown()).optional(),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9-]{3,50}$/, 'slug must be 3-50 chars: a-z, 0-9, hyphen only')
+    .optional(),
 });
 
 const addStaffSchema = z.object({

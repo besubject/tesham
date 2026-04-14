@@ -1,5 +1,6 @@
 import { sql } from 'kysely';
 import { db } from './index';
+import { transliterate } from '../utils/transliterate';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -274,6 +275,23 @@ const BUSINESSES: BusinessSeed[] = [
   },
 ];
 
+// ─── Slug helpers ─────────────────────────────────────────────────────────────
+
+async function generateUniqueSlug(name: string, excludeId?: string): Promise<string> {
+  const base = transliterate(name);
+  let candidate = base;
+  let counter = 2;
+
+  while (true) {
+    let qb = db.selectFrom('businesses').select('id').where('slug', '=', candidate);
+    if (excludeId) qb = qb.where('id', '!=', excludeId);
+    const existing = await qb.executeTakeFirst();
+    if (!existing) return candidate;
+    candidate = `${base}-${counter}`;
+    counter++;
+  }
+}
+
 // ─── Seed businesses ──────────────────────────────────────────────────────────
 
 async function seedBusiness(
@@ -298,7 +316,21 @@ async function seedBusiness(
   if (existing) {
     businessId = existing.id;
     console.log(`  ↳ Бизнес уже существует: ${biz.name}`);
+
+    // Ensure slug is set for existing businesses
+    const bizRow = await db
+      .selectFrom('businesses')
+      .select('slug')
+      .where('id', '=', businessId)
+      .executeTakeFirst();
+
+    if (!bizRow?.slug) {
+      const slug = await generateUniqueSlug(biz.name, businessId);
+      await db.updateTable('businesses').set({ slug }).where('id', '=', businessId).execute();
+      console.log(`     └─ Slug назначен: ${slug}`);
+    }
   } else {
+    const slug = await generateUniqueSlug(biz.name);
     const inserted = await db
       .insertInto('businesses')
       .values({
@@ -315,12 +347,13 @@ async function seedBusiness(
         cancellation_threshold_minutes: 60,
         reminder_settings: JSON.stringify({ sms: true, push: true }),
         is_active: true,
+        slug,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
 
     businessId = inserted.id;
-    console.log(`  ✅ Бизнес: ${biz.name}`);
+    console.log(`  ✅ Бизнес: ${biz.name} (slug: ${slug})`);
   }
 
   // Seed staff
