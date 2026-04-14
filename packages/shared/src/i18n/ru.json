@@ -104,6 +104,24 @@
     "deleteConfirm": "Вы уверены? Все ваши данные будут удалены",
     "version": "Версия"
   },
+  "publicBooking": {
+    "anyMaster": "Любой мастер",
+    "yourName": "Ваше имя",
+    "yourNamePlaceholder": "Как вас зовут?",
+    "downloadApp": "Скачайте Mettig",
+    "downloadHint": "Управляйте всеми записями в одном приложении",
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "notFound": "Страница не найдена",
+    "notFoundMessage": "Бизнес не найден или недоступен",
+    "stepMaster": "Мастер",
+    "stepService": "Услуга",
+    "stepDatetime": "Дата и время",
+    "stepVerify": "Подтверждение",
+    "minDuration": "мин",
+    "bookingFor": "Запись к",
+    "codeFrom": "Код отправлен на"
+  },
   "businessApp": {
     "bookings": "Записи",
     "newBooking": "Новая запись",

@@ -6,6 +6,7 @@ import { LoginPage } from './pages/login/LoginPage';
 import { BookingsPage } from './pages/bookings/BookingsPage';
 import { StatsPage } from './pages/stats/StatsPage';
 import { ProfilePage } from './pages/profile/ProfilePage';
+import { PublicBookingPage } from './pages/public-booking/PublicBookingPage';
 import Layout from './components/Layout';
 
 const queryClient = new QueryClient();
@@ -50,6 +51,10 @@ function App(): React.JSX.Element {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
+          {/* Public routes — no auth required */}
+          <Route path="/b/:slug" element={<PublicBookingPage />} />
+          <Route path="/b/:slug/:staffSlug" element={<PublicBookingPage />} />
+
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>

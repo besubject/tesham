@@ -104,6 +104,24 @@
     "deleteConfirm": "Тешна хьо? Хьайн дерриге жамӀаш дӀаяйр ю",
     "version": "Версия"
   },
+  "publicBooking": {
+    "anyMaster": "Муьлха а мастер",
+    "yourName": "Хьайн цӀе",
+    "yourNamePlaceholder": "Хьо мила ву/ю?",
+    "downloadApp": "Mettig лацца",
+    "downloadHint": "Хьайн дерриге язбинарш цхьана приложенехь",
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "notFound": "АгӀо яц",
+    "notFoundMessage": "Компани яц я ца болу",
+    "stepMaster": "Мастер",
+    "stepService": "Тевнаш",
+    "stepDatetime": "Де а хан а",
+    "stepVerify": "Таро дан",
+    "minDuration": "мин",
+    "bookingFor": "Язбинарг",
+    "codeFrom": "Код дахийтина"
+  },
   "businessApp": {
     "bookings": "Язбинарш",
     "newBooking": "Керла язбинарг",

@@ -1,0 +1,197 @@
+.page {
+  min-height: 100vh;
+  background: #f8f9fa;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+  background: #1a1b1e;
+
+  @media (min-width: 480px) {
+    height: 260px;
+    border-radius: 0 0 24px 24px;
+  }
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.heroPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a1b1e 0%, #125643 100%);
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.1) 60%);
+}
+
+.heroContent {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+
+  > * + * {
+    margin-top: 4px;
+  }
+}
+
+/* ── Step bar ───────────────────────────────────────────────────────────── */
+
+.stepBar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fff;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dee2e6;
+  transition: background 0.2s;
+}
+
+.stepActive {
+  background: #12b886;
+}
+
+/* ── Content ────────────────────────────────────────────────────────────── */
+
+.content {
+  padding: 16px;
+}
+
+/* ── Staff cards ────────────────────────────────────────────────────────── */
+
+.staffCard {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #a9e5d4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  &.selected {
+    border-color: #12b886;
+    box-shadow: 0 2px 8px rgba(18, 184, 134, 0.2);
+  }
+}
+
+/* ── Service cards ──────────────────────────────────────────────────────── */
+
+.serviceCard {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #a9e5d4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  &.selected {
+    border-color: #12b886;
+    box-shadow: 0 2px 8px rgba(18, 184, 134, 0.2);
+  }
+}
+
+/* ── Date strip ─────────────────────────────────────────────────────────── */
+
+.dateStrip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.dayChip {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 20px;
+  background: #fff;
+  border: 2px solid #dee2e6;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #a9e5d4;
+  }
+
+  &.selected {
+    background: #12b886;
+    border-color: #12b886;
+    color: #fff;
+  }
+}
+
+/* ── Slot chips ─────────────────────────────────────────────────────────── */
+
+.slotChip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  border-radius: 8px;
+  background: #fff;
+  border: 2px solid #dee2e6;
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #a9e5d4;
+  }
+
+  &.selected {
+    background: #12b886;
+    border-color: #12b886;
+    color: #fff;
+  }
+}
