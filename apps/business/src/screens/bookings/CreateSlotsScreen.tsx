@@ -49,13 +49,14 @@ function generateUpcomingDates(days: number): Date[] {
 function generateTimeSlots(): string[] {
   const slots: string[] = [];
   for (let h = 8; h <= 21; h++) {
-    slots.push(`${String(h).padStart(2, '0')}:00`);
-    if (h < 21 || true) {
-      slots.push(`${String(h).padStart(2, '0')}:30`);
+    for (const m of ['00', '30']) {
+      const time = `${String(h).padStart(2, '0')}:${m}`;
+      if (time <= '21:30') {
+        slots.push(time);
+      }
     }
   }
-  // filter to max 21:30
-  return slots.filter((s) => s <= '21:30');
+  return slots;
 }
 
 const TIME_SLOTS = generateTimeSlots();
@@ -165,9 +166,7 @@ export function CreateSlotsScreen({ route, navigation }: Props): React.JSX.Eleme
                 style={[styles.chip, selectedStaffId === s.id && styles.chipActive]}
                 onPress={() => setSelectedStaffId(s.id)}
               >
-                <Text
-                  style={[styles.chipText, selectedStaffId === s.id && styles.chipTextActive]}
-                >
+                <Text style={[styles.chipText, selectedStaffId === s.id && styles.chipTextActive]}>
                   {s.name}
                 </Text>
               </TouchableOpacity>
@@ -230,7 +229,10 @@ export function CreateSlotsScreen({ route, navigation }: Props): React.JSX.Eleme
 
         {/* Submit button */}
         <TouchableOpacity
-          style={[styles.submitButton, (submitting || selectedTimes.size === 0) && styles.submitButtonDisabled]}
+          style={[
+            styles.submitButton,
+            (submitting || selectedTimes.size === 0) && styles.submitButtonDisabled,
+          ]}
           onPress={() => void handleSubmit()}
           disabled={submitting || selectedTimes.size === 0}
         >

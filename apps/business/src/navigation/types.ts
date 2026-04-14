@@ -27,7 +27,6 @@ export type BookingsStackParamList = {
   BookingsList: undefined;
   BookingDetails: { bookingId: string };
   CreateSlots: { staffId?: string } | undefined;
-  Chat: { bookingId: string; clientName: string; isReadOnly: boolean };
 };
 
 // Stats stack navigator params
@@ -58,11 +57,10 @@ export type RootTabScreenProps<T extends keyof RootTabParamList> = BottomTabScre
   T
 >;
 
-export type BookingsStackScreenProps<T extends keyof BookingsStackParamList> =
-  CompositeScreenProps<
-    NativeStackScreenProps<BookingsStackParamList, T>,
-    BottomTabScreenProps<RootTabParamList>
-  >;
+export type BookingsStackScreenProps<T extends keyof BookingsStackParamList> = CompositeScreenProps<
+  NativeStackScreenProps<BookingsStackParamList, T>,
+  BottomTabScreenProps<RootTabParamList>
+>;
 
 export type StatsStackScreenProps<T extends keyof StatsStackParamList> = CompositeScreenProps<
   NativeStackScreenProps<StatsStackParamList, T>,
@@ -78,6 +76,8 @@ export type BusinessProfileStackScreenProps<T extends keyof BusinessProfileStack
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace ReactNavigation {
+    // React Navigation requires interface merging here.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface RootParamList extends RootStackParamList {}
   }
 }

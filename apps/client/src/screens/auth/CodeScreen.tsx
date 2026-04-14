@@ -45,8 +45,7 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
     if (full) {
       void handleVerify(code.join(''));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
+  }, [code, handleVerify]);
 
   const handleVerify = useCallback(
     async (codeString: string) => {

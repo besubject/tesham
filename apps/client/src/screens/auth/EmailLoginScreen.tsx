@@ -34,8 +34,7 @@ export function EmailLoginScreen({ navigation, route }: Props): React.JSX.Elemen
     if (full) {
       void handleVerify(code.join(''));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
+  }, [code, handleVerify]);
 
   const handleVerify = useCallback(
     async (codeString: string) => {

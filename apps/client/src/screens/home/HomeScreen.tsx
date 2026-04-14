@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 import React, {
   useCallback,
   useEffect,
@@ -43,17 +44,27 @@ import {
 import type { HomeStackScreenProps } from '../../navigation/types';
 
 // MapLibre требует нативной сборки — в Expo Go нативный модуль не зарегистрирован.
-// Проверяем appOwnership ДО require, чтобы не грузить модуль вообще.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ExpoConstants = require('expo-constants').default as { appOwnership?: string };
-const isExpoGo = ExpoConstants.appOwnership === 'expo';
+// Проверяем appOwnership заранее и загружаем модуль только в нативной сборке.
+const isExpoGo = Constants.appOwnership === 'expo';
 
 type ML = typeof import('@maplibre/maplibre-react-native');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-let ml: ML | null = null;
-if (!isExpoGo) {
-  try { ml = require('@maplibre/maplibre-react-native') as ML; ml.setAccessToken(null); } catch { /* ignore */ }
-}
+type MapRefHandle = {
+  getZoom?: () => Promise<number>;
+};
+type CameraRefHandle = {
+  setCamera?: (config: {
+    centerCoordinate: GeoJSON.Position;
+    zoomLevel: number;
+    animationDuration: number;
+  }) => void;
+  flyTo?: (coords: GeoJSON.Position, duration?: number) => void;
+};
+type ShapePressEvent = {
+  features: Array<{
+    properties?: Record<string, unknown>;
+    geometry: GeoJSON.Point;
+  }>;
+};
 
 type Props = HomeStackScreenProps<'HomeScreen'>;
 type SheetState = 'peek' | 'half' | 'full';
@@ -129,6 +140,7 @@ const skeletonStyles = StyleSheet.create({
 
 export function HomeScreen({ navigation }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  const [mapLibre, setMapLibre] = useState<ML | null>(null);
 
   // ── Размеры контейнера ───────────────────────────────────────────────────────
   const containerH = useRef(Dimensions.get('window').height);
@@ -142,10 +154,8 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   const listScrollY = useRef(0);
 
   // ── Карта ────────────────────────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cameraRef = useRef<any>(null);
+  const mapRef = useRef<MapRefHandle | null>(null);
+  const cameraRef = useRef<CameraRefHandle | null>(null);
   const [userLocation, setUserLocation] = useState<GeoJSON.Position | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessListItemDto | null>(null);
   const [geoJSON, setGeoJSON] = useState<GeoJSON.FeatureCollection<GeoJSON.Point>>(
@@ -227,9 +237,30 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
           }).start();
         },
       }),
-    [], // eslint-disable-line react-hooks/exhaustive-deps
-    // sheetAnim — стабильный Animated.Value, все остальное — refs
+    [sheetAnim],
   );
+
+  useEffect(() => {
+    if (isExpoGo) return;
+
+    let cancelled = false;
+
+    void import('@maplibre/maplibre-react-native')
+      .then((module) => {
+        if (cancelled) return;
+        module.setAccessToken(null);
+        setMapLibre(module);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMapLibre(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ── Клавиатура ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -246,38 +277,6 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   }, [snapTo, sheetAnim]);
 
   // ── Инициализация ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    void trackAppOpen();
-    void initLocation();
-    apiClient
-      .get<CategoryDto[]>('/categories')
-      .then((res) => setCategories(res.data))
-      .catch(() => undefined);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function initLocation(): Promise<void> {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    let lat = GROZNY_LAT;
-    let lng = GROZNY_LNG;
-
-    if (status === 'granted') {
-      try {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        lat = loc.coords.latitude;
-        lng = loc.coords.longitude;
-        const coords: GeoJSON.Position = [lng, lat];
-        setUserLocation(coords);
-        setListLocation({ lat, lng });
-        cameraRef.current?.flyTo(coords, 600);
-      } catch {
-        // Нет геолокации — показываем Грозный
-      }
-    }
-    await fetchMapBusinesses(lat, lng);
-  }
-
   const fetchMapBusinesses = useCallback(
     async (lat: number, lng: number): Promise<void> => {
       setIsMapLoading(true);
@@ -297,6 +296,39 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
     },
     [],
   );
+
+  const initLocation = useCallback(async (): Promise<void> => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    let lat = GROZNY_LAT;
+    let lng = GROZNY_LNG;
+
+    if (status === 'granted') {
+      try {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+        const coords: GeoJSON.Position = [lng, lat];
+        setUserLocation(coords);
+        setListLocation({ lat, lng });
+        cameraRef.current?.flyTo?.(coords, 600);
+      } catch {
+        // Нет геолокации — показываем Грозный
+      }
+    }
+    await fetchMapBusinesses(lat, lng);
+  }, [fetchMapBusinesses]);
+
+  // ── Инициализация ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    void trackAppOpen();
+    void initLocation();
+    apiClient
+      .get<CategoryDto[]>('/categories')
+      .then((res) => setCategories(res.data))
+      .catch(() => undefined);
+  }, [initLocation]);
 
   // ── Поиск ───────────────────────────────────────────────────────────────────
   const handleSearchChange = useCallback((text: string) => {
@@ -369,16 +401,15 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
 
   // ── Взаимодействие с картой ───────────────────────────────────────────────────
   const handleShapePress = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async (event: any) => {
+    async (event: ShapePressEvent) => {
       const feature = event.features[0];
       if (!feature?.properties) return;
       const props = feature.properties as Record<string, unknown>;
 
       if (props['cluster'] === true) {
         const coords = (feature.geometry as GeoJSON.Point).coordinates;
-        const zoom = (await mapRef.current?.getZoom()) ?? DEFAULT_ZOOM;
-        cameraRef.current?.setCamera({
+        const zoom = (await mapRef.current?.getZoom?.()) ?? DEFAULT_ZOOM;
+        cameraRef.current?.setCamera?.({
           centerCoordinate: coords,
           zoomLevel: zoom + 2,
           animationDuration: 400,
@@ -405,7 +436,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   }, [selectedBusiness, snapTo]);
 
   const handleCenterUser = useCallback(() => {
-    if (userLocation) cameraRef.current?.flyTo(userLocation, 600);
+    if (userLocation) cameraRef.current?.flyTo?.(userLocation, 600);
   }, [userLocation]);
 
   const handleOpenBusiness = useCallback(
@@ -468,8 +499,8 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
       }}
     >
       {/* ── Карта (фон) — только в нативной сборке ── */}
-      {ml != null ? (
-        <ml.MapView
+      {mapLibre != null ? (
+        <mapLibre.MapView
           ref={mapRef}
           style={StyleSheet.absoluteFill}
           mapStyle={OSM_STYLE_URL}
@@ -477,13 +508,13 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
           attributionEnabled={false}
           onPress={handleMapPress}
         >
-          <ml.Camera
+          <mapLibre.Camera
             ref={cameraRef}
             defaultSettings={{ centerCoordinate: GROZNY_COORDS, zoomLevel: DEFAULT_ZOOM }}
           />
-          {userLocation != null && <ml.UserLocation visible />}
+          {userLocation != null && <mapLibre.UserLocation visible />}
 
-          <ml.ShapeSource
+          <mapLibre.ShapeSource
             id="businesses"
             shape={geoJSON}
             cluster
@@ -491,7 +522,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
             clusterMaxZoomLevel={14}
             onPress={handleShapePress}
           >
-            <ml.CircleLayer
+            <mapLibre.CircleLayer
               id="clusters"
               filter={['has', 'point_count']}
               style={{
@@ -500,7 +531,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
                 circleOpacity: 0.9,
               }}
             />
-            <ml.SymbolLayer
+            <mapLibre.SymbolLayer
               id="cluster-count"
               filter={['has', 'point_count']}
               style={{
@@ -511,7 +542,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
                 textAllowOverlap: true,
               }}
             />
-            <ml.CircleLayer
+            <mapLibre.CircleLayer
               id="unclustered-point"
               filter={['!', ['has', 'point_count']]}
               style={{
@@ -521,7 +552,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
                 circleStrokeColor: colors.white,
               }}
             />
-            <ml.SymbolLayer
+            <mapLibre.SymbolLayer
               id="unclustered-icon"
               filter={['!', ['has', 'point_count']]}
               style={{
@@ -531,8 +562,8 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
                 textAllowOverlap: true,
               }}
             />
-          </ml.ShapeSource>
-        </ml.MapView>
+          </mapLibre.ShapeSource>
+        </mapLibre.MapView>
       ) : (
         /* Expo Go — показываем фон вместо карты */
         <View style={[StyleSheet.absoluteFill, styles.mapPlaceholder]} />
