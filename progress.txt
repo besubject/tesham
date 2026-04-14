@@ -2306,3 +2306,32 @@ TASK-041 — E2E тест основного флоу — DONE
 
 **Разблокированы задачи:**
 - TASK-044 (Backend API: публичная запись через ссылку) — зависит от TASK-043
+
+---
+## TASK-044 — DONE [2026-04-14]
+
+**Задача:** Backend API: публичная запись через ссылку
+
+**Что сделано:**
+- `GET /public/business/:slug` — возвращает карточку бизнеса с мастерами, услугами, рейтингом (без авторизации)
+- `GET /public/business/:slug/slots?staff_id=&date=` — доступные слоты с фильтрами (без авторизации)
+- `POST /public/bookings` — создание записи с SMS-верификацией в теле запроса (`{ slug, staff_id, service_id, slot_id, phone, code, name }`)
+- `AuthService.verifyOtpGetUserId(phone, code, name?)` — новый метод: проверяет OTP через существующий `otpStore`, создаёт/находит пользователя, возвращает `user_id` без выдачи JWT
+- `CreateBookingParams.source` — добавлен опциональный параметр `'app' | 'walk_in' | 'link'` (default `'app'`)
+- `PublicService` — новый сервис (`services/public.service.ts`)
+- `publicRateLimit` — отдельный лимит 30 req/min для `/public/*`
+- Event tracking: `booking_via_link` с `{ business_id, slug, staff_id }`
+- Zod-валидация всех параметров (params, query, body)
+
+**Результаты тестирования:**
+- GET /public/business/barbershop-chechnya → 200 с данными ✅
+- GET /public/business/nonexistent → 404 ✅
+- GET /public/business/barbershop-chechnya/slots → 612 слотов ✅
+- POST /public/bookings с неверным кодом → 401 INVALID_CODE ✅
+- POST /public/bookings с валидным кодом → 201, source='link' в БД ✅
+- booking_via_link записан в events ✅
+- npm run lint — 0 errors (17 pre-existing warnings) ✅
+- npm test — 171/171 ✅
+
+**Разблокированы задачи:**
+- TASK-045 (веб-страница публичной записи) — зависела от TASK-044
