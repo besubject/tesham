@@ -7,6 +7,7 @@ import {
   deleteBusinessSlot,
   getBusinessBookings,
   updateBusinessBookingStatus,
+  createWalkInBooking,
 } from '../controllers/business-booking.controller';
 import {
   getBusinessProfile,
@@ -48,6 +49,20 @@ const bookingsQuerySchema = z.object({
 
 const updateBookingStatusSchema = z.object({
   status: z.enum(['cancelled', 'completed', 'no_show']),
+});
+
+const walkInBookingSchema = z.object({
+  staff_id: z.string().uuid(),
+  service_id: z.string().uuid(),
+  client_name: z.string().min(1).max(200).optional(),
+  client_phone: z
+    .string()
+    .regex(/^\+7\d{10}$/, 'client_phone must be in format +7XXXXXXXXXX')
+    .optional(),
+  time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, 'time must be HH:MM')
+    .optional(),
 });
 
 const updateProfileSchema = z.object({
@@ -137,6 +152,9 @@ router.delete('/slots/:id', deleteBusinessSlot);
 
 // GET /business/bookings — list bookings (RBAC: admin=all, employee=own)
 router.get('/bookings', validate({ query: bookingsQuerySchema }), getBusinessBookings);
+
+// POST /business/bookings/walk-in — create walk-in (offline) booking
+router.post('/bookings/walk-in', validate({ body: walkInBookingSchema }), createWalkInBooking);
 
 // PATCH /business/bookings/:id — update booking status
 router.patch(
