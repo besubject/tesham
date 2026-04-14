@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { apiClient, trackEvent } from '@mettig/shared';
-import type { BusinessBookingItemDto, BookingStatus, ServiceItemDto, StaffItemDto } from '@mettig/shared';
+import type { BusinessBookingItemDto, BookingStatus, ServiceItemDto, StaffItemDto, ChatUnreadCountDto } from '@mettig/shared';
 import type { BookingsStackScreenProps } from '../../navigation/types';
 import { tokenStorage } from '@mettig/shared';
 
@@ -90,10 +90,12 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
 interface BookingCardProps {
   booking: BusinessBookingItemDto;
   isAdmin: boolean;
+  unreadCount: number;
   onPress: () => void;
+  onOpenChat: () => void;
 }
 
-function BookingCard({ booking, isAdmin, onPress }: BookingCardProps): React.JSX.Element {
+function BookingCard({ booking, isAdmin, unreadCount, onPress, onOpenChat }: BookingCardProps): React.JSX.Element {
   const color = STATUS_COLORS[booking.status];
   const isWalkIn = booking.source === 'walk_in';
   return (
@@ -122,6 +124,28 @@ function BookingCard({ booking, isAdmin, onPress }: BookingCardProps): React.JSX
             </Text>
           )}
         </View>
+        {booking.status === 'confirmed' && (
+          <View style={styles.cardChatRow}>
+            <TouchableOpacity
+              style={styles.chatBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                onOpenChat();
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Открыть чат"
+            >
+              <Text style={styles.chatBtnText}>💬 Чат</Text>
+              {unreadCount > 0 && (
+                <View style={styles.chatBadge}>
+                  <Text style={styles.chatBadgeText}>
+                    {unreadCount > 99 ? '99+' : String(unreadCount)}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -378,6 +402,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [walkInVisible, setWalkInVisible] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   // Resolve role once on mount
   useEffect(() => {
@@ -427,6 +452,29 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
     void fetchBookings();
   }, [fetchBookings]);
 
+  // Fetch unread counts for confirmed bookings
+  useEffect(() => {
+    const confirmed = bookings.filter((b) => b.status === 'confirmed');
+    if (confirmed.length === 0) return;
+
+    void (async () => {
+      const results = await Promise.allSettled(
+        confirmed.map((b) =>
+          apiClient
+            .get<ChatUnreadCountDto>(`/bookings/${b.id}/messages/unread`)
+            .then((r) => ({ id: b.id, count: r.data.unread_count })),
+        ),
+      );
+      const counts: Record<string, number> = {};
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          counts[r.value.id] = r.value.count;
+        }
+      }
+      setUnreadCounts(counts);
+    })();
+  }, [bookings]);
+
   const handleCreateSlots = useCallback(() => {
     navigation.navigate('CreateSlots', undefined);
   }, [navigation]);
@@ -434,6 +482,18 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
   const handleBookingPress = useCallback(
     (bookingId: string) => {
       navigation.navigate('BookingDetails', { bookingId });
+    },
+    [navigation],
+  );
+
+  const handleOpenChat = useCallback(
+    (booking: BusinessBookingItemDto) => {
+      const isReadOnly = booking.status !== 'confirmed';
+      navigation.navigate('Chat', {
+        bookingId: booking.id,
+        clientName: booking.client_name ?? 'Клиент',
+        isReadOnly,
+      });
     },
     [navigation],
   );
@@ -565,7 +625,9 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
             <BookingCard
               booking={item}
               isAdmin={isAdmin}
+              unreadCount={unreadCounts[item.id] ?? 0}
               onPress={() => handleBookingPress(item.id)}
+              onOpenChat={() => handleOpenChat(item)}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -800,6 +862,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8A8A86',
     fontStyle: 'italic',
+  },
+  cardChatRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+  },
+  chatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F4EF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    gap: 4,
+  },
+  chatBtnText: {
+    fontSize: 12,
+    color: '#1D6B4F',
+    fontWeight: '600',
+  },
+  chatBadge: {
+    backgroundColor: '#C4462A',
+    borderRadius: 999,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  chatBadgeText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   // States
   centered: {

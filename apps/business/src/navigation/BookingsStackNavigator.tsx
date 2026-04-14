@@ -3,6 +3,7 @@ import React from 'react';
 import { BookingsScreen } from '../screens/bookings/BookingsScreen';
 import { BookingDetailsScreen } from '../screens/bookings/BookingDetailsScreen';
 import { CreateSlotsScreen } from '../screens/bookings/CreateSlotsScreen';
+import { ChatScreen } from '../screens/bookings/ChatScreen';
 import type { BookingsStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<BookingsStackParamList>();
@@ -13,6 +14,7 @@ export function BookingsStackNavigator(): React.JSX.Element {
       <Stack.Screen name="BookingsList" component={BookingsScreen} />
       <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
       <Stack.Screen name="CreateSlots" component={CreateSlotsScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }
