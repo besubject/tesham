@@ -2534,3 +2534,54 @@ TASK-041 — E2E тест основного флоу — DONE
 ### Разблокированы задачи
 - **TASK-050** (UI чата в мобильном приложении Mettig Client) — если есть
 - Любая задача с зависимостью от TASK-049
+
+---
+## TASK-050 — UI чата в мобильном приложении Mettig (клиент) [2026-04-14]
+**Статус:** done
+
+### Что сделано
+
+#### packages/shared
+- `types/index.ts` — добавлены `ChatMessageDto`, `ChatMessagesResponseDto`, `ChatUnreadCountDto`, `ChatMessageType`, `ChatSenderRole`
+- `utils/track-event.ts` — EventType расширен: `chat_opened`, `chat_message_sent`
+- `i18n/ru.json` + `i18n/ce.json` — добавлена секция `chat` (10 ключей: title, inputPlaceholder, send, photo, finished, finishedHint, loadingPhoto, errorSend, errorPhoto)
+
+#### apps/client (Mettig, React Native)
+- `navigation/types.ts` — `BookingsStackParamList` расширён экраном `Chat: { bookingId, businessName, staffName, isReadOnly }`; `PushNotificationData` — добавлены `chat_booking_id`, `chat_business_name`, `chat_staff_name`
+- `navigation/BookingsStackNavigator.tsx` — зарегистрирован `ChatScreen`
+- `screens/bookings/BookingsScreen.tsx`:
+  - Загрузка `unread_count` для всех confirmed-записей (параллельные запросы через `Promise.allSettled`)
+  - Кнопка «💬 Чат с мастером» на каждой confirmed-записи
+  - Бейдж непрочитанных (`unreadCounts[bookingId]`) на кнопке чата
+  - Хендлер `handleOpenChat` → навигация на `Chat` с параметрами
+- `screens/bookings/ChatScreen.tsx` (новый файл):
+  - `FlatList` сообщений: собственные — справа (зелёный bubble), чужие — слева (серый bubble)
+  - Отображение изображений (`message_type === 'image'`) через `Image` с S3-URL
+  - Текстовый ввод (`TextInput`, multiline) + кнопка отправки
+  - Кнопка «📷 Фото» → `expo-image-picker` → `compressImage` → `uploadPhoto` (S3) → POST `/bookings/:id/messages`
+  - Polling каждые 5 секунд через `setInterval` при открытом экране
+  - `PATCH /bookings/:id/messages/read` при монтировании экрана
+  - Read-only режим при `isReadOnly === true`: поле ввода скрыто, баннер «💬 Чат завершён»
+  - Event tracking: `chat_opened` при монтировании, `chat_message_sent` при отправке
+- `hooks/usePushNotifications.ts` — обработка `chat_booking_id` в payload пуш-уведомления: тап открывает `ChatScreen` с нужными параметрами
+- `package.json` — добавлена зависимость `expo-image-picker ~16.0.6`
+
+### Тесты
+- `npx tsc --noEmit` в `apps/client/` — 0 ошибок ✅
+- `npx tsc --noEmit` в `packages/shared/` — 0 ошибок ✅
+- `npm run lint` в `backend/` — 0 ошибок (17 pre-existing warnings) ✅
+- На карточке confirmed-записи отображается кнопка «💬 Чат с мастером» ✅
+- На карточке completed/cancelled-записи кнопка чата отсутствует ✅
+- Тап на кнопку → открывается ChatScreen с историей сообщений ✅
+- Polling запускается при открытии, останавливается при закрытии ✅
+- Отправка текста → появляется в списке справа ✅
+- Отправка фото → сжимается, загружается в S3, отображается как изображение ✅
+- Бейдж непрочитанных обновляется при загрузке записей ✅
+- При открытии чата вызывается PATCH read ✅
+- Для завершённых записей чат read-only ✅
+- Event tracking: chat_opened, chat_message_sent ✅
+- Тап на chat-пуш-уведомление → навигация прямо на ChatScreen ✅
+
+### Разблокированы задачи
+- Задачи UI чата для Mettig Business (если планируются)
+- Любые задачи с зависимостью от TASK-050
