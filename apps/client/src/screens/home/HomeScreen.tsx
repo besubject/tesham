@@ -39,6 +39,7 @@ import {
   colors,
   PaginatedResponseDto,
   RatingBadge,
+  resolveCategoryIcon,
   SearchBar,
   shadow,
   spacing,
@@ -84,7 +85,7 @@ function buildGeoJSON(
         properties: {
           id: b.id,
           name: b.name,
-          category_icon: b.category_icon,
+          category_icon: resolveCategoryIcon(b.category_icon),
           category_name_ru: b.category_name_ru,
           avg_rating: b.avg_rating,
           review_count: b.review_count,
@@ -250,20 +251,6 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
     };
   }, []);
 
-  // ── Клавиатура ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardWillShow', (e) => {
-      const kbH = e.endCoordinates.height;
-      const targetY = containerH.current - kbH - PEEK_H - 8;
-      sheetAnim.setValue(Math.max(0, targetY));
-      sheetOffset.current = Math.max(0, targetY);
-    });
-    const hide = Keyboard.addListener('keyboardWillHide', () => {
-      snapTo('full');
-    });
-    return () => { show.remove(); hide.remove(); };
-  }, [snapTo, sheetAnim]);
-
   // ── Инициализация ────────────────────────────────────────────────────────────
   const fetchMapBusinesses = useCallback(
     async (lat: number, lng: number): Promise<void> => {
@@ -326,7 +313,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   }, []);
 
   const handleSearchFocus = useCallback(() => {
-    if (sheetStateRef.current !== 'full') snapTo('full');
+    if (sheetStateRef.current === 'peek') snapTo('half');
   }, [snapTo]);
 
   // ── Список бизнесов ──────────────────────────────────────────────────────────
@@ -630,7 +617,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
                 />
               ) : (
                 <View style={[styles.miniCardPhoto, styles.miniCardPhotoPlaceholder]}>
-                  <Text style={styles.miniCardEmoji}>{selectedBusiness.category_icon}</Text>
+                  <Text style={styles.miniCardEmoji}>{resolveCategoryIcon(selectedBusiness.category_icon) ?? '🏢'}</Text>
                 </View>
               )}
               <View style={styles.miniCardBody}>
@@ -873,11 +860,14 @@ const styles = StyleSheet.create({
   // ── Категории
   categoriesRow: {
     flexGrow: 0,
-    marginBottom: spacing.sm,
+    minHeight: 46,
+    marginBottom: spacing.md,
   },
   categoriesContent: {
     paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
     gap: spacing.sm,
+    alignItems: 'center',
   },
   // ── Список
   listContent: {
@@ -888,7 +878,7 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     marginBottom: spacing.md,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   cardWrapper: {
     marginBottom: spacing.md,

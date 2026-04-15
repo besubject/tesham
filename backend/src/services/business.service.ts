@@ -1,6 +1,12 @@
 import { sql } from 'kysely';
 import { db } from '../db';
 import { AppError } from '../middleware/error';
+import {
+  buildSearchQueryVariants,
+  buildSearchTokenVariants,
+  SQL_CYRILLIC_SEARCH_CHARS,
+  SQL_LATIN_SEARCH_CHARS,
+} from '../utils/search-normalize';
 import { trackEvent } from '../utils/track-event';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +36,8 @@ export interface BusinessListItem {
   avg_rating: number | null;
   review_count: number;
   distance_m: number | null;
+  search_match_type?: 'business' | 'staff' | 'service' | null;
+  search_match_value?: string | null;
 }
 
 export interface BusinessDetail extends BusinessListItem {
@@ -58,6 +66,332 @@ interface ServiceItem {
   duration_minutes: number;
 }
 
+type SearchMatchType = BusinessListItem['search_match_type'];
+
+function buildLatinSearchExpr(columnRef: string) {
+  return sql<string>`translate(lower(${sql.ref(columnRef)}), ${SQL_CYRILLIC_SEARCH_CHARS}, ${SQL_LATIN_SEARCH_CHARS})`;
+}
+
+function buildOrCondition(conditions: Array<ReturnType<typeof sql<boolean>>>) {
+  if (conditions.length === 0) return sql<boolean>`false`;
+  return sql<boolean>`(${sql.join(conditions, sql` OR `)})`;
+}
+
+function buildTextMatchCondition(
+  columnRef: string,
+  rawVariants: string[],
+  latinVariants: string[],
+  mode: 'exact' | 'prefix' | 'contains',
+) {
+  const columnExpr = sql.ref(columnRef);
+  const latinExpr = buildLatinSearchExpr(columnRef);
+  const rawConditions = rawVariants.map((variant) => {
+    if (mode === 'exact') return sql<boolean>`${columnExpr} ILIKE ${variant}`;
+    if (mode === 'prefix') return sql<boolean>`${columnExpr} ILIKE ${`${variant}%`}`;
+    return sql<boolean>`${columnExpr} ILIKE ${`%${variant}%`}`;
+  });
+  const latinConditions = latinVariants.map((variant) => {
+    if (mode === 'exact') return sql<boolean>`${latinExpr} ILIKE ${variant}`;
+    if (mode === 'prefix') return sql<boolean>`${latinExpr} ILIKE ${`${variant}%`}`;
+    return sql<boolean>`${latinExpr} ILIKE ${`%${variant}%`}`;
+  });
+
+  return buildOrCondition([...rawConditions, ...latinConditions]);
+}
+
+function buildExistsTextMatchCondition(
+  tableName: 'staff' | 'services',
+  businessIdRef: string,
+  columnRef: 'staff.name' | 'services.name',
+  rawVariants: string[],
+  latinVariants: string[],
+  mode: 'exact' | 'prefix' | 'contains',
+) {
+  const textCondition = buildTextMatchCondition(columnRef, rawVariants, latinVariants, mode);
+
+  return sql<boolean>`EXISTS (
+    SELECT 1
+    FROM ${sql.table(tableName)}
+    WHERE ${sql.ref(`${tableName}.business_id`)} = ${sql.ref(businessIdRef)}
+      AND ${sql.ref(`${tableName}.is_active`)} = true
+      AND ${textCondition}
+  )`;
+}
+
+function buildSearchValueExpr(
+  tableName: 'staff' | 'services',
+  businessIdRef: string,
+  columnRef: 'staff.name' | 'services.name',
+  rawVariants: string[],
+  latinVariants: string[],
+) {
+  const textCondition = buildTextMatchCondition(columnRef, rawVariants, latinVariants, 'contains');
+
+  return sql<string | null>`(
+    SELECT ${sql.ref(columnRef)}
+    FROM ${sql.table(tableName)}
+    WHERE ${sql.ref(`${tableName}.business_id`)} = ${sql.ref(businessIdRef)}
+      AND ${sql.ref(`${tableName}.is_active`)} = true
+      AND ${textCondition}
+    ORDER BY ${sql.ref(columnRef)} ASC
+    LIMIT 1
+  )`;
+}
+
+function buildBusinessSearchCondition(
+  businessIdRef: string,
+  businessNameRef: string,
+  query: string,
+) {
+  const tokens = buildSearchTokenVariants(query);
+
+  if (tokens.length === 0) return null;
+
+  const businessLatinExpr = buildLatinSearchExpr(businessNameRef);
+  const serviceLatinExpr = buildLatinSearchExpr('services.name');
+  const staffLatinExpr = buildLatinSearchExpr('staff.name');
+
+  const tokenConditions = tokens.map((token) => {
+    const rawMatches = token.rawVariants.map((variant) => {
+      const likePattern = `%${variant}%`;
+
+      return sql<boolean>`(
+        ${sql.ref(businessNameRef)} ILIKE ${likePattern}
+        OR EXISTS (
+          SELECT 1
+          FROM services
+          WHERE services.business_id = ${sql.ref(businessIdRef)}
+            AND services.is_active = true
+            AND services.name ILIKE ${likePattern}
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM staff
+          WHERE staff.business_id = ${sql.ref(businessIdRef)}
+            AND staff.is_active = true
+            AND staff.name ILIKE ${likePattern}
+        )
+      )`;
+    });
+
+    const latinMatches = token.latinVariants.map((variant) => {
+      const likePattern = `%${variant}%`;
+
+      return sql<boolean>`(
+        ${businessLatinExpr} ILIKE ${likePattern}
+        OR EXISTS (
+          SELECT 1
+          FROM services
+          WHERE services.business_id = ${sql.ref(businessIdRef)}
+            AND services.is_active = true
+            AND ${serviceLatinExpr} ILIKE ${likePattern}
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM staff
+          WHERE staff.business_id = ${sql.ref(businessIdRef)}
+            AND staff.is_active = true
+            AND ${staffLatinExpr} ILIKE ${likePattern}
+        )
+      )`;
+    });
+
+    return sql<boolean>`(${sql.join([...rawMatches, ...latinMatches], sql` OR `)})`;
+  });
+
+  return sql<boolean>`(${sql.join(tokenConditions, sql` AND `)})`;
+}
+
+function buildBusinessSearchRank(
+  businessIdRef: string,
+  businessNameRef: string,
+  query: string,
+) {
+  const queryVariants = buildSearchQueryVariants(query);
+
+  if (queryVariants.rawVariants.length === 0 && queryVariants.latinVariants.length === 0) {
+    return null;
+  }
+
+  const businessExact = buildTextMatchCondition(
+    businessNameRef,
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'exact',
+  );
+  const businessPrefix = buildTextMatchCondition(
+    businessNameRef,
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'prefix',
+  );
+  const businessContains = buildTextMatchCondition(
+    businessNameRef,
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+  const staffExact = buildExistsTextMatchCondition(
+    'staff',
+    businessIdRef,
+    'staff.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'exact',
+  );
+  const staffPrefix = buildExistsTextMatchCondition(
+    'staff',
+    businessIdRef,
+    'staff.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'prefix',
+  );
+  const staffContains = buildExistsTextMatchCondition(
+    'staff',
+    businessIdRef,
+    'staff.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+  const servicesExact = buildExistsTextMatchCondition(
+    'services',
+    businessIdRef,
+    'services.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'exact',
+  );
+  const servicesPrefix = buildExistsTextMatchCondition(
+    'services',
+    businessIdRef,
+    'services.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'prefix',
+  );
+  const servicesContains = buildExistsTextMatchCondition(
+    'services',
+    businessIdRef,
+    'services.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+
+  return sql<number>`CASE
+    WHEN ${businessExact} THEN 300
+    WHEN ${businessPrefix} THEN 250
+    WHEN ${businessContains} THEN 200
+    WHEN ${staffExact} THEN 150
+    WHEN ${staffPrefix} THEN 140
+    WHEN ${staffContains} THEN 130
+    WHEN ${servicesExact} THEN 120
+    WHEN ${servicesPrefix} THEN 110
+    WHEN ${servicesContains} THEN 100
+    ELSE 0
+  END`;
+}
+
+function buildBusinessSearchMatchType(
+  businessIdRef: string,
+  businessNameRef: string,
+  query: string,
+) {
+  const queryVariants = buildSearchQueryVariants(query);
+
+  if (queryVariants.rawVariants.length === 0 && queryVariants.latinVariants.length === 0) {
+    return null;
+  }
+
+  const businessMatch = buildTextMatchCondition(
+    businessNameRef,
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+  const staffMatch = buildExistsTextMatchCondition(
+    'staff',
+    businessIdRef,
+    'staff.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+  const servicesMatch = buildExistsTextMatchCondition(
+    'services',
+    businessIdRef,
+    'services.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+
+  return sql<SearchMatchType>`CASE
+    WHEN ${businessMatch} THEN 'business'
+    WHEN ${staffMatch} THEN 'staff'
+    WHEN ${servicesMatch} THEN 'service'
+    ELSE NULL
+  END`;
+}
+
+function buildBusinessSearchMatchValue(
+  businessIdRef: string,
+  businessNameRef: string,
+  query: string,
+) {
+  const queryVariants = buildSearchQueryVariants(query);
+
+  if (queryVariants.rawVariants.length === 0 && queryVariants.latinVariants.length === 0) {
+    return null;
+  }
+
+  const businessMatch = buildTextMatchCondition(
+    businessNameRef,
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+  const staffMatch = buildExistsTextMatchCondition(
+    'staff',
+    businessIdRef,
+    'staff.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+  const serviceMatch = buildExistsTextMatchCondition(
+    'services',
+    businessIdRef,
+    'services.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+    'contains',
+  );
+  const staffValue = buildSearchValueExpr(
+    'staff',
+    businessIdRef,
+    'staff.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+  );
+  const serviceValue = buildSearchValueExpr(
+    'services',
+    businessIdRef,
+    'services.name',
+    queryVariants.rawVariants,
+    queryVariants.latinVariants,
+  );
+
+  return sql<string | null>`CASE
+    WHEN ${businessMatch} THEN ${sql.ref(businessNameRef)}
+    WHEN ${staffMatch} THEN ${staffValue}
+    WHEN ${serviceMatch} THEN ${serviceValue}
+    ELSE NULL
+  END`;
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export class BusinessService {
@@ -72,6 +406,13 @@ export class BusinessService {
     const distanceExpr = hasGeo
       ? sql<number | null>`ST_Distance(b.location, ST_SetSRID(ST_MakePoint(${geoLng}, ${geoLat}), 4326)::geography)`
       : sql<number | null>`NULL`;
+    const searchRankExpr = query ? buildBusinessSearchRank('b.id', 'b.name', query) : null;
+    const searchMatchTypeExpr = query
+      ? buildBusinessSearchMatchType('b.id', 'b.name', query)
+      : null;
+    const searchMatchValueExpr = query
+      ? buildBusinessSearchMatchValue('b.id', 'b.name', query)
+      : null;
 
     let qb = db
       .selectFrom('businesses as b')
@@ -92,6 +433,8 @@ export class BusinessService {
         sql<number | null>`(SELECT ROUND(AVG(rating)::numeric, 2) FROM reviews WHERE business_id = b.id)`.as('avg_rating'),
         sql<number>`(SELECT COUNT(*) FROM reviews WHERE business_id = b.id)`.as('review_count'),
         distanceExpr.as('distance_m'),
+        (searchMatchTypeExpr ?? sql<SearchMatchType>`NULL`).as('search_match_type'),
+        (searchMatchValueExpr ?? sql<string | null>`NULL`).as('search_match_value'),
       ])
       .where('b.is_active', '=', true);
 
@@ -100,17 +443,13 @@ export class BusinessService {
     }
 
     if (query) {
-      const likePattern = `%${query}%`;
-      qb = qb.where((eb) =>
-        eb.or([
-          eb('b.name', 'ilike', likePattern),
-          eb(
-            sql<boolean>`EXISTS (SELECT 1 FROM services WHERE business_id = b.id AND is_active = true AND name ILIKE ${likePattern})`,
-            '=',
-            true,
-          ),
-        ]),
-      );
+      const searchCondition = buildBusinessSearchCondition('b.id', 'b.name', query);
+      if (searchCondition) {
+        qb = qb.where(searchCondition);
+      }
+    }
+    if (searchRankExpr) {
+      qb = qb.orderBy(searchRankExpr, 'desc');
     }
 
     if (hasGeo) {
@@ -135,17 +474,10 @@ export class BusinessService {
     }
 
     if (query) {
-      const likePattern = `%${query}%`;
-      countQb = countQb.where((eb) =>
-        eb.or([
-          eb('name', 'ilike', likePattern),
-          eb(
-            sql<boolean>`EXISTS (SELECT 1 FROM services WHERE business_id = businesses.id AND is_active = true AND name ILIKE ${likePattern})`,
-            '=',
-            true,
-          ),
-        ]),
-      );
+      const searchCondition = buildBusinessSearchCondition('businesses.id', 'businesses.name', query);
+      if (searchCondition) {
+        countQb = countQb.where(searchCondition);
+      }
     }
 
     const [rows, countResult] = await Promise.all([
@@ -178,6 +510,8 @@ export class BusinessService {
         avg_rating: row.avg_rating !== null ? Number(row.avg_rating) : null,
         review_count: Number(row.review_count),
         distance_m: row.distance_m !== null ? Number(row.distance_m) : null,
+        search_match_type: row.search_match_type,
+        search_match_value: row.search_match_value,
       })),
       pagination: {
         page,

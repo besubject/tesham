@@ -37,7 +37,7 @@ function EmptyState(): React.JSX.Element {
       <Text style={emptyStyles.icon}>⭐</Text>
       <Text style={emptyStyles.title}>{t('profile.noFavorites')}</Text>
       <Text style={emptyStyles.subtitle}>
-        Добавляйте мастеров и заведения в избранное, чтобы найти их быстрее
+        {t('profile.noFavoritesHint')}
       </Text>
     </View>
   );

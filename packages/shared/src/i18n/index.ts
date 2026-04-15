@@ -10,6 +10,10 @@ export const resources = {
   ce: { translation: ce },
 } as const;
 
+function getCompatibilityJSON(): 'v3' | 'v4' {
+  return typeof Intl !== 'undefined' && typeof Intl.PluralRules === 'function' ? 'v4' : 'v3';
+}
+
 export function initI18n(language: 'ru' | 'ce' = 'ru'): typeof i18n {
   if (!i18n.isInitialized) {
     void i18n.use(initReactI18next).init({
@@ -18,7 +22,7 @@ export function initI18n(language: 'ru' | 'ce' = 'ru'): typeof i18n {
       fallbackLng: 'ru',
       defaultNS,
       interpolation: { escapeValue: false },
-      compatibilityJSON: 'v4',
+      compatibilityJSON: getCompatibilityJSON(),
     });
   }
   return i18n;

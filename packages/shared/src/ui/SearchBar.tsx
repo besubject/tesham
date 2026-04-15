@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import {
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -32,20 +33,24 @@ export function SearchBar({
   return (
     <View style={styles.container}>
       <Text style={styles.searchIcon}>🔍</Text>
-      <TextInput
-        ref={inputRef}
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        autoFocus={autoFocus}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        returnKeyType="search"
-        clearButtonMode="never"
-        accessibilityLabel="Поиск"
-      />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          autoFocus={autoFocus}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          returnKeyType="search"
+          clearButtonMode="never"
+          multiline={false}
+          underlineColorAndroid="transparent"
+          accessibilityLabel="Поиск"
+        />
+      </View>
       {value.length > 0 && (
         <TouchableOpacity
           onPress={() => {
@@ -79,11 +84,26 @@ const styles = StyleSheet.create({
   searchIcon: {
     fontSize: 16,
   },
-  input: {
+  inputWrapper: {
     flex: 1,
-    ...typography.body,
+    justifyContent: 'center',
+  },
+  input: {
+    fontSize: typography.body.fontSize,
+    fontWeight: typography.body.fontWeight,
+    lineHeight: 20,
+    height: 20,
     color: colors.text,
     padding: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    margin: 0,
+    ...(Platform.OS === 'android'
+      ? {
+          includeFontPadding: false,
+          textAlignVertical: 'center',
+        }
+      : null),
   },
   clearButton: {
     padding: spacing.xs,

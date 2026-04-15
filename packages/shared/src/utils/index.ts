@@ -61,6 +61,32 @@ export function formatDistance(meters: number | null): string {
   return `${(meters / 1000).toFixed(1)} км`;
 }
 
+const CATEGORY_ICON_MAP: Record<string, string> = {
+  scissors: '✂️',
+  sparkles: '✨',
+  comb: '💇',
+  brush: '🪮',
+  syringe: '💉',
+  tooth: '🦷',
+  stethoscope: '🩺',
+  dumbbell: '🏋️',
+  tattoo: '🖋️',
+  spa: '🧖',
+  nail_polish: '💅',
+};
+
+function looksLikeIconKey(value: string): boolean {
+  return /^[a-z0-9_-]+$/i.test(value);
+}
+
+export function resolveCategoryIcon(icon: string | null | undefined): string | null {
+  if (!icon) return null;
+  const normalized = icon.trim().toLowerCase();
+  if (!normalized) return null;
+  if (!looksLikeIconKey(normalized)) return icon;
+  return CATEGORY_ICON_MAP[normalized] ?? null;
+}
+
 // Event tracking
 export {
   trackEvent,
