@@ -441,8 +441,15 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
         { params },
       );
       setBookings(data.bookings);
-    } catch {
-      setError('Не удалось загрузить записи');
+    } catch (err: unknown) {
+      const msg = (
+        err as { response?: { data?: { error?: { message?: string }; message?: string } } }
+      )?.response?.data?.error?.message
+        ?? (
+          err as { response?: { data?: { error?: { message?: string }; message?: string } } }
+        )?.response?.data?.message
+        ?? 'Не удалось загрузить записи';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -461,7 +468,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
       const results = await Promise.allSettled(
         confirmed.map((b) =>
           apiClient
-            .get<ChatUnreadCountDto>(`/bookings/${b.id}/messages/unread`)
+            .get<ChatUnreadCountDto>(`/bookings/${b.id}/messages/unread-count`)
             .then((r) => ({ id: b.id, count: r.data.unread_count })),
         ),
       );

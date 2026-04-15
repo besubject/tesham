@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { BusinessListItemDto } from '../types';
+import { resolveCategoryIcon } from '../utils';
 import { RatingBadge } from './RatingBadge';
 import { StatusBadge } from './StatusBadge';
 import { borderRadius, colors, shadow, spacing, typography } from './theme';
@@ -20,6 +21,7 @@ function formatDistance(meters: number | null): string | null {
 export function BusinessCard({ business, onPress, isOpen }: BusinessCardProps): React.JSX.Element {
   const distance = formatDistance(business.distance_m);
   const thumbnail = business.photos[0];
+  const categoryIcon = resolveCategoryIcon(business.category_icon);
 
   return (
     <TouchableOpacity
@@ -33,7 +35,7 @@ export function BusinessCard({ business, onPress, isOpen }: BusinessCardProps): 
         <Image source={{ uri: thumbnail }} style={styles.image} resizeMode="cover" />
       ) : (
         <View style={styles.imagePlaceholder}>
-          <Text style={styles.imagePlaceholderIcon}>{business.category_icon}</Text>
+          <Text style={styles.imagePlaceholderIcon}>{categoryIcon ?? '🏢'}</Text>
         </View>
       )}
 
@@ -46,7 +48,7 @@ export function BusinessCard({ business, onPress, isOpen }: BusinessCardProps): 
         </View>
 
         <Text style={styles.category} numberOfLines={1}>
-          {business.category_icon} {business.category_name_ru}
+          {categoryIcon ? `${categoryIcon} ` : ''}{business.category_name_ru}
         </Text>
 
         <Text style={styles.address} numberOfLines={1}>{business.address}</Text>

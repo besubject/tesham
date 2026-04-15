@@ -49,6 +49,8 @@ export interface BusinessListItemDto {
   distance_m: number | null;
   lat: number | null;
   lng: number | null;
+  search_match_type?: 'business' | 'staff' | 'service' | null;
+  search_match_value?: string | null;
 }
 
 export interface BusinessDetailDto extends BusinessListItemDto {

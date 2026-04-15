@@ -35,6 +35,34 @@ const DAY_LABELS: Record<Day, string> = {
   sun: 'Вс',
 };
 
+type WorkingHoursValue = { open: string; close: string } | string | null;
+
+function normalizeDayHours(value: WorkingHoursValue): { open: string; close: string } | null {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    const [open, close] = value.split('-').map((part) => part.trim());
+    if (!open || !close) return null;
+    return { open, close };
+  }
+  if (typeof value.open !== 'string' || typeof value.close !== 'string') return null;
+  return { open: value.open, close: value.close };
+}
+
+function normalizeWorkingHours(
+  value: Record<string, WorkingHoursValue> | null | undefined,
+): Record<Day, { open: string; close: string } | null> {
+  const source = value ?? {};
+  return {
+    mon: normalizeDayHours(source['mon'] ?? null),
+    tue: normalizeDayHours(source['tue'] ?? null),
+    wed: normalizeDayHours(source['wed'] ?? null),
+    thu: normalizeDayHours(source['thu'] ?? null),
+    fri: normalizeDayHours(source['fri'] ?? null),
+    sat: normalizeDayHours(source['sat'] ?? null),
+    sun: normalizeDayHours(source['sun'] ?? null),
+  };
+}
+
 // ─── JWT helpers ──────────────────────────────────────────────────────────────
 
 function decodeJwtRole(token: string): 'admin' | 'employee' | null {
@@ -273,16 +301,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
       setStaff(staffRes.data.staff);
       setServices(servicesRes.data.services);
 
-      const wh = (p.working_hours ?? {}) as Record<string, { open: string; close: string } | null>;
-      const editHours: Record<Day, { open: string; close: string } | null> = {
-        mon: wh['mon'] ?? null,
-        tue: wh['tue'] ?? null,
-        wed: wh['wed'] ?? null,
-        thu: wh['thu'] ?? null,
-        fri: wh['fri'] ?? null,
-        sat: wh['sat'] ?? null,
-        sun: wh['sun'] ?? null,
-      };
+      const editHours = normalizeWorkingHours(
+        p.working_hours as Record<string, WorkingHoursValue> | undefined,
+      );
 
       setEditFields({
         name: p.name ?? '',
@@ -346,7 +367,6 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
 
   const handleCancelEdit = useCallback(() => {
     if (!profile) return;
-    const wh = (profile.working_hours ?? {}) as Record<string, { open: string; close: string } | null>;
     setEditFields({
       name: profile.name ?? '',
       address: profile.address ?? '',
@@ -356,15 +376,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
       cancellation_threshold_minutes: String(profile.cancellation_threshold_minutes ?? 0),
       remind_24h: profile.reminder_settings?.remind_24h ?? true,
       remind_30min: profile.reminder_settings?.remind_30min ?? true,
-      working_hours: {
-        mon: wh['mon'] ?? null,
-        tue: wh['tue'] ?? null,
-        wed: wh['wed'] ?? null,
-        thu: wh['thu'] ?? null,
-        fri: wh['fri'] ?? null,
-        sat: wh['sat'] ?? null,
-        sun: wh['sun'] ?? null,
-      },
+      working_hours: normalizeWorkingHours(
+        profile.working_hours as Record<string, WorkingHoursValue> | undefined,
+      ),
     });
     setEditMode(false);
   }, [profile]);
@@ -688,9 +702,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                 </View>
               );
             }
-
-            const profileWh = profile.working_hours as Record<string, { open: string; close: string } | null> | undefined;
-            const profileHours = profileWh?.[day] ?? null;
+            const profileHours = normalizeDayHours(
+              (profile.working_hours as Record<string, WorkingHoursValue> | undefined)?.[day] ?? null,
+            );
             return (
               <View key={day} style={styles.hoursRow}>
                 <Text style={styles.dayLabel}>{DAY_LABELS[day]}</Text>

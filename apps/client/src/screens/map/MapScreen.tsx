@@ -29,6 +29,7 @@ import {
   colors,
   PaginatedResponseDto,
   RatingBadge,
+  resolveCategoryIcon,
   shadow,
   spacing,
   typography,
@@ -66,7 +67,7 @@ function buildGeoJSON(
         properties: {
           id: b.id,
           name: b.name,
-          category_icon: b.category_icon,
+          category_icon: resolveCategoryIcon(b.category_icon),
           category_name_ru: b.category_name_ru,
           avg_rating: b.avg_rating,
           review_count: b.review_count,
@@ -296,7 +297,7 @@ export function MapScreen({ navigation }: Props): React.JSX.Element {
               />
             ) : (
               <View style={[styles.miniCardPhoto, styles.miniCardPhotoPlaceholder]}>
-                <Text style={styles.miniCardEmoji}>{selectedBusiness.category_icon}</Text>
+                <Text style={styles.miniCardEmoji}>{resolveCategoryIcon(selectedBusiness.category_icon) ?? '🏢'}</Text>
               </View>
             )}
 

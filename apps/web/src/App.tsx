@@ -10,6 +10,8 @@ import { BusinessLinkPage } from './pages/link';
 import { PublicBookingPage } from './pages/public-booking';
 import Layout from './components/Layout';
 
+globalThis.__METTIG_TOKEN_NAMESPACE__ = 'mettig_web';
+
 const queryClient = new QueryClient();
 
 const ProtectedRoute = (): React.JSX.Element => {

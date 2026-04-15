@@ -41,6 +41,38 @@ interface BusinessBookingsListResult {
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
+function formatDateOnly(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function getBusinessBookingsPeriodBounds(
+  period: 'today' | 'week' | 'month',
+  now: Date = new Date(),
+): { start: string; end: string } {
+  const start = new Date(now);
+  const end = new Date(now);
+
+  if (period === 'today') {
+    const value = formatDateOnly(now);
+    return { start: value, end: value };
+  }
+
+  if (period === 'week') {
+    const day = start.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    start.setDate(start.getDate() + mondayOffset);
+    end.setDate(start.getDate() + 6);
+    return { start: formatDateOnly(start), end: formatDateOnly(end) };
+  }
+
+  start.setDate(1);
+  end.setMonth(end.getMonth() + 1, 0);
+  return { start: formatDateOnly(start), end: formatDateOnly(end) };
+}
+
 export class BusinessBookingService {
   /**
    * Resolve the staff row for the requesting user within a given business.
@@ -175,20 +207,6 @@ export class BusinessBookingService {
 
     const { staffId: requestorStaffId, role } = await this.resolveStaff(userId, businessId);
 
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-    const periodEnd = new Date(today);
-
-    if (period === 'week') {
-      periodEnd.setDate(periodEnd.getDate() + 6);
-    }
-
-    if (period === 'month') {
-      periodEnd.setDate(periodEnd.getDate() + 29);
-    }
-
-    const periodEndStr = periodEnd.toISOString().slice(0, 10);
-
     let query = db
       .selectFrom('bookings as b')
       .innerJoin('slots as sl', 'sl.id', 'b.slot_id')
@@ -232,12 +250,13 @@ export class BusinessBookingService {
       query = query.where(sql`sl.date::text`, '=', date);
       totalQuery = totalQuery.where(sql`sl.date::text`, '=', date);
     } else if (period) {
+      const { start, end } = getBusinessBookingsPeriodBounds(period);
       query = query
-        .where(sql`sl.date::text`, '>=', todayStr)
-        .where(sql`sl.date::text`, '<=', periodEndStr);
+        .where(sql`sl.date::text`, '>=', start)
+        .where(sql`sl.date::text`, '<=', end);
       totalQuery = totalQuery
-        .where(sql`sl.date::text`, '>=', todayStr)
-        .where(sql`sl.date::text`, '<=', periodEndStr);
+        .where(sql`sl.date::text`, '>=', start)
+        .where(sql`sl.date::text`, '<=', end);
     }
 
     if (status) {
