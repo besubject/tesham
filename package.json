@@ -11,6 +11,7 @@
     "packages/shared"
   ],
   "scripts": {
+    "ci:local": "npm --workspace backend run lint && npm --workspace backend run typecheck && npm --workspace backend run build && npm --workspace backend run test -- --passWithNoTests && npm --workspace apps/client run typecheck && npm --workspace apps/client run lint && npm --workspace apps/business run typecheck && npm --workspace apps/business run lint && npm --workspace apps/web run typecheck && npm --workspace apps/web run lint && npm --workspace apps/web run build && npm --workspace packages/shared run typecheck && npm --workspace packages/shared run lint && npm run format:check",
     "lint": "npm run lint --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
