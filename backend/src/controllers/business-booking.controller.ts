@@ -57,6 +57,32 @@ export async function deleteBusinessSlot(
   }
 }
 
+export async function getBusinessSlots(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user?.businessId) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Business access required' } });
+      return;
+    }
+
+    const q = req.query as { staff_id?: string; date?: string };
+
+    const slots = await businessBookingService.getBusinessSlots({
+      userId: req.user.id,
+      businessId: req.user.businessId,
+      staffId: q.staff_id,
+      date: q.date,
+    });
+
+    res.json({ slots });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getBusinessBookings(
   req: Request,
   res: Response,

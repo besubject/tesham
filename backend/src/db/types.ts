@@ -52,6 +52,7 @@ export interface StaffTable {
   business_id: string;
   user_id: string;
   name: string;
+  slug: string;
   role: StaffRole;
   avatar_url: string | null;
   is_active: ColumnType<boolean, boolean | undefined, boolean>;

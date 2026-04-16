@@ -207,15 +207,18 @@ export const BusinessLinkPage = () => {
               </Text>
               <Stack gap="xs">
                 {staff.map((member) => {
-                  const staffUrl = `${LINK_PAGE_BASE_URL}/b/${profile.slug}/${member.id}`;
+                  const staffUrl = `${LINK_PAGE_BASE_URL}/b/${profile.slug}/${member.slug}`;
                   return (
                     <div key={member.id} className={styles.staffRow}>
                       <Stack gap={2} className={styles.staffInfo}>
                         <Text size="sm" fw={600}>
                           {member.name}
                         </Text>
-                        <Text size="xs" c="dimmed">
+                        <Text size="xs" c="dimmed" className={styles.staffUrl}>
                           {staffUrl}
+                        </Text>
+                        <Text size="xs" c="dimmed" className={styles.staffId}>
+                          ID: {member.id}
                         </Text>
                       </Stack>
                       <CopyButton value={staffUrl} timeout={2000}>

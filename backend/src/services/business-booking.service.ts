@@ -10,6 +10,7 @@ import { trackEvent } from '../utils/track-event';
 export interface CreatedSlot {
   id: string;
   staff_id: string;
+  staff_name?: string;
   date: string;
   start_time: string;
   is_booked: boolean;
@@ -108,13 +109,12 @@ export class BusinessBookingService {
   }): Promise<CreatedSlot[]> {
     const { userId, businessId, staffId, date, times } = params;
 
-    // Validate the requesting user belongs to this business (any role can create slots)
-    await this.resolveStaff(userId, businessId);
+    const { staffId: requestorStaffId, role } = await this.resolveStaff(userId, businessId);
 
     // Validate the target staff belongs to this business
     const targetStaff = await db
       .selectFrom('staff')
-      .select(['id'])
+      .select(['id', 'name'])
       .where('id', '=', staffId)
       .where('business_id', '=', businessId)
       .where('is_active', '=', true)
@@ -124,15 +124,34 @@ export class BusinessBookingService {
       throw new AppError(404, 'Staff member not found in this business', 'STAFF_NOT_FOUND');
     }
 
+    if (role === 'employee' && staffId !== requestorStaffId) {
+      throw new AppError(403, 'Employees can only create slots for themselves', 'FORBIDDEN');
+    }
+
     if (times.length === 0) {
       throw new AppError(400, 'times array must not be empty', 'VALIDATION_ERROR');
     }
 
-    // Insert all slots (ignore duplicates via unique constraint if any)
+    const uniqueTimes = Array.from(new Set(times));
+    const existingRows = await db
+      .selectFrom('slots')
+      .select('start_time')
+      .where('staff_id', '=', staffId)
+      .where(sql`date::text`, '=', date)
+      .where('start_time', 'in', uniqueTimes)
+      .execute();
+
+    const existingTimes = new Set(existingRows.map((row) => row.start_time));
+    const timesToCreate = uniqueTimes.filter((time) => !existingTimes.has(time));
+
+    if (timesToCreate.length === 0) {
+      return [];
+    }
+
     const rows = await db
       .insertInto('slots')
       .values(
-        times.map((t) => ({
+        timesToCreate.map((t) => ({
           staff_id: staffId,
           date,
           start_time: t,
@@ -151,9 +170,57 @@ export class BusinessBookingService {
     return rows.map((r) => ({
       id: r.id,
       staff_id: r.staff_id,
+      staff_name: targetStaff.name,
       date: r.date,
       start_time: r.start_time,
       is_booked: r.is_booked,
+    }));
+  }
+
+  async getBusinessSlots(params: {
+    userId: string;
+    businessId: string;
+    staffId?: string;
+    date?: string;
+  }): Promise<CreatedSlot[]> {
+    const { userId, businessId, staffId, date } = params;
+    const { staffId: requestorStaffId, role } = await this.resolveStaff(userId, businessId);
+
+    let query = db
+      .selectFrom('slots as sl')
+      .innerJoin('staff as st', 'st.id', 'sl.staff_id')
+      .select([
+        'sl.id',
+        'sl.staff_id',
+        'st.name as staff_name',
+        sql<string>`sl.date::text`.as('date'),
+        'sl.start_time',
+        'sl.is_booked',
+      ])
+      .where('st.business_id', '=', businessId);
+
+    if (role === 'employee') {
+      query = query.where('sl.staff_id', '=', requestorStaffId);
+    } else if (staffId) {
+      query = query.where('sl.staff_id', '=', staffId);
+    }
+
+    if (date) {
+      query = query.where(sql`sl.date::text`, '=', date);
+    }
+
+    const rows = await query
+      .orderBy('sl.date', 'asc')
+      .orderBy('sl.start_time', 'asc')
+      .execute();
+
+    return rows.map((row) => ({
+      id: row.id,
+      staff_id: row.staff_id,
+      staff_name: row.staff_name,
+      date: row.date,
+      start_time: row.start_time,
+      is_booked: row.is_booked,
     }));
   }
 

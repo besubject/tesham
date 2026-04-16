@@ -1,6 +1,7 @@
 export interface StaffMember {
   id: string;
   name: string;
+  slug: string;
   role: string | null;
   avatar_url: string | null;
 }

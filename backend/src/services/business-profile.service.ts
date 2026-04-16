@@ -38,6 +38,7 @@ export interface BusinessProfileUpdate {
 export interface StaffMember {
   id: string;
   name: string;
+  slug: string;
   phone: string;
   role: StaffRole;
   avatar_url: string | null;
@@ -56,6 +57,11 @@ export interface ServiceItem {
 // ─── Slug validation ──────────────────────────────────────────────────────────
 
 const SLUG_REGEX = /^[a-z0-9-]{3,50}$/;
+
+function normalizeStaffSlugBase(name: string): string {
+  const slug = transliterate(name).slice(0, 50);
+  return slug || 'staff';
+}
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
@@ -107,6 +113,34 @@ export class BusinessProfileService {
       if (!existing) return candidate;
 
       candidate = `${base}-${counter}`;
+      counter++;
+    }
+  }
+
+  async generateUniqueStaffSlug(
+    businessId: string,
+    name: string,
+    excludeStaffId?: string,
+  ): Promise<string> {
+    const base = normalizeStaffSlugBase(name);
+    let candidate = base;
+    let counter = 2;
+
+    while (true) {
+      let qb = db
+        .selectFrom('staff')
+        .select('id')
+        .where('business_id', '=', businessId)
+        .where('slug', '=', candidate);
+
+      if (excludeStaffId) {
+        qb = qb.where('id', '!=', excludeStaffId);
+      }
+
+      const existing = await qb.executeTakeFirst();
+      if (!existing) return candidate;
+
+      candidate = `${base.slice(0, Math.max(1, 50 - `-${counter}`.length))}-${counter}`;
       counter++;
     }
   }
@@ -216,6 +250,7 @@ export class BusinessProfileService {
       .select([
         's.id',
         's.name',
+        's.slug',
         's.role',
         's.avatar_url',
         's.is_active',
@@ -229,12 +264,48 @@ export class BusinessProfileService {
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
+      slug: r.slug,
       phone: r.phone,
       role: r.role as StaffRole,
       avatar_url: r.avatar_url,
       is_active: r.is_active,
       user_id: r.user_id,
     }));
+  }
+
+  async getCurrentStaff(userId: string, businessId: string): Promise<StaffMember> {
+    const row = await db
+      .selectFrom('staff as s')
+      .innerJoin('users as u', 'u.id', 's.user_id')
+      .select([
+        's.id',
+        's.name',
+        's.slug',
+        's.role',
+        's.avatar_url',
+        's.is_active',
+        's.user_id',
+        'u.phone',
+      ])
+      .where('s.user_id', '=', userId)
+      .where('s.business_id', '=', businessId)
+      .where('s.is_active', '=', true)
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new AppError(404, 'Staff member not found', 'STAFF_NOT_FOUND');
+    }
+
+    return {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      phone: row.phone,
+      role: row.role as StaffRole,
+      avatar_url: row.avatar_url,
+      is_active: row.is_active,
+      user_id: row.user_id,
+    };
   }
 
   async addStaff(params: {
@@ -271,17 +342,20 @@ export class BusinessProfileService {
       throw new AppError(409, 'User is already a staff member of this business', 'STAFF_EXISTS');
     }
 
+    const slug = await this.generateUniqueStaffSlug(businessId, name);
+
     const [inserted] = await db
       .insertInto('staff')
       .values({
         business_id: businessId,
         user_id: user.id,
         name,
+        slug,
         role,
         avatar_url: null,
         is_active: true,
       })
-      .returning(['id', 'name', 'role', 'avatar_url', 'is_active', 'user_id'])
+      .returning(['id', 'name', 'slug', 'role', 'avatar_url', 'is_active', 'user_id'])
       .execute();
 
     if (!inserted) {
@@ -297,6 +371,7 @@ export class BusinessProfileService {
     return {
       id: inserted.id,
       name: inserted.name,
+      slug: inserted.slug,
       phone: user.phone,
       role: inserted.role as StaffRole,
       avatar_url: inserted.avatar_url,

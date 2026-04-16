@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { IMaskInput } from 'react-imask';
 import { PHONE_MASK } from 'src/constants';
-import { WalkInModalProps, StaffListDto, ServicesListDto } from './types';
+import { WalkInModalProps, StaffListDto, ServicesListDto, CurrentStaffDto } from './types';
 import { normalizePhone } from './utils';
 
 export const WalkInModal = ({ opened, onClose, onCreated }: WalkInModalProps) => {
@@ -26,6 +26,15 @@ export const WalkInModal = ({ opened, onClose, onCreated }: WalkInModalProps) =>
     enabled: opened,
   });
 
+  const { data: currentStaffData } = useQuery<CurrentStaffDto>({
+    queryKey: ['business-staff-me'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<CurrentStaffDto>('/business/staff/me');
+      return data;
+    },
+    enabled: opened,
+  });
+
   const { data: servicesData } = useQuery<ServicesListDto>({
     queryKey: ['business-services'],
     queryFn: async () => {
@@ -40,12 +49,24 @@ export const WalkInModal = ({ opened, onClose, onCreated }: WalkInModalProps) =>
     value: s.id,
     label: `${s.name} — ${s.price.toLocaleString('ru-RU')} ₽`,
   }));
+  const currentStaff = currentStaffData?.staff ?? null;
+  const isAdmin = currentStaff?.role === 'admin';
 
   useEffect(() => {
     if (opened) {
       void trackEvent({ event_type: 'walk_in_form_opened' });
     }
   }, [opened]);
+
+  useEffect(() => {
+    if (!opened || !currentStaff) return;
+
+    if (isAdmin) {
+      setStaffId((prev) => prev ?? staffData?.staff[0]?.id ?? null);
+    } else {
+      setStaffId(currentStaff.id);
+    }
+  }, [currentStaff, isAdmin, opened, staffData]);
 
   const handleSubmit = async () => {
     if (!serviceId) {
@@ -93,14 +114,25 @@ export const WalkInModal = ({ opened, onClose, onCreated }: WalkInModalProps) =>
   return (
     <Modal opened={opened} onClose={onClose} title="Оффлайн-клиент" size="md" centered>
       <Stack gap="md">
-        <Select
-          label="Мастер"
-          placeholder="Выберите мастера"
-          data={staffOptions}
-          value={staffId}
-          onChange={setStaffId}
-          required
-        />
+        {isAdmin ? (
+          <Select
+            label="Мастер"
+            placeholder="Выберите мастера"
+            data={staffOptions}
+            value={staffId}
+            onChange={setStaffId}
+            required
+          />
+        ) : (
+          <Stack gap={2}>
+            <Text size="sm" fw={500}>
+              Мастер
+            </Text>
+            <Text size="sm" c="dimmed">
+              {currentStaff?.name}
+            </Text>
+          </Stack>
+        )}
 
         <Select
           label="Услуга"

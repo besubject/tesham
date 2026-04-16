@@ -15,6 +15,8 @@ export const formatDuration = (minutes: number): string => {
 export const formatPrice = (price: number): string => `${price.toLocaleString('ru-RU')} ₽`;
 
 export const findStaffBySlug = (staff: StaffMember[], staffSlug: string): StaffMember | null => {
+  const bySlug = staff.find((s) => s.slug === staffSlug);
+  if (bySlug) return bySlug;
   const byId = staff.find((s) => s.id === staffSlug);
   if (byId) return byId;
   const normalized = staffSlug.toLowerCase();

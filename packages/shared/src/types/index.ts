@@ -20,6 +20,7 @@ export interface CategoryDto {
 export interface StaffItemDto {
   id: string;
   name: string;
+  slug: string;
   role: string;
   avatar_url: string | null;
 }
