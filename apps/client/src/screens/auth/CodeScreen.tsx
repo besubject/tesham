@@ -51,17 +51,16 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
           return;
         }
 
-        await setAuth(response.user, response.accessToken, response.refreshToken);
-
-        // If user has no name yet — go to NameScreen
-        if (!response.user.name) {
+        if (!response.user.name.trim()) {
           navigation.navigate('NameScreen', {
             phone,
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
           });
+          return;
         }
-        // Otherwise setAuth triggers isAuthenticated → RootNavigator handles navigation
+
+        await setAuth(response.user, response.accessToken, response.refreshToken);
       } catch {
         setError('Неверный код. Попробуйте ещё раз');
         setCode(Array(CODE_LENGTH).fill(''));

@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { db } from '../db';
 import { AppError } from '../middleware/error';
 import { trackEvent } from '../utils/track-event';
@@ -11,6 +12,8 @@ export interface BusinessProfile {
   name: string;
   category_id: string;
   address: string;
+  lat: number | null;
+  lng: number | null;
   phone: string;
   instagram_url: string | null;
   website_url: string | null;
@@ -26,6 +29,8 @@ export interface BusinessProfile {
 export interface BusinessProfileUpdate {
   name?: string;
   address?: string;
+  lat?: number;
+  lng?: number;
   phone?: string;
   instagram_url?: string | null;
   website_url?: string | null;
@@ -149,9 +154,13 @@ export class BusinessProfileService {
 
   async getProfile(businessId: string): Promise<BusinessProfile> {
     const business = await db
-      .selectFrom('businesses')
-      .selectAll()
-      .where('id', '=', businessId)
+      .selectFrom('businesses as b')
+      .selectAll('b')
+      .select([
+        sql<number | null>`ST_Y(b.location::geometry)`.as('lat'),
+        sql<number | null>`ST_X(b.location::geometry)`.as('lng'),
+      ])
+      .where('b.id', '=', businessId)
       .executeTakeFirst();
 
     if (!business) {
@@ -163,6 +172,8 @@ export class BusinessProfileService {
       name: business.name,
       category_id: business.category_id,
       address: business.address,
+      lat: business.lat !== null ? Number(business.lat) : null,
+      lng: business.lng !== null ? Number(business.lng) : null,
       phone: business.phone,
       instagram_url: business.instagram_url,
       website_url: business.website_url,
@@ -193,6 +204,12 @@ export class BusinessProfileService {
     const setValues: Record<string, unknown> = {};
     if (update.name !== undefined) setValues.name = update.name;
     if (update.address !== undefined) setValues.address = update.address;
+    if (update.lat !== undefined || update.lng !== undefined) {
+      if (update.lat === undefined || update.lng === undefined) {
+        throw new AppError(400, 'lat and lng must be provided together', 'VALIDATION_ERROR');
+      }
+      setValues.location = sql`ST_SetSRID(ST_MakePoint(${update.lng}, ${update.lat}), 4326)::geography`;
+    }
     if (update.phone !== undefined) setValues.phone = update.phone;
     if ('instagram_url' in update) setValues.instagram_url = update.instagram_url;
     if ('website_url' in update) setValues.website_url = update.website_url;

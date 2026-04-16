@@ -14,7 +14,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiClient, tokenStorage, trackEvent, useAuthStore } from '@mettig/shared';
+import {
+  apiClient,
+  CodeConfirmationModal,
+  sendDeleteAccountCode,
+  tokenStorage,
+  trackEvent,
+  useAuthStore,
+} from '@mettig/shared';
 import type { BusinessDetailDto, ServiceItemDto, StaffItemDto } from '@mettig/shared';
 import type { BusinessProfileStackScreenProps } from '../../navigation/types';
 
@@ -105,7 +112,7 @@ interface FieldRowProps {
   editMode: boolean;
   onChangeText?: (text: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'phone-pad' | 'url';
+  keyboardType?: 'default' | 'phone-pad' | 'url' | 'decimal-pad';
 }
 
 function FieldRow({
@@ -205,6 +212,8 @@ function StaffRow({ item, isAdmin, onDelete }: StaffRowProps): React.JSX.Element
 type EditFields = {
   name: string;
   address: string;
+  lat: string;
+  lng: string;
   phone: string;
   instagram_url: string;
   website_url: string;
@@ -231,6 +240,8 @@ type StaffFormState = {
 
 export function BusinessProfileScreen(_props: Props): React.JSX.Element {
   const logout = useAuthStore((state) => state.logout);
+  const deleteAccount = useAuthStore((state) => state.deleteAccount);
+  const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState<BusinessDetailDto | null>(null);
   const [staff, setStaff] = useState<StaffItemDto[]>([]);
   const [services, setServices] = useState<ServiceItemDto[]>([]);
@@ -239,6 +250,11 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteCodeModal, setShowDeleteCodeModal] = useState(false);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteCodeError, setDeleteCodeError] = useState<string | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteCodeSending, setDeleteCodeSending] = useState(false);
 
   const [slugEditMode, setSlugEditMode] = useState(false);
   const [slugInput, setSlugInput] = useState('');
@@ -250,6 +266,8 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
   const [editFields, setEditFields] = useState<EditFields>({
     name: '',
     address: '',
+    lat: '',
+    lng: '',
     phone: '',
     instagram_url: '',
     website_url: '',
@@ -307,6 +325,8 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
       setEditFields({
         name: p.name ?? '',
         address: p.address ?? '',
+        lat: p.lat !== null && p.lat !== undefined ? String(p.lat) : '',
+        lng: p.lng !== null && p.lng !== undefined ? String(p.lng) : '',
         phone: p.phone ?? '',
         instagram_url: p.instagram_url ?? '',
         website_url: p.website_url ?? '',
@@ -340,9 +360,19 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     setSaving(true);
     try {
       const threshold = parseInt(editFields.cancellation_threshold_minutes, 10);
+      const lat = parseFloat(editFields.lat.replace(',', '.'));
+      const lng = parseFloat(editFields.lng.replace(',', '.'));
+
+      if (isNaN(lat) || isNaN(lng)) {
+        Alert.alert('Ошибка', 'Укажите корректные координаты');
+        return;
+      }
+
       const payload: Record<string, unknown> = {
         name: editFields.name.trim(),
         address: editFields.address.trim(),
+        lat,
+        lng,
         phone: editFields.phone.trim(),
         instagram_url: editFields.instagram_url.trim() || null,
         website_url: editFields.website_url.trim() || null,
@@ -372,6 +402,8 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     setEditFields({
       name: profile.name ?? '',
       address: profile.address ?? '',
+      lat: profile.lat !== null && profile.lat !== undefined ? String(profile.lat) : '',
+      lng: profile.lng !== null && profile.lng !== undefined ? String(profile.lng) : '',
       phone: profile.phone ?? '',
       instagram_url: profile.instagram_url ?? '',
       website_url: profile.website_url ?? '',
@@ -518,6 +550,63 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     ]);
   }, [logout]);
 
+  const handleDeletePress = useCallback(() => {
+    Alert.alert(
+      'Удалить аккаунт?',
+      'Мы отправим код на ваш номер. Без подтверждения аккаунт не удалится.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Продолжить',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleteCodeSending(true);
+            try {
+              await sendDeleteAccountCode();
+              setDeleteCode('');
+              setDeleteCodeError(null);
+              setShowDeleteCodeModal(true);
+            } catch {
+              Alert.alert('Ошибка', 'Не удалось отправить код. Попробуйте снова.');
+            } finally {
+              setDeleteCodeSending(false);
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    setDeleteSubmitting(true);
+    setDeleteCodeError(null);
+    try {
+      await deleteAccount(deleteCode);
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { error?: { code?: string } } } }).response?.data
+        ?.error?.code;
+      if (code === 'INVALID_CODE' || code === 'CODE_EXPIRED') {
+        setDeleteCodeError('Неверный или устаревший код.');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось удалить аккаунт.');
+      }
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }, [deleteAccount, deleteCode]);
+
+  const handleDeleteCodeResend = useCallback(async () => {
+    setDeleteCodeSending(true);
+    setDeleteCodeError(null);
+    try {
+      await sendDeleteAccountCode();
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось отправить код. Попробуйте снова.');
+    } finally {
+      setDeleteCodeSending(false);
+    }
+  }, []);
+
   const handleShareLink = useCallback(async (url: string) => {
     try {
       await Share.share({ message: url });
@@ -663,6 +752,22 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
             editMode={editMode}
             onChangeText={(t) => setEditFields((f) => ({ ...f, phone: t }))}
             keyboardType="phone-pad"
+          />
+          <FieldRow
+            label="Широта"
+            value={editMode ? editFields.lat : (profile.lat !== null && profile.lat !== undefined ? String(profile.lat) : '')}
+            editMode={editMode}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, lat: t }))}
+            keyboardType="decimal-pad"
+            placeholder="43.317000"
+          />
+          <FieldRow
+            label="Долгота"
+            value={editMode ? editFields.lng : (profile.lng !== null && profile.lng !== undefined ? String(profile.lng) : '')}
+            editMode={editMode}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, lng: t }))}
+            keyboardType="decimal-pad"
+            placeholder="45.694000"
           />
           <FieldRow
             label="Instagram"
@@ -1217,18 +1322,58 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
             />
           </View>
           <View style={styles.settingsActionRow}>
-            <TouchableOpacity
-              style={styles.logoutBtn}
-              onPress={handleLogout}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
               <Text style={styles.logoutBtnText}>Выйти из аккаунта</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.settingsActionRow}>
+            <TouchableOpacity
+              style={[styles.logoutBtn, styles.deleteAccountBtn]}
+              onPress={handleDeletePress}
+              activeOpacity={0.7}
+              disabled={deleteSubmitting || deleteCodeSending}
+            >
+              {deleteCodeSending ? (
+                <ActivityIndicator size="small" color={COLORS.danger} />
+              ) : (
+                <Text style={styles.logoutBtnText}>Удалить аккаунт</Text>
+              )}
             </TouchableOpacity>
           </View>
         </SectionCard>
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <CodeConfirmationModal
+        visible={showDeleteCodeModal}
+        title="Подтвердите удаление"
+        message="Введите 6-значный код из SMS, чтобы удалить аккаунт."
+        phoneLabel={user?.phone ?? undefined}
+        code={deleteCode}
+        error={deleteCodeError}
+        confirmLabel="Удалить аккаунт"
+        cancelLabel="Отмена"
+        resendLabel="Отправить код повторно"
+        onChangeCode={(value) => {
+          setDeleteCode(value);
+          if (deleteCodeError) setDeleteCodeError(null);
+        }}
+        onConfirm={() => {
+          void handleDeleteConfirm();
+        }}
+        onCancel={() => {
+          if (deleteSubmitting || deleteCodeSending) return;
+          setShowDeleteCodeModal(false);
+          setDeleteCode('');
+          setDeleteCodeError(null);
+        }}
+        onResend={() => {
+          void handleDeleteCodeResend();
+        }}
+        isSubmitting={deleteSubmitting}
+        isResending={deleteCodeSending}
+      />
     </SafeAreaView>
   );
 }
@@ -1405,6 +1550,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7F7',
     paddingVertical: 12,
     alignItems: 'center',
+  },
+  deleteAccountBtn: {
+    opacity: 1,
   },
   logoutBtnText: {
     fontSize: 14,

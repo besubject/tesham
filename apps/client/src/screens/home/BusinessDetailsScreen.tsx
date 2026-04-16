@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Image,
   Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -251,19 +250,18 @@ const mapStyles = StyleSheet.create({
 interface MiniMapSectionProps {
   lat: number;
   lng: number;
-  name: string;
-  onYandexMaps: (lat: number, lng: number, name: string) => void;
+  onYandexMaps: (lat: number, lng: number) => void;
   onTwoGis: (lat: number, lng: number) => void;
 }
 
-function MiniMapSection({ lat, lng, name, onYandexMaps, onTwoGis }: MiniMapSectionProps): React.JSX.Element {
+function MiniMapSection({ lat, lng, onYandexMaps, onTwoGis }: MiniMapSectionProps): React.JSX.Element {
   return (
     <View style={styles.section}>
       <SectionHeader title="На карте" />
       <StaticMap
         lat={lat}
         lng={lng}
-        onYandexMaps={() => onYandexMaps(lat, lng, name)}
+        onYandexMaps={() => onYandexMaps(lat, lng)}
         onTwoGis={() => onTwoGis(lat, lng)}
       />
     </View>
@@ -343,12 +341,10 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
   }, [isFavorite, favoriteId, businessId, isTogglingFavorite]);
 
   // ── Navigation deep links ───────────────────────────────────────────────────
-  const openYandexMaps = useCallback((lat: number, lng: number, name: string) => {
-    const encoded = encodeURIComponent(name);
-    const deepLink = Platform.OS === 'ios'
-      ? `yandexmaps://maps.yandex.ru/?pt=${lng},${lat}&text=${encoded}`
-      : `yandexnavi://map?pt=${lng},${lat}&text=${encoded}`;
-    const webFallback = `https://maps.yandex.ru/?pt=${lng},${lat}&text=${encoded}`;
+  const openYandexMaps = useCallback((lat: number, lng: number) => {
+    const marker = `${lng},${lat},pm2rdm`;
+    const deepLink = `yandexmaps://maps.yandex.ru/?ll=${lng},${lat}&z=17&pt=${marker}`;
+    const webFallback = `https://yandex.ru/maps/?ll=${lng},${lat}&z=17&pt=${marker}`;
 
     Linking.canOpenURL(deepLink)
       .then((supported) => {
@@ -513,7 +509,6 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
           <MiniMapSection
             lat={business.lat}
             lng={business.lng}
-            name={business.name}
             onYandexMaps={openYandexMaps}
             onTwoGis={openTwoGis}
           />

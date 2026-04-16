@@ -74,6 +74,8 @@ const walkInBookingSchema = z.object({
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   address: z.string().min(1).max(500).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
   phone: z.string().min(5).max(20).optional(),
   instagram_url: z.string().url().nullable().optional(),
   website_url: z.string().url().nullable().optional(),
@@ -84,7 +86,13 @@ const updateProfileSchema = z.object({
     .string()
     .regex(/^[a-z0-9-]{3,50}$/, 'slug must be 3-50 chars: a-z, 0-9, hyphen only')
     .optional(),
-});
+}).refine(
+  (data) => (data.lat === undefined && data.lng === undefined) || (data.lat !== undefined && data.lng !== undefined),
+  {
+    message: 'lat and lng must be provided together',
+    path: ['lat'],
+  },
+);
 
 const addStaffSchema = z.object({
   name: z.string().min(1).max(200),

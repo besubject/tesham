@@ -148,12 +148,18 @@ const mockBookingRow = {
   client_user_id: CLIENT_ID,
   business_id: BUSINESS_ID,
   status: 'confirmed',
+  source: 'app',
   staff_user_id: STAFF_USER_ID,
 };
 
 const mockBookingRowCompleted = {
   ...mockBookingRow,
   status: 'completed',
+};
+
+const mockWalkInBookingRow = {
+  ...mockBookingRow,
+  source: 'walk_in',
 };
 
 const mockMessage = {
@@ -231,6 +237,19 @@ describe('POST /bookings/:id/messages', () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('BOOKING_NOT_ACTIVE');
+  });
+
+  it('returns 403 when chat is unavailable for non-app booking', async () => {
+    mockDb.executeTakeFirst.mockResolvedValueOnce(mockWalkInBookingRow);
+
+    const app = buildApp();
+    const res = await request(app)
+      .post(`/bookings/${BOOKING_ID}/messages`)
+      .set('Authorization', `Bearer ${makeToken(CLIENT_ID)}`)
+      .send({ message_type: 'text', content: 'Привет!' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('CHAT_NOT_AVAILABLE');
   });
 
   it('returns 403 for user with no access to booking', async () => {

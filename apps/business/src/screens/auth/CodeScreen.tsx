@@ -58,15 +58,16 @@ export function CodeScreen({ navigation, route }: Props): React.JSX.Element {
           return;
         }
 
-        await setAuth(response.user, response.accessToken, response.refreshToken);
-
-        if (!response.user.name) {
+        if (!response.user.name.trim()) {
           navigation.navigate('NameScreen', {
             phone,
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
           });
+          return;
         }
+
+        await setAuth(response.user, response.accessToken, response.refreshToken);
       } catch (err: unknown) {
         const axiosErr = err as {
           response?: { data?: { error?: { message?: string } }; status?: number };

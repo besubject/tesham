@@ -32,12 +32,20 @@ jest.mock('../db', () => {
   return { db: chainable };
 });
 
+jest.mock('../services/auth.service', () => ({
+  authService: {
+    sendCode: jest.fn(),
+    verifyOtp: jest.fn(),
+  },
+}));
+
 // ─── Imports after mocks ──────────────────────────────────────────────────────
 
 import { db } from '../db';
 import { errorHandler } from '../middleware/error';
 import userRouter from '../routes/user';
 import { config } from '../config';
+import { authService } from '../services/auth.service';
 
 // ─── Typed mock db reference ──────────────────────────────────────────────────
 
@@ -54,6 +62,11 @@ const mockDb = db as unknown as {
   returningAll: jest.Mock;
   executeTakeFirst: jest.Mock;
   execute: jest.Mock;
+};
+
+const mockAuthService = authService as unknown as {
+  sendCode: jest.Mock;
+  verifyOtp: jest.Mock;
 };
 
 // ─── Test app ─────────────────────────────────────────────────────────────────
@@ -84,6 +97,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockDb.executeTakeFirst.mockResolvedValue(undefined);
   mockDb.execute.mockResolvedValue([]);
+  mockAuthService.sendCode.mockResolvedValue(undefined);
+  mockAuthService.verifyOtp.mockResolvedValue(undefined);
 
   // Default: all chainable methods return chainable
   const chainable = mockDb as unknown as Record<string, jest.Mock>;
@@ -197,6 +212,32 @@ describe('PATCH /user/me', () => {
   });
 });
 
+// ─── POST /user/me/delete-code ───────────────────────────────────────────────
+
+describe('POST /user/me/delete-code', () => {
+  it('returns 401 without token', async () => {
+    const app = buildApp();
+    const res = await request(app).post('/user/me/delete-code');
+    expect(res.status).toBe(401);
+  });
+
+  it('sends verification code to current user phone', async () => {
+    mockDb.executeTakeFirst.mockResolvedValue({
+      ...mockUser,
+      email: null,
+      email_verified: false,
+    });
+
+    const app = buildApp();
+    const res = await request(app)
+      .post('/user/me/delete-code')
+      .set('Authorization', `Bearer ${makeToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(mockAuthService.sendCode).toHaveBeenCalledWith(mockUser.phone);
+  });
+});
+
 // ─── DELETE /user/me ──────────────────────────────────────────────────────────
 
 describe('DELETE /user/me', () => {
@@ -207,15 +248,22 @@ describe('DELETE /user/me', () => {
   });
 
   it('deletes user and returns 204', async () => {
-    // First call: selectFrom('users') for existence check → user found
-    mockDb.executeTakeFirst.mockResolvedValue({ id: 'user-123' });
+    mockDb.executeTakeFirst
+      .mockResolvedValueOnce({
+        ...mockUser,
+        email: null,
+        email_verified: false,
+      })
+      .mockResolvedValueOnce({ id: 'user-123' });
 
     const app = buildApp();
     const res = await request(app)
       .delete('/user/me')
-      .set('Authorization', `Bearer ${makeToken()}`);
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ code: '123456' });
 
     expect(res.status).toBe(204);
+    expect(mockAuthService.verifyOtp).toHaveBeenCalledWith(mockUser.phone, '123456');
   });
 
   it('returns 404 if user does not exist', async () => {
@@ -224,8 +272,18 @@ describe('DELETE /user/me', () => {
     const app = buildApp();
     const res = await request(app)
       .delete('/user/me')
-      .set('Authorization', `Bearer ${makeToken()}`);
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ code: '123456' });
 
     expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when code is missing', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .delete('/user/me')
+      .set('Authorization', `Bearer ${makeToken()}`);
+
+    expect(res.status).toBe(400);
   });
 });

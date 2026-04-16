@@ -33,7 +33,11 @@ export function NameScreen({ route }: Props): React.JSX.Element {
     setIsLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.patch<UserDto>('/user/me', { name: trimmed });
+      const { data } = await apiClient.patch<UserDto>(
+        '/user/me',
+        { name: trimmed },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
       await setAuth(data, accessToken, refreshToken);
       // isAuthenticated becomes true → RootNavigator switches to Main automatically
     } catch {

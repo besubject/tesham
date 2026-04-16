@@ -14,11 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
   useAuthStore,
+  sendDeleteAccountCode,
   colors,
   typography,
   spacing,
   borderRadius,
   ConfirmationModal,
+  CodeConfirmationModal,
   type UserLanguage,
 } from '@mettig/shared';
 import type { ProfileStackScreenProps } from '../../navigation/types';
@@ -37,7 +39,11 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteCodeModal, setShowDeleteCodeModal] = useState(false);
   const [showEmailBanner, setShowEmailBanner] = useState(false);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteCodeError, setDeleteCodeError] = useState<string | null>(null);
+  const [isResendingDeleteCode, setIsResendingDeleteCode] = useState(false);
 
   const EMAIL_BANNER_KEY = 'mettig_email_banner_count';
   const EMAIL_BANNER_MAX = 5;
@@ -97,13 +103,47 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
     setShowDeleteModal(false);
     setIsLoading(true);
     try {
-      await deleteAccount();
-      // Navigation will be handled by RootNavigator based on auth state
+      await sendDeleteAccountCode();
+      setDeleteCode('');
+      setDeleteCodeError(null);
+      setShowDeleteCodeModal(true);
     } catch {
       Alert.alert(t('common.error'), t('common.error'));
+    } finally {
       setIsLoading(false);
     }
-  }, [deleteAccount, t]);
+  }, [t]);
+
+  const handleDeleteCodeConfirm = useCallback(async () => {
+    setIsLoading(true);
+    setDeleteCodeError(null);
+    try {
+      await deleteAccount(deleteCode);
+      // Navigation will be handled by RootNavigator based on auth state
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { error?: { code?: string } } } }).response?.data
+        ?.error?.code;
+      if (code === 'INVALID_CODE' || code === 'CODE_EXPIRED') {
+        setDeleteCodeError(t('profile.deleteCodeInvalid'));
+      } else {
+        Alert.alert(t('common.error'), t('common.error'));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [deleteAccount, deleteCode, t]);
+
+  const handleDeleteCodeResend = useCallback(async () => {
+    setIsResendingDeleteCode(true);
+    setDeleteCodeError(null);
+    try {
+      await sendDeleteAccountCode();
+    } catch {
+      Alert.alert(t('common.error'), t('common.error'));
+    } finally {
+      setIsResendingDeleteCode(false);
+    }
+  }, [t]);
 
   const handleFavoritesPress = useCallback(() => {
     navigation.navigate('Favorites');
@@ -308,6 +348,36 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
         onCancel={() => setShowDeleteModal(false)}
         isLoading={false}
         destructive
+      />
+
+      <CodeConfirmationModal
+        visible={showDeleteCodeModal}
+        title={t('profile.deleteCodeTitle')}
+        message={t('profile.deleteCodeMessage')}
+        phoneLabel={user?.phone ?? undefined}
+        code={deleteCode}
+        error={deleteCodeError}
+        confirmLabel={t('profile.deleteCodeConfirm')}
+        cancelLabel={t('common.no')}
+        resendLabel={t('profile.deleteCodeResend')}
+        onChangeCode={(value) => {
+          setDeleteCode(value);
+          if (deleteCodeError) setDeleteCodeError(null);
+        }}
+        onConfirm={() => {
+          void handleDeleteCodeConfirm();
+        }}
+        onCancel={() => {
+          if (isLoading || isResendingDeleteCode) return;
+          setShowDeleteCodeModal(false);
+          setDeleteCode('');
+          setDeleteCodeError(null);
+        }}
+        onResend={() => {
+          void handleDeleteCodeResend();
+        }}
+        isSubmitting={isLoading}
+        isResending={isResendingDeleteCode}
       />
     </View>
   );

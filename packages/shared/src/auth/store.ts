@@ -11,7 +11,7 @@ interface AuthState {
   setAuth: (user: UserDto, accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (params: { name?: string; language?: UserLanguage }) => Promise<void>;
-  deleteAccount: () => Promise<void>;
+  deleteAccount: (code: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -54,13 +54,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  deleteAccount: async () => {
-    try {
-      await apiClient.delete('/user/me');
-      await tokenStorage.clearTokens();
-      set({ user: null, isAuthenticated: false });
-    } catch {
-      throw new Error('Failed to delete account');
-    }
+  deleteAccount: async (code) => {
+    await apiClient.delete('/user/me', { data: { code } });
+    await tokenStorage.clearTokens();
+    set({ user: null, isAuthenticated: false });
   },
 }));

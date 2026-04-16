@@ -21,6 +21,8 @@ export const BookingCard = ({
 }: BookingCardProps): React.JSX.Element => {
   const { color, label } = getStatusBadge(booking.status);
   const isWalkIn = booking.source === 'walk_in';
+  const isLink = booking.source === 'link';
+  const hasChat = booking.status === 'confirmed' && booking.source === 'app';
   const hasUnread = unreadCount > 0;
 
   return (
@@ -39,6 +41,11 @@ export const BookingCard = ({
             {isWalkIn && (
               <Badge color="yellow" variant="light" radius="xl" tt="none">
                 Walk-in
+              </Badge>
+            )}
+            {isLink && (
+              <Badge color="blue" variant="light" radius="xl" tt="none">
+                Ссылка
               </Badge>
             )}
             <Badge color={color} variant="light" radius="xl" tt="none">
@@ -78,22 +85,24 @@ export const BookingCard = ({
               </Button>
             </Group>
 
-            <Button
-              variant="light"
-              color="teal"
-              fullWidth
-              disabled={isCompleting || isCancelling}
-              onClick={() => onOpenChat(booking)}
-              rightSection={
-                hasUnread ? (
-                  <Badge color="red" size="sm" circle>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
-                ) : undefined
-              }
-            >
-              💬 Чат с клиентом
-            </Button>
+            {hasChat ? (
+              <Button
+                variant="light"
+                color="teal"
+                fullWidth
+                disabled={isCompleting || isCancelling}
+                onClick={() => onOpenChat(booking)}
+                rightSection={
+                  hasUnread ? (
+                    <Badge color="red" size="sm" circle>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  ) : undefined
+                }
+              >
+                💬 Чат с клиентом
+              </Button>
+            ) : null}
           </>
         )}
       </Stack>

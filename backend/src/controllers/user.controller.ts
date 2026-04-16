@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { userService } from '../services/user.service';
 import { emailService } from '../services/email.service';
+import { authService } from '../services/auth.service';
 import { db } from '../db';
 import { AppError } from '../middleware/error';
 
@@ -54,9 +55,32 @@ export async function deleteMe(req: Request, res: Response, next: NextFunction):
       throw new AppError(401, 'Authentication required', 'UNAUTHORIZED');
     }
 
+    const { code } = req.body as { code: string };
+    const user = await userService.getById(req.user.id);
+
+    await authService.verifyOtp(user.phone, code);
     await userService.delete(req.user.id);
 
     res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function sendDeleteCode(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new AppError(401, 'Authentication required', 'UNAUTHORIZED');
+    }
+
+    const user = await userService.getById(req.user.id);
+    await authService.sendCode(user.phone);
+
+    res.json({ message: 'Verification code sent' });
   } catch (err) {
     next(err);
   }

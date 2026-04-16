@@ -103,6 +103,11 @@
     "logoutConfirm": "Вы уверены, что хотите выйти?",
     "deleteAccount": "Удалить аккаунт",
     "deleteConfirm": "Вы уверены? Все ваши данные будут удалены",
+    "deleteCodeTitle": "Подтвердите удаление",
+    "deleteCodeMessage": "Мы отправили 6-значный код на ваш номер. Введите его, чтобы удалить аккаунт.",
+    "deleteCodeConfirm": "Удалить аккаунт",
+    "deleteCodeResend": "Отправить код повторно",
+    "deleteCodeInvalid": "Неверный или устаревший код.",
     "version": "Версия"
   },
   "publicBooking": {

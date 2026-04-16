@@ -69,7 +69,7 @@ export const BookingsPage = (): React.JSX.Element => {
   }, [period, status, limit]);
 
   const confirmedBookings = useMemo(
-    () => pagedBookings.filter((booking) => booking.status === 'confirmed'),
+    () => pagedBookings.filter((booking) => booking.status === 'confirmed' && booking.source === 'app'),
     [pagedBookings],
   );
 

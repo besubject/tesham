@@ -98,6 +98,8 @@ interface BookingCardProps {
 function BookingCard({ booking, isAdmin, unreadCount, onPress, onOpenChat }: BookingCardProps): React.JSX.Element {
   const color = STATUS_COLORS[booking.status];
   const isWalkIn = booking.source === 'walk_in';
+  const isLink = booking.source === 'link';
+  const hasChat = booking.status === 'confirmed' && booking.source === 'app';
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.statusDot, { backgroundColor: color }]} />
@@ -112,6 +114,11 @@ function BookingCard({ booking, isAdmin, unreadCount, onPress, onOpenChat }: Boo
               <Text style={styles.walkInBadgeText}>Walk-in</Text>
             </View>
           )}
+          {isLink && (
+            <View style={styles.linkBadge}>
+              <Text style={styles.linkBadgeText}>Ссылка</Text>
+            </View>
+          )}
           <Text style={styles.cardPrice}>{formatPrice(booking.service_price)}</Text>
         </View>
         <View style={styles.cardRow}>
@@ -124,7 +131,7 @@ function BookingCard({ booking, isAdmin, unreadCount, onPress, onOpenChat }: Boo
             </Text>
           )}
         </View>
-        {booking.status === 'confirmed' && (
+        {hasChat && (
           <View style={styles.cardChatRow}>
             <TouchableOpacity
               style={styles.chatBtn}
@@ -486,7 +493,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
 
   // Fetch unread counts for confirmed bookings
   useEffect(() => {
-    const confirmed = bookings.filter((b) => b.status === 'confirmed');
+    const confirmed = bookings.filter((b) => b.status === 'confirmed' && b.source === 'app');
     if (confirmed.length === 0) return;
 
     void (async () => {
@@ -881,6 +888,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#92400E',
+  },
+  linkBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  linkBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1D4ED8',
   },
   cardPrice: {
     fontSize: 13,

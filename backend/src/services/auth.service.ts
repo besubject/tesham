@@ -75,6 +75,31 @@ async function makeTokenPair(user: User): Promise<TokenPair> {
 export class AuthService {
   constructor(private readonly sms: ISmsProvider = createSmsProvider()) {}
 
+  async verifyOtp(phone: string, code: string): Promise<void> {
+    const entry = otpStore.get(phone);
+
+    if (!entry) {
+      throw new AppError(401, 'Code not found or expired', 'INVALID_CODE');
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      otpStore.delete(phone);
+      throw new AppError(401, 'Code expired', 'CODE_EXPIRED');
+    }
+
+    entry.attempts += 1;
+    if (entry.attempts > OTP_MAX_ATTEMPTS) {
+      otpStore.delete(phone);
+      throw new AppError(429, 'Too many attempts', 'TOO_MANY_ATTEMPTS');
+    }
+
+    if (entry.code !== code) {
+      throw new AppError(401, 'Invalid code', 'INVALID_CODE');
+    }
+
+    otpStore.delete(phone);
+  }
+
   async sendCode(phone: string): Promise<void> {
     const code = generateOtp();
     otpStore.set(phone, {
@@ -116,28 +141,7 @@ export class AuthService {
     | { requiresEmailVerification: true }
     | { requiresEmailVerification: false; tokens: TokenPair; user: Omit<User, 'created_at'> }
   > {
-    const entry = otpStore.get(phone);
-
-    if (!entry) {
-      throw new AppError(401, 'Code not found or expired', 'INVALID_CODE');
-    }
-
-    if (Date.now() > entry.expiresAt) {
-      otpStore.delete(phone);
-      throw new AppError(401, 'Code expired', 'CODE_EXPIRED');
-    }
-
-    entry.attempts += 1;
-    if (entry.attempts > OTP_MAX_ATTEMPTS) {
-      otpStore.delete(phone);
-      throw new AppError(429, 'Too many attempts', 'TOO_MANY_ATTEMPTS');
-    }
-
-    if (entry.code !== code) {
-      throw new AppError(401, 'Invalid code', 'INVALID_CODE');
-    }
-
-    otpStore.delete(phone);
+    await this.verifyOtp(phone, code);
 
     // Get or create user
     const isNewUser = !(await db
@@ -224,28 +228,7 @@ export class AuthService {
    * If the user is new and a name is provided, it is saved.
    */
   async verifyOtpGetUserId(phone: string, code: string, name?: string): Promise<string> {
-    const entry = otpStore.get(phone);
-
-    if (!entry) {
-      throw new AppError(401, 'Code not found or expired', 'INVALID_CODE');
-    }
-
-    if (Date.now() > entry.expiresAt) {
-      otpStore.delete(phone);
-      throw new AppError(401, 'Code expired', 'CODE_EXPIRED');
-    }
-
-    entry.attempts += 1;
-    if (entry.attempts > OTP_MAX_ATTEMPTS) {
-      otpStore.delete(phone);
-      throw new AppError(429, 'Too many attempts', 'TOO_MANY_ATTEMPTS');
-    }
-
-    if (entry.code !== code) {
-      throw new AppError(401, 'Invalid code', 'INVALID_CODE');
-    }
-
-    otpStore.delete(phone);
+    await this.verifyOtp(phone, code);
 
     const existing = await db
       .selectFrom('users')

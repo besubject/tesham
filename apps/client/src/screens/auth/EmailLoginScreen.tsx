@@ -35,15 +35,17 @@ export function EmailLoginScreen({ navigation, route }: Props): React.JSX.Elemen
       setError(null);
       try {
         const response = await verifyEmailLogin(phone, codeString);
-        await setAuth(response.user, response.accessToken, response.refreshToken);
 
-        if (!response.user.name) {
+        if (!response.user.name.trim()) {
           navigation.navigate('NameScreen', {
             phone,
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
           });
+          return;
         }
+
+        await setAuth(response.user, response.accessToken, response.refreshToken);
       } catch {
         setError('Неверный код. Проверьте почту и попробуйте снова.');
         setCode(Array(CODE_LENGTH).fill(''));
