@@ -11,7 +11,7 @@ import {
   Title,
 } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, type UserLanguage } from '@mettig/shared';
+import { sendDeleteAccountCode, useAuthStore, type UserLanguage } from '@mettig/shared';
 import styles from './index.module.scss';
 import { PROFILE_LANGUAGE_OPTIONS, PROFILE_MESSAGES } from './constants';
 
@@ -28,6 +28,10 @@ export const ProfilePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteCode, setShowDeleteCode] = useState(false);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteCodeError, setDeleteCodeError] = useState<string | null>(null);
+  const [deleteCodeLoading, setDeleteCodeLoading] = useState(false);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,15 +67,38 @@ export const ProfilePage = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
+  const handleRequestDeleteCode = async () => {
     setLoading(true);
     setError(null);
+    setDeleteCodeError(null);
     try {
-      await deleteAccount();
-      navigate('/login');
+      await sendDeleteAccountCode();
+      setDeleteCode('');
+      setShowDeleteCode(true);
     } catch {
-      setError(PROFILE_MESSAGES.deleteError);
+      setError('Не удалось отправить код подтверждения.');
+    } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteCodeLoading(true);
+    setError(null);
+    setDeleteCodeError(null);
+    try {
+      await deleteAccount(deleteCode);
+      navigate('/login');
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { error?: { code?: string } } } }).response?.data
+        ?.error?.code;
+      if (code === 'INVALID_CODE' || code === 'CODE_EXPIRED') {
+        setDeleteCodeError('Неверный или устаревший код.');
+      } else {
+        setError(PROFILE_MESSAGES.deleteError);
+      }
+    } finally {
+      setDeleteCodeLoading(false);
     }
   };
 
@@ -175,15 +202,60 @@ export const ProfilePage = () => {
                     <Group>
                       <Button
                         variant="default"
-                        onClick={() => setShowDeleteConfirm(false)}
-                        disabled={loading}
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setShowDeleteCode(false);
+                          setDeleteCode('');
+                          setDeleteCodeError(null);
+                        }}
+                        disabled={loading || deleteCodeLoading}
                       >
                         Отмена
                       </Button>
-                      <Button color="red" onClick={handleDeleteAccount} loading={loading}>
-                        Да, удалить
+                      <Button color="red" onClick={handleRequestDeleteCode} loading={loading}>
+                        Получить код
                       </Button>
                     </Group>
+                    {showDeleteCode ? (
+                      <Stack gap="sm">
+                        <Text size="sm">
+                          Введите код из SMS, отправленный на номер {user?.phone}.
+                        </Text>
+                        <TextInput
+                          label="Код подтверждения"
+                          value={deleteCode}
+                          onChange={(e) =>
+                            setDeleteCode(e.currentTarget.value.replace(/\D/g, '').slice(0, 6))
+                          }
+                          placeholder="000000"
+                          maxLength={6}
+                          disabled={deleteCodeLoading}
+                        />
+                        {deleteCodeError ? (
+                          <Alert color="red" variant="light">
+                            {deleteCodeError}
+                          </Alert>
+                        ) : null}
+                        <Group>
+                          <Button
+                            variant="default"
+                            onClick={handleRequestDeleteCode}
+                            loading={loading}
+                            disabled={deleteCodeLoading}
+                          >
+                            Отправить код повторно
+                          </Button>
+                          <Button
+                            color="red"
+                            onClick={handleDeleteAccount}
+                            loading={deleteCodeLoading}
+                            disabled={deleteCode.length !== 6}
+                          >
+                            Да, удалить
+                          </Button>
+                        </Group>
+                      </Stack>
+                    ) : null}
                   </Stack>
                 </Alert>
               )}

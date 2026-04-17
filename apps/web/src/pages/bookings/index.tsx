@@ -15,6 +15,7 @@ import { apiClient, type BusinessBookingItemDto, type ChatUnreadCountDto } from 
 import { TStatus } from 'src/types';
 import { BOOKINGS_PAGE_SIZE_OPTIONS, PERIOD_TABS, STATUS_TABS } from './constants';
 import { WalkInModal } from './components/walk-in-modal';
+import { SlotsModal } from './components/slots-modal';
 import { ChatModal } from './components/chat-modal';
 import { BookingCard } from './components/booking-card';
 import { ConfirmationModal } from './components/confirmation-modal';
@@ -32,6 +33,7 @@ export const BookingsPage = (): React.JSX.Element => {
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
   const [walkInOpened, setWalkInOpened] = useState(false);
+  const [slotsOpened, setSlotsOpened] = useState(false);
   const [chatBooking, setChatBooking] = useState<BusinessBookingItemDto | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [confirmation, setConfirmation] = useState<ConfirmationModalState | null>(null);
@@ -67,7 +69,7 @@ export const BookingsPage = (): React.JSX.Element => {
   }, [period, status, limit]);
 
   const confirmedBookings = useMemo(
-    () => pagedBookings.filter((booking) => booking.status === 'confirmed'),
+    () => pagedBookings.filter((booking) => booking.status === 'confirmed' && booking.source === 'app'),
     [pagedBookings],
   );
 
@@ -203,9 +205,14 @@ export const BookingsPage = (): React.JSX.Element => {
           <Title order={1}>Записи</Title>
           <Text c="dimmed">Управление записями клиентов</Text>
         </Stack>
-        <Button color="teal" onClick={() => setWalkInOpened(true)} style={{ marginTop: 4 }}>
-          + Клиент
-        </Button>
+        <Group gap="sm" align="center" style={{ marginTop: 4 }}>
+          <Button variant="default" onClick={() => setSlotsOpened(true)}>
+            Слоты
+          </Button>
+          <Button color="teal" onClick={() => setWalkInOpened(true)}>
+            + Клиент
+          </Button>
+        </Group>
       </Group>
 
       <Tabs
@@ -283,6 +290,8 @@ export const BookingsPage = (): React.JSX.Element => {
         onClose={() => setWalkInOpened(false)}
         onCreated={handleCreated}
       />
+
+      <SlotsModal opened={slotsOpened} onClose={() => setSlotsOpened(false)} />
 
       <ConfirmationModal
         confirmation={confirmation}

@@ -59,7 +59,7 @@ export class PublicService {
     const [staff, services] = await Promise.all([
       db
         .selectFrom('staff')
-        .select(['id', 'name', 'role', 'avatar_url'])
+        .select(['id', 'name', 'slug', 'role', 'avatar_url'])
         .where('business_id', '=', business.id)
         .where('is_active', '=', true)
         .execute(),

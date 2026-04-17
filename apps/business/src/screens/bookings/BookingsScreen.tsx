@@ -98,6 +98,8 @@ interface BookingCardProps {
 function BookingCard({ booking, isAdmin, unreadCount, onPress, onOpenChat }: BookingCardProps): React.JSX.Element {
   const color = STATUS_COLORS[booking.status];
   const isWalkIn = booking.source === 'walk_in';
+  const isLink = booking.source === 'link';
+  const hasChat = booking.status === 'confirmed' && booking.source === 'app';
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.statusDot, { backgroundColor: color }]} />
@@ -112,6 +114,11 @@ function BookingCard({ booking, isAdmin, unreadCount, onPress, onOpenChat }: Boo
               <Text style={styles.walkInBadgeText}>Walk-in</Text>
             </View>
           )}
+          {isLink && (
+            <View style={styles.linkBadge}>
+              <Text style={styles.linkBadgeText}>Ссылка</Text>
+            </View>
+          )}
           <Text style={styles.cardPrice}>{formatPrice(booking.service_price)}</Text>
         </View>
         <View style={styles.cardRow}>
@@ -124,7 +131,7 @@ function BookingCard({ booking, isAdmin, unreadCount, onPress, onOpenChat }: Boo
             </Text>
           )}
         </View>
-        {booking.status === 'confirmed' && (
+        {hasChat && (
           <View style={styles.cardChatRow}>
             <TouchableOpacity
               style={styles.chatBtn}
@@ -157,11 +164,19 @@ interface WalkInModalProps {
   visible: boolean;
   isAdmin: boolean;
   staff: StaffItemDto[];
+  currentStaffId: string | null;
   onClose: () => void;
   onCreated: () => void;
 }
 
-function WalkInModal({ visible, isAdmin, staff, onClose, onCreated }: WalkInModalProps): React.JSX.Element {
+function WalkInModal({
+  visible,
+  isAdmin,
+  staff,
+  currentStaffId,
+  onClose,
+  onCreated,
+}: WalkInModalProps): React.JSX.Element {
   const [services, setServices] = useState<ServiceItemDto[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
@@ -188,10 +203,15 @@ function WalkInModal({ visible, isAdmin, staff, onClose, onCreated }: WalkInModa
 
   // Pre-fill staff when staff list arrives
   useEffect(() => {
+    if (!isAdmin && currentStaffId) {
+      setSelectedStaffId(currentStaffId);
+      return;
+    }
+
     if (staff.length > 0 && !selectedStaffId) {
       setSelectedStaffId(staff[0]?.id ?? '');
     }
-  }, [staff, selectedStaffId]);
+  }, [currentStaffId, isAdmin, staff, selectedStaffId]);
 
   const reset = useCallback(() => {
     setSelectedServiceId(services.length > 0 ? (services[0]?.id ?? '') : '');
@@ -396,6 +416,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
 
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null); // null = "Все"
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [staff, setStaff] = useState<StaffItemDto[]>([]);
   const [bookings, setBookings] = useState<BusinessBookingItemDto[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -423,6 +444,17 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
         setStaff(data.staff);
       } catch {
         // non-critical — proceed without staff list
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { data } = await apiClient.get<{ staff: StaffItemDto }>('/business/staff/me');
+        setCurrentStaffId(data.staff.id);
+      } catch {
+        // non-critical
       }
     })();
   }, []);
@@ -461,7 +493,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
 
   // Fetch unread counts for confirmed bookings
   useEffect(() => {
-    const confirmed = bookings.filter((b) => b.status === 'confirmed');
+    const confirmed = bookings.filter((b) => b.status === 'confirmed' && b.source === 'app');
     if (confirmed.length === 0) return;
 
     void (async () => {
@@ -483,8 +515,10 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
   }, [bookings]);
 
   const handleCreateSlots = useCallback(() => {
-    navigation.navigate('CreateSlots', undefined);
-  }, [navigation]);
+    navigation.navigate('CreateSlots', {
+      staffId: isAdmin ? (selectedStaffId ?? undefined) : (currentStaffId ?? undefined),
+    });
+  }, [currentStaffId, isAdmin, navigation, selectedStaffId]);
 
   const handleBookingPress = useCallback(
     (bookingId: string) => {
@@ -516,7 +550,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Записи</Text>
         <TouchableOpacity style={styles.addButton} onPress={handleCreateSlots}>
-          <Text style={styles.addButtonText}>＋</Text>
+          <Text style={styles.addButtonText}>+ Слоты</Text>
         </TouchableOpacity>
       </View>
 
@@ -656,6 +690,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
         visible={walkInVisible}
         isAdmin={isAdmin}
         staff={staff}
+        currentStaffId={currentStaffId}
         onClose={() => setWalkInVisible(false)}
         onCreated={() => void fetchBookings()}
       />
@@ -683,17 +718,17 @@ const styles = StyleSheet.create({
     color: '#1A1A18',
   },
   addButton: {
-    width: 36,
-    height: 36,
+    minHeight: 36,
     borderRadius: 18,
     backgroundColor: '#1D6B4F',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 14,
   },
   addButtonText: {
-    fontSize: 20,
+    fontSize: 14,
+    fontWeight: '600',
     color: '#FFFFFF',
-    lineHeight: 22,
   },
   // Segment control
   segmentScroll: {
@@ -853,6 +888,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#92400E',
+  },
+  linkBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  linkBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1D4ED8',
   },
   cardPrice: {
     fontSize: 13,

@@ -14,7 +14,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiClient, tokenStorage, trackEvent } from '@mettig/shared';
+import {
+  apiClient,
+  CodeConfirmationModal,
+  sendDeleteAccountCode,
+  tokenStorage,
+  trackEvent,
+  useAuthStore,
+} from '@mettig/shared';
 import type { BusinessDetailDto, ServiceItemDto, StaffItemDto } from '@mettig/shared';
 import type { BusinessProfileStackScreenProps } from '../../navigation/types';
 
@@ -105,7 +112,7 @@ interface FieldRowProps {
   editMode: boolean;
   onChangeText?: (text: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'phone-pad' | 'url';
+  keyboardType?: 'default' | 'phone-pad' | 'url' | 'decimal-pad';
 }
 
 function FieldRow({
@@ -156,11 +163,7 @@ function ServiceRow({ item, isAdmin, onEdit, onDelete }: ServiceRowProps): React
       </View>
       {isAdmin && (
         <View style={styles.listRowActions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => onEdit(item)}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.iconBtn} onPress={() => onEdit(item)} activeOpacity={0.7}>
             <Text style={styles.iconBtnText}>✏️</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -187,7 +190,9 @@ function StaffRow({ item, isAdmin, onDelete }: StaffRowProps): React.JSX.Element
     <View style={styles.listRow}>
       <View style={styles.listRowInfo}>
         <Text style={styles.listRowName}>{item.name}</Text>
-        <Text style={styles.listRowSub}>{item.role === 'admin' ? 'Администратор' : 'Сотрудник'}</Text>
+        <Text style={styles.listRowSub}>
+          {item.role === 'admin' ? 'Администратор' : 'Сотрудник'}
+        </Text>
       </View>
       {isAdmin && (
         <TouchableOpacity
@@ -207,6 +212,8 @@ function StaffRow({ item, isAdmin, onDelete }: StaffRowProps): React.JSX.Element
 type EditFields = {
   name: string;
   address: string;
+  lat: string;
+  lng: string;
   phone: string;
   instagram_url: string;
   website_url: string;
@@ -232,6 +239,9 @@ type StaffFormState = {
 };
 
 export function BusinessProfileScreen(_props: Props): React.JSX.Element {
+  const logout = useAuthStore((state) => state.logout);
+  const deleteAccount = useAuthStore((state) => state.deleteAccount);
+  const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState<BusinessDetailDto | null>(null);
   const [staff, setStaff] = useState<StaffItemDto[]>([]);
   const [services, setServices] = useState<ServiceItemDto[]>([]);
@@ -240,6 +250,11 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteCodeModal, setShowDeleteCodeModal] = useState(false);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteCodeError, setDeleteCodeError] = useState<string | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteCodeSending, setDeleteCodeSending] = useState(false);
 
   const [slugEditMode, setSlugEditMode] = useState(false);
   const [slugInput, setSlugInput] = useState('');
@@ -251,6 +266,8 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
   const [editFields, setEditFields] = useState<EditFields>({
     name: '',
     address: '',
+    lat: '',
+    lng: '',
     phone: '',
     instagram_url: '',
     website_url: '',
@@ -308,6 +325,8 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
       setEditFields({
         name: p.name ?? '',
         address: p.address ?? '',
+        lat: p.lat !== null && p.lat !== undefined ? String(p.lat) : '',
+        lng: p.lng !== null && p.lng !== undefined ? String(p.lng) : '',
         phone: p.phone ?? '',
         instagram_url: p.instagram_url ?? '',
         website_url: p.website_url ?? '',
@@ -341,9 +360,19 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     setSaving(true);
     try {
       const threshold = parseInt(editFields.cancellation_threshold_minutes, 10);
+      const lat = parseFloat(editFields.lat.replace(',', '.'));
+      const lng = parseFloat(editFields.lng.replace(',', '.'));
+
+      if (isNaN(lat) || isNaN(lng)) {
+        Alert.alert('Ошибка', 'Укажите корректные координаты');
+        return;
+      }
+
       const payload: Record<string, unknown> = {
         name: editFields.name.trim(),
         address: editFields.address.trim(),
+        lat,
+        lng,
         phone: editFields.phone.trim(),
         instagram_url: editFields.instagram_url.trim() || null,
         website_url: editFields.website_url.trim() || null,
@@ -355,7 +384,10 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
         working_hours: editFields.working_hours as Record<string, unknown>,
       };
 
-      const { data } = await apiClient.patch<{ profile: BusinessDetailDto }>('/business/profile', payload);
+      const { data } = await apiClient.patch<{ profile: BusinessDetailDto }>(
+        '/business/profile',
+        payload,
+      );
       setProfile(data.profile);
       setEditMode(false);
     } catch {
@@ -370,6 +402,8 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     setEditFields({
       name: profile.name ?? '',
       address: profile.address ?? '',
+      lat: profile.lat !== null && profile.lat !== undefined ? String(profile.lat) : '',
+      lng: profile.lng !== null && profile.lng !== undefined ? String(profile.lng) : '',
       phone: profile.phone ?? '',
       instagram_url: profile.instagram_url ?? '',
       website_url: profile.website_url ?? '',
@@ -415,14 +449,14 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           `/business/services/${serviceForm.editId}`,
           { name, price, duration_minutes: duration },
         );
-        setServices(prev => prev.map(s => (s.id === serviceForm.editId ? data.service : s)));
+        setServices((prev) => prev.map((s) => (s.id === serviceForm.editId ? data.service : s)));
       } else {
         const { data } = await apiClient.post<{ service: ServiceItemDto }>('/business/services', {
           name,
           price,
           duration_minutes: duration,
         });
-        setServices(prev => [...prev, data.service]);
+        setServices((prev) => [...prev, data.service]);
       }
       setServiceForm({ visible: false, editId: null, name: '', price: '', duration: '' });
     } catch {
@@ -439,7 +473,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
         onPress: async () => {
           try {
             await apiClient.delete(`/business/services/${id}`);
-            setServices(prev => prev.filter(s => s.id !== id));
+            setServices((prev) => prev.filter((s) => s.id !== id));
           } catch {
             Alert.alert('Ошибка', 'Не удалось удалить услугу');
           }
@@ -469,7 +503,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
         phone,
         role: staffForm.role,
       });
-      setStaff(prev => [...prev, data.staff]);
+      setStaff((prev) => [...prev, data.staff]);
       setStaffForm({ visible: false, name: '', phone: '', role: 'employee' });
     } catch {
       Alert.alert('Ошибка', 'Не удалось добавить сотрудника');
@@ -485,7 +519,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
         onPress: async () => {
           try {
             await apiClient.delete(`/business/staff/${id}`);
-            setStaff(prev => prev.filter(s => s.id !== id));
+            setStaff((prev) => prev.filter((s) => s.id !== id));
           } catch {
             Alert.alert('Ошибка', 'Не удалось удалить сотрудника');
           }
@@ -501,6 +535,76 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     setCopiedKey(key);
     void trackEvent({ event_type: 'link_copied', payload: { url } });
     setTimeout(() => setCopiedKey(null), 2000);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert('Выйти', 'Вы уверены, что хотите выйти из аккаунта?', [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Выйти',
+        style: 'destructive',
+        onPress: () => {
+          void logout();
+        },
+      },
+    ]);
+  }, [logout]);
+
+  const handleDeletePress = useCallback(() => {
+    Alert.alert(
+      'Удалить аккаунт?',
+      'Мы отправим код на ваш номер. Без подтверждения аккаунт не удалится.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Продолжить',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleteCodeSending(true);
+            try {
+              await sendDeleteAccountCode();
+              setDeleteCode('');
+              setDeleteCodeError(null);
+              setShowDeleteCodeModal(true);
+            } catch {
+              Alert.alert('Ошибка', 'Не удалось отправить код. Попробуйте снова.');
+            } finally {
+              setDeleteCodeSending(false);
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    setDeleteSubmitting(true);
+    setDeleteCodeError(null);
+    try {
+      await deleteAccount(deleteCode);
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { error?: { code?: string } } } }).response?.data
+        ?.error?.code;
+      if (code === 'INVALID_CODE' || code === 'CODE_EXPIRED') {
+        setDeleteCodeError('Неверный или устаревший код.');
+      } else {
+        Alert.alert('Ошибка', 'Не удалось удалить аккаунт.');
+      }
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }, [deleteAccount, deleteCode]);
+
+  const handleDeleteCodeResend = useCallback(async () => {
+    setDeleteCodeSending(true);
+    setDeleteCodeError(null);
+    try {
+      await sendDeleteAccountCode();
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось отправить код. Попробуйте снова.');
+    } finally {
+      setDeleteCodeSending(false);
+    }
   }, []);
 
   const handleShareLink = useCallback(async (url: string) => {
@@ -527,7 +631,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     setSlugSaving(true);
     setSlugError(null);
     try {
-      const { data } = await apiClient.patch<{ profile: BusinessDetailDto }>('/business/profile', { slug });
+      const { data } = await apiClient.patch<{ profile: BusinessDetailDto }>('/business/profile', {
+        slug,
+      });
       setProfile(data.profile);
       setSlugEditMode(false);
     } catch (err: unknown) {
@@ -556,7 +662,13 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
     return (
       <SafeAreaView style={styles.centered}>
         <Text style={styles.errorText}>{error ?? 'Профиль не найден'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); void loadData(); }}>
+        <TouchableOpacity
+          style={styles.retryBtn}
+          onPress={() => {
+            setLoading(true);
+            void loadData();
+          }}
+        >
           <Text style={styles.retryBtnText}>Повторить</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -573,18 +685,28 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
       <View style={styles.header}>
         <Text style={styles.screenTitle}>Заведение</Text>
         {isAdmin && !editMode && (
-          <TouchableOpacity style={styles.editBtn} onPress={() => setEditMode(true)} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => setEditMode(true)}
+            activeOpacity={0.7}
+          >
             <Text style={styles.editBtnText}>Изменить</Text>
           </TouchableOpacity>
         )}
         {isAdmin && editMode && (
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelEdit} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={handleCancelEdit}
+              activeOpacity={0.7}
+            >
               <Text style={styles.cancelBtnText}>Отмена</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-              onPress={() => { void handleSaveProfile(); }}
+              onPress={() => {
+                void handleSaveProfile();
+              }}
               activeOpacity={0.7}
               disabled={saving}
             >
@@ -602,7 +724,13 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
+          />
+        }
       >
         {/* ── Основная информация ── */}
         <SectionCard title="Основная информация">
@@ -610,26 +738,42 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
             label="Название"
             value={editMode ? editFields.name : (profile.name ?? '')}
             editMode={editMode}
-            onChangeText={t => setEditFields(f => ({ ...f, name: t }))}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, name: t }))}
           />
           <FieldRow
             label="Адрес"
             value={editMode ? editFields.address : (profile.address ?? '')}
             editMode={editMode}
-            onChangeText={t => setEditFields(f => ({ ...f, address: t }))}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, address: t }))}
           />
           <FieldRow
             label="Телефон"
             value={editMode ? editFields.phone : (profile.phone ?? '')}
             editMode={editMode}
-            onChangeText={t => setEditFields(f => ({ ...f, phone: t }))}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, phone: t }))}
             keyboardType="phone-pad"
+          />
+          <FieldRow
+            label="Широта"
+            value={editMode ? editFields.lat : (profile.lat !== null && profile.lat !== undefined ? String(profile.lat) : '')}
+            editMode={editMode}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, lat: t }))}
+            keyboardType="decimal-pad"
+            placeholder="43.317000"
+          />
+          <FieldRow
+            label="Долгота"
+            value={editMode ? editFields.lng : (profile.lng !== null && profile.lng !== undefined ? String(profile.lng) : '')}
+            editMode={editMode}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, lng: t }))}
+            keyboardType="decimal-pad"
+            placeholder="45.694000"
           />
           <FieldRow
             label="Instagram"
             value={editMode ? editFields.instagram_url : (profile.instagram_url ?? '')}
             editMode={editMode}
-            onChangeText={t => setEditFields(f => ({ ...f, instagram_url: t }))}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, instagram_url: t }))}
             placeholder="https://instagram.com/..."
             keyboardType="url"
           />
@@ -637,7 +781,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
             label="Сайт"
             value={editMode ? editFields.website_url : (profile.website_url ?? '')}
             editMode={editMode}
-            onChangeText={t => setEditFields(f => ({ ...f, website_url: t }))}
+            onChangeText={(t) => setEditFields((f) => ({ ...f, website_url: t }))}
             placeholder="https://..."
             keyboardType="url"
           />
@@ -645,7 +789,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
 
         {/* ── Часы работы ── */}
         <SectionCard title="Часы работы">
-          {DAYS.map(day => {
+          {DAYS.map((day) => {
             const hours = wh[day];
             if (editMode) {
               return (
@@ -654,7 +798,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                   <TouchableOpacity
                     style={[styles.dayToggle, hours !== null && styles.dayToggleActive]}
                     onPress={() =>
-                      setEditFields(f => ({
+                      setEditFields((f) => ({
                         ...f,
                         working_hours: {
                           ...f.working_hours,
@@ -664,7 +808,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                     }
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.dayToggleText, hours !== null && styles.dayToggleTextActive]}>
+                    <Text
+                      style={[styles.dayToggleText, hours !== null && styles.dayToggleTextActive]}
+                    >
                       {hours !== null ? 'Открыто' : 'Закрыто'}
                     </Text>
                   </TouchableOpacity>
@@ -673,10 +819,13 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                       <TextInput
                         style={styles.timeInput}
                         value={hours.open}
-                        onChangeText={t =>
-                          setEditFields(f => ({
+                        onChangeText={(t) =>
+                          setEditFields((f) => ({
                             ...f,
-                            working_hours: { ...f.working_hours, [day]: { open: t, close: hours.close } },
+                            working_hours: {
+                              ...f.working_hours,
+                              [day]: { open: t, close: hours.close },
+                            },
                           }))
                         }
                         placeholder="09:00"
@@ -687,10 +836,13 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                       <TextInput
                         style={styles.timeInput}
                         value={hours.close}
-                        onChangeText={t =>
-                          setEditFields(f => ({
+                        onChangeText={(t) =>
+                          setEditFields((f) => ({
                             ...f,
-                            working_hours: { ...f.working_hours, [day]: { open: hours.open, close: t } },
+                            working_hours: {
+                              ...f.working_hours,
+                              [day]: { open: hours.open, close: t },
+                            },
                           }))
                         }
                         placeholder="18:00"
@@ -703,13 +855,16 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
               );
             }
             const profileHours = normalizeDayHours(
-              (profile.working_hours as Record<string, WorkingHoursValue> | undefined)?.[day] ?? null,
+              (profile.working_hours as Record<string, WorkingHoursValue> | undefined)?.[day] ??
+                null,
             );
             return (
               <View key={day} style={styles.hoursRow}>
                 <Text style={styles.dayLabel}>{DAY_LABELS[day]}</Text>
                 <Text style={styles.hoursText}>
-                  {profileHours !== null ? `${profileHours.open} – ${profileHours.close}` : 'Закрыто'}
+                  {profileHours !== null
+                    ? `${profileHours.open} – ${profileHours.close}`
+                    : 'Закрыто'}
                 </Text>
               </View>
             );
@@ -722,7 +877,12 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           action={
             isAdmin && profile.photos.length < 5 ? (
               <TouchableOpacity
-                onPress={() => Alert.alert('Загрузка фото', 'Будет доступно после подключения хранилища (TASK-034)')}
+                onPress={() =>
+                  Alert.alert(
+                    'Загрузка фото',
+                    'Будет доступно после подключения хранилища (TASK-034)',
+                  )
+                }
                 activeOpacity={0.7}
               >
                 <Text style={styles.sectionAction}>+ Добавить</Text>
@@ -735,10 +895,17 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           ) : (
             profile.photos.map((url, idx) => (
               <View key={idx} style={styles.photoRow}>
-                <Text style={styles.photoUrl} numberOfLines={1}>{url}</Text>
+                <Text style={styles.photoUrl} numberOfLines={1}>
+                  {url}
+                </Text>
                 {isAdmin && (
                   <TouchableOpacity
-                    onPress={() => Alert.alert('Удаление фото', 'Будет доступно после подключения хранилища (TASK-034)')}
+                    onPress={() =>
+                      Alert.alert(
+                        'Удаление фото',
+                        'Будет доступно после подключения хранилища (TASK-034)',
+                      )
+                    }
                     activeOpacity={0.7}
                   >
                     <Text style={styles.iconBtnText}>🗑</Text>
@@ -755,7 +922,12 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           action={
             isAdmin ? (
               <TouchableOpacity
-                onPress={() => Alert.alert('Загрузка фото', 'Будет доступно после подключения хранилища (TASK-034)')}
+                onPress={() =>
+                  Alert.alert(
+                    'Загрузка фото',
+                    'Будет доступно после подключения хранилища (TASK-034)',
+                  )
+                }
                 activeOpacity={0.7}
               >
                 <Text style={styles.sectionAction}>+ Добавить</Text>
@@ -768,10 +940,17 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           ) : (
             profile.portfolio_photos.map((url, idx) => (
               <View key={idx} style={styles.photoRow}>
-                <Text style={styles.photoUrl} numberOfLines={1}>{url}</Text>
+                <Text style={styles.photoUrl} numberOfLines={1}>
+                  {url}
+                </Text>
                 {isAdmin && (
                   <TouchableOpacity
-                    onPress={() => Alert.alert('Удаление фото', 'Будет доступно после подключения хранилища (TASK-034)')}
+                    onPress={() =>
+                      Alert.alert(
+                        'Удаление фото',
+                        'Будет доступно после подключения хранилища (TASK-034)',
+                      )
+                    }
                     activeOpacity={0.7}
                   >
                     <Text style={styles.iconBtnText}>🗑</Text>
@@ -796,7 +975,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           {services.length === 0 && !serviceForm.visible && (
             <Text style={styles.emptyText}>Нет услуг</Text>
           )}
-          {services.map(item => (
+          {services.map((item) => (
             <ServiceRow
               key={item.id}
               item={item}
@@ -813,7 +992,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
               <TextInput
                 style={styles.formInput}
                 value={serviceForm.name}
-                onChangeText={t => setServiceForm(f => ({ ...f, name: t }))}
+                onChangeText={(t) => setServiceForm((f) => ({ ...f, name: t }))}
                 placeholder="Название услуги"
                 placeholderTextColor="#B0B0AA"
               />
@@ -821,7 +1000,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                 <TextInput
                   style={[styles.formInput, styles.formInputHalf]}
                   value={serviceForm.price}
-                  onChangeText={t => setServiceForm(f => ({ ...f, price: t }))}
+                  onChangeText={(t) => setServiceForm((f) => ({ ...f, price: t }))}
                   placeholder="Цена ₽"
                   placeholderTextColor="#B0B0AA"
                   keyboardType="numeric"
@@ -829,7 +1008,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                 <TextInput
                   style={[styles.formInput, styles.formInputHalf]}
                   value={serviceForm.duration}
-                  onChangeText={t => setServiceForm(f => ({ ...f, duration: t }))}
+                  onChangeText={(t) => setServiceForm((f) => ({ ...f, duration: t }))}
                   placeholder="Длит. мин"
                   placeholderTextColor="#B0B0AA"
                   keyboardType="numeric"
@@ -838,14 +1017,24 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
               <View style={styles.formActions}>
                 <TouchableOpacity
                   style={styles.formCancelBtn}
-                  onPress={() => setServiceForm({ visible: false, editId: null, name: '', price: '', duration: '' })}
+                  onPress={() =>
+                    setServiceForm({
+                      visible: false,
+                      editId: null,
+                      name: '',
+                      price: '',
+                      duration: '',
+                    })
+                  }
                   activeOpacity={0.7}
                 >
                   <Text style={styles.formCancelBtnText}>Отмена</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.formSaveBtn}
-                  onPress={() => { void handleSaveService(); }}
+                  onPress={() => {
+                    void handleSaveService();
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.formSaveBtnText}>Сохранить</Text>
@@ -869,7 +1058,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           {staff.length === 0 && !staffForm.visible && (
             <Text style={styles.emptyText}>Нет сотрудников</Text>
           )}
-          {staff.map(item => (
+          {staff.map((item) => (
             <StaffRow key={item.id} item={item} isAdmin={isAdmin} onDelete={handleDeleteStaff} />
           ))}
           {staffForm.visible && isAdmin && (
@@ -878,14 +1067,14 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
               <TextInput
                 style={styles.formInput}
                 value={staffForm.name}
-                onChangeText={t => setStaffForm(f => ({ ...f, name: t }))}
+                onChangeText={(t) => setStaffForm((f) => ({ ...f, name: t }))}
                 placeholder="Имя"
                 placeholderTextColor="#B0B0AA"
               />
               <TextInput
                 style={styles.formInput}
                 value={staffForm.phone}
-                onChangeText={t => setStaffForm(f => ({ ...f, phone: t }))}
+                onChangeText={(t) => setStaffForm((f) => ({ ...f, phone: t }))}
                 placeholder="Телефон"
                 placeholderTextColor="#B0B0AA"
                 keyboardType="phone-pad"
@@ -894,19 +1083,29 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                 <Text style={styles.fieldLabel}>Роль:</Text>
                 <TouchableOpacity
                   style={[styles.roleChip, staffForm.role === 'employee' && styles.roleChipActive]}
-                  onPress={() => setStaffForm(f => ({ ...f, role: 'employee' }))}
+                  onPress={() => setStaffForm((f) => ({ ...f, role: 'employee' }))}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.roleChipText, staffForm.role === 'employee' && styles.roleChipTextActive]}>
+                  <Text
+                    style={[
+                      styles.roleChipText,
+                      staffForm.role === 'employee' && styles.roleChipTextActive,
+                    ]}
+                  >
                     Сотрудник
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.roleChip, staffForm.role === 'admin' && styles.roleChipActive]}
-                  onPress={() => setStaffForm(f => ({ ...f, role: 'admin' }))}
+                  onPress={() => setStaffForm((f) => ({ ...f, role: 'admin' }))}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.roleChipText, staffForm.role === 'admin' && styles.roleChipTextActive]}>
+                  <Text
+                    style={[
+                      styles.roleChipText,
+                      staffForm.role === 'admin' && styles.roleChipTextActive,
+                    ]}
+                  >
                     Администратор
                   </Text>
                 </TouchableOpacity>
@@ -914,14 +1113,18 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
               <View style={styles.formActions}>
                 <TouchableOpacity
                   style={styles.formCancelBtn}
-                  onPress={() => setStaffForm({ visible: false, name: '', phone: '', role: 'employee' })}
+                  onPress={() =>
+                    setStaffForm({ visible: false, name: '', phone: '', role: 'employee' })
+                  }
                   activeOpacity={0.7}
                 >
                   <Text style={styles.formCancelBtnText}>Отмена</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.formSaveBtn}
-                  onPress={() => { void handleSaveStaff(); }}
+                  onPress={() => {
+                    void handleSaveStaff();
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.formSaveBtnText}>Добавить</Text>
@@ -953,7 +1156,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                 <View style={styles.linkActions}>
                   <TouchableOpacity
                     style={styles.linkBtn}
-                    onPress={() => { void handleCopyLink(`${BASE_URL}/b/${profile.slug}`, 'business'); }}
+                    onPress={() => {
+                      void handleCopyLink(`${BASE_URL}/b/${profile.slug}`, 'business');
+                    }}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.linkBtnText}>
@@ -962,7 +1167,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.linkBtn, styles.linkBtnShare]}
-                    onPress={() => { void handleShareLink(`${BASE_URL}/b/${profile.slug}`); }}
+                    onPress={() => {
+                      void handleShareLink(`${BASE_URL}/b/${profile.slug}`);
+                    }}
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.linkBtnText, styles.linkBtnShareText]}>Поделиться</Text>
@@ -984,7 +1191,7 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
               <TextInput
                 style={styles.formInput}
                 value={slugInput}
-                onChangeText={t => setSlugInput(t.toLowerCase())}
+                onChangeText={(t) => setSlugInput(t.toLowerCase())}
                 placeholder="my-barbershop"
                 placeholderTextColor="#B0B0AA"
                 autoCapitalize="none"
@@ -1001,7 +1208,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.formSaveBtn, slugSaving && styles.saveBtnDisabled]}
-                  onPress={() => { void handleSaveSlug(); }}
+                  onPress={() => {
+                    void handleSaveSlug();
+                  }}
                   activeOpacity={0.7}
                   disabled={slugSaving}
                 >
@@ -1020,19 +1229,26 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
             <>
               <View style={styles.linkDivider} />
               <Text style={styles.linkSubsectionTitle}>Ссылки мастеров</Text>
-              {staff.map(item => {
-                const staffUrl = `${BASE_URL}/b/${profile.slug}/${item.id}`;
+              {staff.map((item) => {
+                const staffUrl = `${BASE_URL}/b/${profile.slug}/${item.slug}`;
                 const copiedId = `staff-${item.id}`;
                 return (
                   <View key={item.id} style={styles.staffLinkRow}>
                     <View style={styles.staffLinkInfo}>
                       <Text style={styles.staffLinkName}>{item.name}</Text>
-                      <Text style={styles.staffLinkUrl} numberOfLines={1}>{staffUrl}</Text>
+                      <Text style={styles.staffLinkUrl} numberOfLines={1}>
+                        {staffUrl}
+                      </Text>
+                      <Text style={styles.staffLinkId} numberOfLines={1}>
+                        ID: {item.id}
+                      </Text>
                     </View>
                     <View style={styles.staffLinkBtns}>
                       <TouchableOpacity
                         style={styles.iconLinkBtn}
-                        onPress={() => { void handleCopyLink(staffUrl, copiedId); }}
+                        onPress={() => {
+                          void handleCopyLink(staffUrl, copiedId);
+                        }}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.iconLinkBtnText}>
@@ -1041,7 +1257,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.iconLinkBtn}
-                        onPress={() => { void handleShareLink(staffUrl); }}
+                        onPress={() => {
+                          void handleShareLink(staffUrl);
+                        }}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.iconLinkBtnText}>↗</Text>
@@ -1062,7 +1280,9 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
               <TextInput
                 style={[styles.fieldInput, styles.fieldInputShort]}
                 value={editFields.cancellation_threshold_minutes}
-                onChangeText={t => setEditFields(f => ({ ...f, cancellation_threshold_minutes: t }))}
+                onChangeText={(t) =>
+                  setEditFields((f) => ({ ...f, cancellation_threshold_minutes: t }))
+                }
                 keyboardType="numeric"
                 placeholder="0"
                 placeholderTextColor="#B0B0AA"
@@ -1074,8 +1294,12 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           <View style={styles.switchRow}>
             <Text style={styles.fieldLabel}>Напоминание за 24 ч</Text>
             <Switch
-              value={editMode ? editFields.remind_24h : (profile.reminder_settings?.remind_24h ?? true)}
-              onValueChange={v => { if (editMode) setEditFields(f => ({ ...f, remind_24h: v })); }}
+              value={
+                editMode ? editFields.remind_24h : (profile.reminder_settings?.remind_24h ?? true)
+              }
+              onValueChange={(v) => {
+                if (editMode) setEditFields((f) => ({ ...f, remind_24h: v }));
+              }}
               disabled={!editMode}
               trackColor={{ true: COLORS.primary, false: '#D0D0C8' }}
               thumbColor="#fff"
@@ -1084,17 +1308,72 @@ export function BusinessProfileScreen(_props: Props): React.JSX.Element {
           <View style={styles.switchRow}>
             <Text style={styles.fieldLabel}>Напоминание за 30 мин</Text>
             <Switch
-              value={editMode ? editFields.remind_30min : (profile.reminder_settings?.remind_30min ?? true)}
-              onValueChange={v => { if (editMode) setEditFields(f => ({ ...f, remind_30min: v })); }}
+              value={
+                editMode
+                  ? editFields.remind_30min
+                  : (profile.reminder_settings?.remind_30min ?? true)
+              }
+              onValueChange={(v) => {
+                if (editMode) setEditFields((f) => ({ ...f, remind_30min: v }));
+              }}
               disabled={!editMode}
               trackColor={{ true: COLORS.primary, false: '#D0D0C8' }}
               thumbColor="#fff"
             />
           </View>
+          <View style={styles.settingsActionRow}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
+              <Text style={styles.logoutBtnText}>Выйти из аккаунта</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.settingsActionRow}>
+            <TouchableOpacity
+              style={[styles.logoutBtn, styles.deleteAccountBtn]}
+              onPress={handleDeletePress}
+              activeOpacity={0.7}
+              disabled={deleteSubmitting || deleteCodeSending}
+            >
+              {deleteCodeSending ? (
+                <ActivityIndicator size="small" color={COLORS.danger} />
+              ) : (
+                <Text style={styles.logoutBtnText}>Удалить аккаунт</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </SectionCard>
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <CodeConfirmationModal
+        visible={showDeleteCodeModal}
+        title="Подтвердите удаление"
+        message="Введите 6-значный код из SMS, чтобы удалить аккаунт."
+        phoneLabel={user?.phone ?? undefined}
+        code={deleteCode}
+        error={deleteCodeError}
+        confirmLabel="Удалить аккаунт"
+        cancelLabel="Отмена"
+        resendLabel="Отправить код повторно"
+        onChangeCode={(value) => {
+          setDeleteCode(value);
+          if (deleteCodeError) setDeleteCodeError(null);
+        }}
+        onConfirm={() => {
+          void handleDeleteConfirm();
+        }}
+        onCancel={() => {
+          if (deleteSubmitting || deleteCodeSending) return;
+          setShowDeleteCodeModal(false);
+          setDeleteCode('');
+          setDeleteCodeError(null);
+        }}
+        onResend={() => {
+          void handleDeleteCodeResend();
+        }}
+        isSubmitting={deleteSubmitting}
+        isResending={deleteCodeSending}
+      />
     </SafeAreaView>
   );
 }
@@ -1258,6 +1537,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  settingsActionRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  logoutBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E8B5B5',
+    backgroundColor: '#FFF7F7',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  deleteAccountBtn: {
+    opacity: 1,
+  },
+  logoutBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.danger,
   },
   hoursRow: {
     flexDirection: 'row',
@@ -1556,6 +1856,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  staffLinkId: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 1,
   },
   staffLinkBtns: {
     flexDirection: 'row',

@@ -140,6 +140,8 @@ const mockBusiness = {
   name: 'Test Salon',
   category_id: 'cat-1',
   address: 'Test St 1',
+  lat: 43.317,
+  lng: 45.694,
   phone: '+70001234567',
   instagram_url: null,
   website_url: null,
@@ -210,6 +212,43 @@ describe('PATCH /business/profile', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.profile.name).toBe('New Name');
+  });
+
+  it('admin can update coordinates', async () => {
+    mockDb.selectFrom.mockReturnValue(mockDb);
+    mockDb.select.mockReturnValue(mockDb);
+    mockDb.selectAll.mockReturnValue(mockDb);
+    mockDb.where.mockReturnValue(mockDb);
+    mockDb.set.mockReturnValue(mockDb);
+    mockDb.updateTable.mockReturnValue(mockDb);
+    mockDb.executeTakeFirst.mockResolvedValueOnce(mockAdminStaff);
+    mockDb.execute.mockResolvedValueOnce([]);
+    mockDb.executeTakeFirst.mockResolvedValueOnce({
+      ...mockBusiness,
+      lat: 43.3181,
+      lng: 45.6959,
+    });
+
+    const app = buildApp();
+    const res = await request(app)
+      .patch('/business/profile')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ lat: 43.3181, lng: 45.6959 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.profile.lat).toBe(43.3181);
+    expect(res.body.profile.lng).toBe(45.6959);
+  });
+
+  it('returns 400 when only lat is provided', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .patch('/business/profile')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ lat: 43.3181 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('employee cannot update profile (403)', async () => {

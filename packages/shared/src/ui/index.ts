@@ -9,4 +9,5 @@ export { BusinessCard } from './BusinessCard';
 export { BookingCard } from './BookingCard';
 export { ReviewCard } from './ReviewCard';
 export { ConfirmationModal } from './ConfirmationModal';
+export { CodeConfirmationModal } from './CodeConfirmationModal';
 export { WarningBanner } from './WarningBanner';

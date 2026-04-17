@@ -52,6 +52,14 @@
   min-width: 0;
 }
 
+.staff-url {
+  word-break: break-all;
+}
+
+.staff-id {
+  word-break: break-all;
+}
+
 @media (max-width: 768px) {
   .link-page {
     gap: 16px;

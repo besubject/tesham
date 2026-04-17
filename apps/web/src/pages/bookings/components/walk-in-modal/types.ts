@@ -4,6 +4,10 @@ export interface StaffListDto {
   staff: StaffItemDto[];
 }
 
+export interface CurrentStaffDto {
+  staff: StaffItemDto;
+}
+
 export interface ServicesListDto {
   services: ServiceItemDto[];
 }

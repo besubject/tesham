@@ -37,6 +37,10 @@ export async function updateProfile(params: {
   return data;
 }
 
-export async function deleteAccount(): Promise<void> {
-  await apiClient.delete('/user/me');
+export async function sendDeleteAccountCode(): Promise<void> {
+  await apiClient.post('/user/me/delete-code');
+}
+
+export async function deleteAccount(code: string): Promise<void> {
+  await apiClient.delete('/user/me', { data: { code } });
 }

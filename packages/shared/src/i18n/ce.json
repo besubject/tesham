@@ -103,6 +103,11 @@
     "logoutConfirm": "ДIаэккха лаьа хьуна?",
     "deleteAccount": "Аккаунт яйа",
     "deleteConfirm": "Тешна хьо? Хьайн дерриге жамӀаш дӀаяйр ю",
+    "deleteCodeTitle": "ДӀаяккхар къастаде",
+    "deleteCodeMessage": "6-цифрин код хьайн номер тIе дахийтина. Аккаунт дӀаяккха иза чуязде.",
+    "deleteCodeConfirm": "Аккаунт яйа",
+    "deleteCodeResend": "Код юха дахьийта",
+    "deleteCodeInvalid": "Код нийса яц я шен хан йитина.",
     "version": "Версия"
   },
   "publicBooking": {

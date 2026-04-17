@@ -30,6 +30,7 @@ interface BookingAccess {
   staffUserId: string;
   senderRole: ChatSenderRole;
   bookingStatus: string;
+  bookingSource: string;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ export class ChatService {
         'b.user_id as client_user_id',
         'b.business_id',
         'b.status',
+        'b.source',
         'st.user_id as staff_user_id',
       ])
       .where('b.id', '=', bookingId)
@@ -67,6 +69,7 @@ export class ChatService {
         staffUserId: row.staff_user_id,
         senderRole: 'client',
         bookingStatus: row.status,
+        bookingSource: row.source,
       };
     }
 
@@ -79,6 +82,7 @@ export class ChatService {
         staffUserId: row.staff_user_id,
         senderRole: 'staff',
         bookingStatus: row.status,
+        bookingSource: row.source,
       };
     }
 
@@ -100,6 +104,7 @@ export class ChatService {
         staffUserId: row.staff_user_id,
         senderRole: 'staff',
         bookingStatus: row.status,
+        bookingSource: row.source,
       };
     }
 
@@ -117,7 +122,11 @@ export class ChatService {
     cursor?: string,
     limit = 50,
   ): Promise<GetMessagesResult> {
-    await this.resolveAccess(bookingId, userId);
+    const access = await this.resolveAccess(bookingId, userId);
+
+    if (access.bookingSource !== 'app') {
+      throw new AppError(403, 'Chat is only available for app bookings', 'CHAT_NOT_AVAILABLE');
+    }
 
     const safeLimit = Math.min(Math.max(1, limit), 100);
 
@@ -174,6 +183,10 @@ export class ChatService {
     content: string,
   ): Promise<ChatMessageItem> {
     const access = await this.resolveAccess(bookingId, userId);
+
+    if (access.bookingSource !== 'app') {
+      throw new AppError(403, 'Chat is only available for app bookings', 'CHAT_NOT_AVAILABLE');
+    }
 
     if (access.bookingStatus !== 'confirmed') {
       throw new AppError(403, 'Cannot send messages for non-confirmed bookings', 'BOOKING_NOT_ACTIVE');
@@ -239,6 +252,11 @@ export class ChatService {
    */
   async markAsRead(bookingId: string, userId: string): Promise<{ updated: number }> {
     const access = await this.resolveAccess(bookingId, userId);
+
+    if (access.bookingSource !== 'app') {
+      throw new AppError(403, 'Chat is only available for app bookings', 'CHAT_NOT_AVAILABLE');
+    }
+
     const otherRole: ChatSenderRole = access.senderRole === 'client' ? 'staff' : 'client';
 
     const result = await db
@@ -258,6 +276,11 @@ export class ChatService {
    */
   async getUnreadCount(bookingId: string, userId: string): Promise<{ unread_count: number }> {
     const access = await this.resolveAccess(bookingId, userId);
+
+    if (access.bookingSource !== 'app') {
+      throw new AppError(403, 'Chat is only available for app bookings', 'CHAT_NOT_AVAILABLE');
+    }
+
     const otherRole: ChatSenderRole = access.senderRole === 'client' ? 'staff' : 'client';
 
     const result = await db

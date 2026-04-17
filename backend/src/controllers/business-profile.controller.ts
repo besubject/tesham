@@ -65,6 +65,24 @@ export async function getBusinessStaff(
   }
 }
 
+export async function getCurrentBusinessStaff(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user?.businessId) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Business access required' } });
+      return;
+    }
+
+    const staff = await businessProfileService.getCurrentStaff(req.user.id, req.user.businessId);
+    res.json({ staff });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function addBusinessStaff(
   req: Request,
   res: Response,

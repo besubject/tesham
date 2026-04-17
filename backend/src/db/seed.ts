@@ -292,6 +292,32 @@ async function generateUniqueSlug(name: string, excludeId?: string): Promise<str
   }
 }
 
+async function generateUniqueStaffSlug(
+  businessId: string,
+  name: string,
+  excludeId?: string,
+): Promise<string> {
+  const base = (transliterate(name).slice(0, 50) || 'staff');
+  let candidate = base;
+  let counter = 2;
+
+  while (true) {
+    let qb = db
+      .selectFrom('staff')
+      .select('id')
+      .where('business_id', '=', businessId)
+      .where('slug', '=', candidate);
+
+    if (excludeId) qb = qb.where('id', '!=', excludeId);
+
+    const existing = await qb.executeTakeFirst();
+    if (!existing) return candidate;
+
+    candidate = `${base.slice(0, Math.max(1, 50 - `-${counter}`.length))}-${counter}`;
+    counter++;
+  }
+}
+
 // ─── Seed businesses ──────────────────────────────────────────────────────────
 
 async function seedBusiness(
@@ -418,14 +444,20 @@ async function seedStaffMember(
   // Check if staff record exists
   const existingStaff = await db
     .selectFrom('staff')
-    .select('id')
+    .select(['id', 'slug'])
     .where('business_id', '=', businessId)
     .where('user_id', '=', userId)
     .executeTakeFirst();
 
   if (existingStaff) {
+    if (!existingStaff.slug) {
+      const slug = await generateUniqueStaffSlug(businessId, s.name, existingStaff.id);
+      await db.updateTable('staff').set({ slug }).where('id', '=', existingStaff.id).execute();
+    }
     return existingStaff.id;
   }
+
+  const slug = await generateUniqueStaffSlug(businessId, s.name);
 
   const newStaff = await db
     .insertInto('staff')
@@ -433,6 +465,7 @@ async function seedStaffMember(
       business_id: businessId,
       user_id: userId,
       name: s.name,
+      slug,
       role: s.role,
       avatar_url: null,
       is_active: true,

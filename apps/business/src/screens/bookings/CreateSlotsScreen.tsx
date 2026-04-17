@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,12 +10,10 @@ import {
   View,
 } from 'react-native';
 import { apiClient } from '@mettig/shared';
-import type { StaffItemDto } from '@mettig/shared';
+import type { SlotItemDto, StaffItemDto } from '@mettig/shared';
 import type { BookingsStackScreenProps } from '../../navigation/types';
 
 type Props = BookingsStackScreenProps<'CreateSlots'>;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDateDisplay(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
@@ -45,7 +43,6 @@ function generateUpcomingDates(days: number): Date[] {
   return dates;
 }
 
-// Generate time slots from 08:00 to 21:30 in 30-min intervals
 function generateTimeSlots(): string[] {
   const slots: string[] = [];
   for (let h = 8; h <= 21; h++) {
@@ -62,35 +59,105 @@ function generateTimeSlots(): string[] {
 const TIME_SLOTS = generateTimeSlots();
 const UPCOMING_DATES = generateUpcomingDates(21);
 
-// ─── CreateSlotsScreen ────────────────────────────────────────────────────────
+function isPastDate(date: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const candidate = new Date(date);
+  candidate.setHours(0, 0, 0, 0);
+  return candidate.getTime() < today.getTime();
+}
+
+function isPastSlot(date: Date, time: string): boolean {
+  const [hours, minutes] = time.split(':').map(Number);
+  const candidate = new Date(date);
+  candidate.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+  return candidate.getTime() < Date.now();
+}
 
 export function CreateSlotsScreen({ route, navigation }: Props): React.JSX.Element {
   const initialStaffId = route.params?.staffId ?? null;
 
   const [staff, setStaff] = useState<StaffItemDto[]>([]);
+  const [currentStaff, setCurrentStaff] = useState<StaffItemDto | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [staffLoading, setStaffLoading] = useState(true);
 
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(initialStaffId);
   const [selectedDate, setSelectedDate] = useState<Date>(UPCOMING_DATES[0] ?? new Date());
   const [selectedTimes, setSelectedTimes] = useState<Set<string>>(new Set());
+  const [existingSlots, setExistingSlots] = useState<SlotItemDto[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingSlotId, setDeletingSlotId] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        const { data } = await apiClient.get<{ staff: StaffItemDto[] }>('/business/staff');
-        setStaff(data.staff);
-        // Auto-select first staff if none pre-selected
-        if (!initialStaffId && data.staff.length > 0) {
-          setSelectedStaffId(data.staff[0]?.id ?? null);
+        const [{ data: staffData }, { data: currentStaffData }] = await Promise.all([
+          apiClient.get<{ staff: StaffItemDto[] }>('/business/staff'),
+          apiClient.get<{ staff: StaffItemDto }>('/business/staff/me'),
+        ]);
+
+        setStaff(staffData.staff);
+        setCurrentStaff(currentStaffData.staff);
+
+        const admin = currentStaffData.staff.role === 'admin';
+        setIsAdmin(admin);
+
+        if (admin) {
+          if (initialStaffId) {
+            setSelectedStaffId(initialStaffId);
+          } else {
+            setSelectedStaffId(staffData.staff[0]?.id ?? null);
+          }
+        } else {
+          setSelectedStaffId(currentStaffData.staff.id);
         }
       } catch {
-        Alert.alert('Ошибка', 'Не удалось загрузить список мастеров');
+        Alert.alert('Ошибка', 'Не удалось загрузить данные мастера');
       } finally {
         setStaffLoading(false);
       }
     })();
   }, [initialStaffId]);
+
+  const loadExistingSlots = useCallback(async () => {
+    if (!selectedStaffId) {
+      setExistingSlots([]);
+      return;
+    }
+
+    setSlotsLoading(true);
+    try {
+      const { data } = await apiClient.get<{ slots: SlotItemDto[] }>('/business/slots', {
+        params: {
+          staff_id: selectedStaffId,
+          date: formatDateApi(selectedDate),
+        },
+      });
+      setExistingSlots(data.slots);
+      const existingTimes = new Set(data.slots.map((slot) => slot.start_time));
+      setSelectedTimes((prev) => new Set(Array.from(prev).filter((time) => !existingTimes.has(time))));
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось загрузить слоты на выбранную дату');
+    } finally {
+      setSlotsLoading(false);
+    }
+  }, [selectedDate, selectedStaffId]);
+
+  useEffect(() => {
+    void loadExistingSlots();
+  }, [loadExistingSlots]);
+
+  useEffect(() => {
+    setSelectedTimes((prev) => {
+      const nextValues = Array.from(prev).filter((time) => !isPastSlot(selectedDate, time));
+      if (nextValues.length === prev.size) {
+        return prev;
+      }
+      return new Set(nextValues);
+    });
+  }, [selectedDate]);
 
   const toggleTime = useCallback((time: string) => {
     setSelectedTimes((prev) => {
@@ -116,110 +183,224 @@ export function CreateSlotsScreen({ route, navigation }: Props): React.JSX.Eleme
 
     setSubmitting(true);
     try {
-      await apiClient.post('/business/slots', {
+      const { data } = await apiClient.post<{ slots: SlotItemDto[] }>('/business/slots', {
         staff_id: selectedStaffId,
         date: formatDateApi(selectedDate),
         times: Array.from(selectedTimes).sort(),
       });
+
+      setSelectedTimes(new Set());
+      await loadExistingSlots();
+
+      if (data.slots.length === 0) {
+        Alert.alert('Без изменений', 'Все выбранные слоты уже были открыты');
+        return;
+      }
+
       Alert.alert(
         'Готово',
-        `Создано ${selectedTimes.size} слот(ов) на ${formatDateDisplay(selectedDate)}`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
+        `Создано ${data.slots.length} слот(ов) на ${formatDateDisplay(selectedDate)}`,
       );
     } catch {
       Alert.alert('Ошибка', 'Не удалось создать слоты');
     } finally {
       setSubmitting(false);
     }
-  }, [selectedStaffId, selectedDate, selectedTimes, navigation]);
+  }, [loadExistingSlots, selectedDate, selectedStaffId, selectedTimes]);
+
+  const handleDeleteSlot = useCallback((slot: SlotItemDto) => {
+    if (slot.is_booked) {
+      return;
+    }
+
+    Alert.alert(
+      'Удалить слот?',
+      `${slot.start_time} на ${formatDateDisplay(selectedDate)}`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setDeletingSlotId(slot.id);
+              try {
+                await apiClient.delete(`/business/slots/${slot.id}`);
+                await loadExistingSlots();
+              } catch {
+                Alert.alert('Ошибка', 'Не удалось удалить слот');
+              } finally {
+                setDeletingSlotId(null);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [loadExistingSlots, selectedDate]);
 
   const isSameDate = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
 
+  const existingSlotsByTime = useMemo(
+    () => new Map(existingSlots.map((slot) => [slot.start_time, slot])),
+    [existingSlots],
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>{'←'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Создать слоты</Text>
+        <Text style={styles.headerTitle}>Управление слотами</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Staff selection */}
         <Text style={styles.sectionTitle}>Мастер</Text>
         {staffLoading ? (
           <ActivityIndicator color="#1D6B4F" style={styles.loader} />
+        ) : !isAdmin ? (
+          <View style={styles.readOnlyStaffCard}>
+            <Text style={styles.readOnlyStaffName}>{currentStaff?.name ?? 'Текущий мастер'}</Text>
+            <Text style={styles.readOnlyStaffHint}>Вы управляете только своими слотами</Text>
+          </View>
         ) : (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipRow}
           >
-            {staff.map((s) => (
+            {staff.map((item) => (
               <TouchableOpacity
-                key={s.id}
-                style={[styles.chip, selectedStaffId === s.id && styles.chipActive]}
-                onPress={() => setSelectedStaffId(s.id)}
+                key={item.id}
+                style={[styles.chip, selectedStaffId === item.id && styles.chipActive]}
+                onPress={() => {
+                  setSelectedStaffId(item.id);
+                  setSelectedTimes(new Set());
+                }}
               >
-                <Text style={[styles.chipText, selectedStaffId === s.id && styles.chipTextActive]}>
-                  {s.name}
+                <Text style={[styles.chipText, selectedStaffId === item.id && styles.chipTextActive]}>
+                  {item.name}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         )}
 
-        {/* Date selection */}
         <Text style={styles.sectionTitle}>Дата</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipRow}
         >
-          {UPCOMING_DATES.map((d) => {
-            const isSelected = isSameDate(d, selectedDate);
+          {UPCOMING_DATES.map((date) => {
+            const isSelected = isSameDate(date, selectedDate);
+            const isDisabled = isPastDate(date);
             return (
               <TouchableOpacity
-                key={d.toISOString()}
-                style={[styles.dateCell, isSelected && styles.dateCellActive]}
+                key={date.toISOString()}
+                style={[
+                  styles.dateCell,
+                  isSelected && styles.dateCellActive,
+                  isDisabled && styles.dateCellDisabled,
+                ]}
                 onPress={() => {
-                  setSelectedDate(d);
-                  setSelectedTimes(new Set()); // clear time selection on date change
+                  if (!isDisabled) {
+                    setSelectedDate(date);
+                    setSelectedTimes(new Set());
+                  }
                 }}
+                disabled={isDisabled}
               >
-                <Text style={[styles.dateDayName, isSelected && styles.dateDayNameActive]}>
-                  {DAY_NAMES_SHORT[d.getDay()]}
+                <Text style={[
+                  styles.dateDayName,
+                  isSelected && styles.dateDayNameActive,
+                  isDisabled && styles.dateTextDisabled,
+                ]}>
+                  {DAY_NAMES_SHORT[date.getDay()]}
                 </Text>
-                <Text style={[styles.dateDayNum, isSelected && styles.dateDayNumActive]}>
-                  {d.getDate()}
+                <Text style={[
+                  styles.dateDayNum,
+                  isSelected && styles.dateDayNumActive,
+                  isDisabled && styles.dateTextDisabled,
+                ]}>
+                  {date.getDate()}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Selected date display */}
         <Text style={styles.selectedDateText}>{formatDateDisplay(selectedDate)}</Text>
 
-        {/* Time selection */}
+        <Text style={styles.sectionTitle}>Открытые слоты</Text>
+        {slotsLoading ? (
+          <ActivityIndicator color="#1D6B4F" style={styles.loader} />
+        ) : existingSlots.length === 0 ? (
+          <Text style={styles.helperText}>На эту дату ещё нет открытых слотов</Text>
+        ) : (
+          <View style={styles.timesGrid}>
+            {existingSlots.map((slot) => {
+              const isDeleting = deletingSlotId === slot.id;
+              const isPast = isPastSlot(selectedDate, slot.start_time);
+              return (
+                <TouchableOpacity
+                  key={slot.id}
+                  style={[
+                    styles.existingSlotChip,
+                    (slot.is_booked || isPast) ? styles.existingSlotChipBooked : styles.existingSlotChipFree,
+                  ]}
+                  onPress={() => handleDeleteSlot(slot)}
+                  disabled={slot.is_booked || isPast || isDeleting}
+                >
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color="#1D6B4F" />
+                  ) : (
+                    <Text style={[styles.existingSlotText, slot.is_booked && styles.existingSlotTextBooked]}>
+                      {slot.start_time}
+                      {slot.is_booked ? ' • занято' : isPast ? ' • прошло' : ' • удалить'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
         <Text style={styles.sectionTitle}>
-          Время{selectedTimes.size > 0 ? ` (выбрано: ${selectedTimes.size})` : ''}
+          Новые слоты{selectedTimes.size > 0 ? ` (выбрано: ${selectedTimes.size})` : ''}
         </Text>
         <View style={styles.timesGrid}>
           {TIME_SLOTS.map((time) => {
             const isSelected = selectedTimes.has(time);
+            const isUnavailable = existingSlotsByTime.has(time);
+            const isPast = isPastSlot(selectedDate, time);
             return (
               <TouchableOpacity
                 key={time}
-                style={[styles.timeChip, isSelected && styles.timeChipActive]}
-                onPress={() => toggleTime(time)}
+                style={[
+                  styles.timeChip,
+                  isSelected && styles.timeChipActive,
+                  (isUnavailable || isPast) && styles.timeChipDisabled,
+                ]}
+                onPress={() => {
+                  if (!isUnavailable && !isPast) {
+                    toggleTime(time);
+                  }
+                }}
+                disabled={isUnavailable || isPast}
               >
-                <Text style={[styles.timeChipText, isSelected && styles.timeChipTextActive]}>
+                <Text
+                  style={[
+                    styles.timeChipText,
+                    isSelected && styles.timeChipTextActive,
+                    (isUnavailable || isPast) && styles.timeChipTextDisabled,
+                  ]}
+                >
                   {time}
                 </Text>
               </TouchableOpacity>
@@ -227,7 +408,6 @@ export function CreateSlotsScreen({ route, navigation }: Props): React.JSX.Eleme
           })}
         </View>
 
-        {/* Submit button */}
         <TouchableOpacity
           style={[
             styles.submitButton,
@@ -248,8 +428,6 @@ export function CreateSlotsScreen({ route, navigation }: Props): React.JSX.Eleme
     </SafeAreaView>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -295,6 +473,24 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: 16,
   },
+  readOnlyStaffCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E8E4',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  readOnlyStaffName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1A18',
+  },
+  readOnlyStaffHint: {
+    fontSize: 12,
+    color: '#777772',
+    marginTop: 4,
+  },
   chipRow: {
     gap: 8,
     alignItems: 'center',
@@ -320,7 +516,6 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: '#FFFFFF',
   },
-  // Date
   dateCell: {
     width: 48,
     height: 64,
@@ -334,6 +529,10 @@ const styles = StyleSheet.create({
   dateCellActive: {
     backgroundColor: '#1D6B4F',
     borderColor: '#1D6B4F',
+  },
+  dateCellDisabled: {
+    backgroundColor: '#F1F1ED',
+    borderColor: '#E1E1DA',
   },
   dateDayName: {
     fontSize: 11,
@@ -352,13 +551,19 @@ const styles = StyleSheet.create({
   dateDayNumActive: {
     color: '#FFFFFF',
   },
+  dateTextDisabled: {
+    color: '#A0A09A',
+  },
   selectedDateText: {
     fontSize: 13,
     color: '#5C5C58',
     marginTop: 8,
     textAlign: 'center',
   },
-  // Time grid
+  helperText: {
+    fontSize: 13,
+    color: '#777772',
+  },
   timesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -378,6 +583,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#1D6B4F',
     borderColor: '#1D6B4F',
   },
+  timeChipDisabled: {
+    backgroundColor: '#F1F1ED',
+    borderColor: '#E1E1DA',
+  },
   timeChipText: {
     fontSize: 14,
     fontWeight: '500',
@@ -386,7 +595,33 @@ const styles = StyleSheet.create({
   timeChipTextActive: {
     color: '#FFFFFF',
   },
-  // Submit
+  timeChipTextDisabled: {
+    color: '#A0A09A',
+  },
+  existingSlotChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 110,
+    alignItems: 'center',
+  },
+  existingSlotChipFree: {
+    backgroundColor: '#F6FBF8',
+    borderColor: '#B9DDCC',
+  },
+  existingSlotChipBooked: {
+    backgroundColor: '#F7F7F4',
+    borderColor: '#E1E1DA',
+  },
+  existingSlotText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#1D6B4F',
+  },
+  existingSlotTextBooked: {
+    color: '#777772',
+  },
   submitButton: {
     marginTop: 32,
     backgroundColor: '#1D6B4F',
