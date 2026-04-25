@@ -2633,3 +2633,32 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированы задачи
 - Задачи, зависящие от TASK-051 (если появятся)
+
+---
+## TASK-052 — Миграция БД: broadcasts, broadcast_recipients, аналитические индексы
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- Создана миграция `010_analytics_broadcasts.ts`:
+  - Добавлена колонка `completed_at` (timestamptz, nullable) в таблицу `bookings`
+  - Созданы аналитические индексы: `bookings_business_status_completed_idx`, `bookings_staff_status_completed_idx`, `bookings_business_user_idx`, `bookings_business_client_phone_idx`
+  - Создана таблица `broadcasts` (id, business_id, audience, title, body, created_by_user_id, created_at, sent_at, total_recipients, delivered_count, skipped_no_token, skipped_rate_limit)
+  - Создана таблица `broadcast_recipients` (id, broadcast_id, user_id, status, error_message, sent_at)
+  - Уникальный индекс `broadcast_recipients_broadcast_user_idx(broadcast_id, user_id)`
+  - Индекс `broadcast_recipients_user_sent_idx(user_id, sent_at)` для проверки rate-limit 1 push/неделю
+  - Rollback полностью работает (протестирован)
+- `types.ts` обновлён: добавлены `BroadcastAudience`, `BroadcastRecipientStatus`, `BroadcastTable`, `BroadcastRecipientTable`, удобные типы Broadcast/NewBroadcast/BroadcastUpdate/BroadcastRecipient/NewBroadcastRecipient
+- `BookingTable` обновлён: поле `completed_at: Date | null`
+
+### Тесты
+- `npx tsc --noEmit` — 0 ошибок ✅
+- `npm run lint` — 0 ошибок (3 pre-existing warnings в тестах) ✅
+- Миграция применена и откатана на тестовой БД — всё чисто ✅
+- SELECT на information_schema.tables возвращает 2 строки ✅
+- Все 6 новых индексов + 2 первичных ключа присутствуют в pg_indexes ✅
+
+### Разблокированные задачи
+- TASK-053 (pending, deps: TASK-052) ✅ разблокирована
+- TASK-054 (pending, deps: TASK-052) ✅ разблокирована
+- TASK-055 (pending, deps: TASK-052, TASK-054) — частично разблокирована (ждёт TASK-054)

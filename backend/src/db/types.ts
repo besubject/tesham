@@ -85,6 +85,7 @@ export interface BookingTable {
   staff_id: string;
   status: ColumnType<BookingStatus, BookingStatus | undefined, BookingStatus>;
   cancelled_at: Date | null;
+  completed_at: Date | null;
   source: ColumnType<BookingSource, BookingSource | undefined, BookingSource>;
   /** Walk-in client name (when user_id is null) */
   client_name: string | null;
@@ -156,6 +157,13 @@ export interface PushTokenTable {
 export type ChatSenderRole = 'client' | 'staff';
 export type ChatMessageType = 'text' | 'image';
 
+export type BroadcastAudience = 'all' | 'regulars' | 'sleeping' | 'lost' | 'new';
+export type BroadcastRecipientStatus =
+  | 'delivered'
+  | 'skipped_no_token'
+  | 'skipped_rate_limit'
+  | 'failed';
+
 export interface ChatMessageTable {
   id: Generated<string>;
   booking_id: string;
@@ -165,6 +173,30 @@ export interface ChatMessageTable {
   content: string;
   is_read: ColumnType<boolean, boolean | undefined, boolean>;
   created_at: ColumnType<Date, never, never>;
+}
+
+export interface BroadcastTable {
+  id: Generated<string>;
+  business_id: string;
+  audience: BroadcastAudience;
+  title: string;
+  body: string;
+  created_by_user_id: string;
+  created_at: ColumnType<Date, never, never>;
+  sent_at: Date | null;
+  total_recipients: ColumnType<number, number | undefined, number>;
+  delivered_count: ColumnType<number, number | undefined, number>;
+  skipped_no_token: ColumnType<number, number | undefined, number>;
+  skipped_rate_limit: ColumnType<number, number | undefined, number>;
+}
+
+export interface BroadcastRecipientTable {
+  id: Generated<string>;
+  broadcast_id: string;
+  user_id: string;
+  status: BroadcastRecipientStatus;
+  error_message: string | null;
+  sent_at: ColumnType<Date, Date | undefined, Date>;
 }
 
 // ─── Database schema ──────────────────────────────────────────────────────────
@@ -183,6 +215,8 @@ export interface Database {
   notification_log: NotificationLogTable;
   push_tokens: PushTokenTable;
   chat_messages: ChatMessageTable;
+  broadcasts: BroadcastTable;
+  broadcast_recipients: BroadcastRecipientTable;
 }
 
 // ─── Convenience types ────────────────────────────────────────────────────────
@@ -231,3 +265,10 @@ export type NewPushToken = Insertable<PushTokenTable>;
 
 export type ChatMessage = Selectable<ChatMessageTable>;
 export type NewChatMessage = Insertable<ChatMessageTable>;
+
+export type Broadcast = Selectable<BroadcastTable>;
+export type NewBroadcast = Insertable<BroadcastTable>;
+export type BroadcastUpdate = Updateable<BroadcastTable>;
+
+export type BroadcastRecipient = Selectable<BroadcastRecipientTable>;
+export type NewBroadcastRecipient = Insertable<BroadcastRecipientTable>;
