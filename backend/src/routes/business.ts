@@ -24,6 +24,7 @@ import {
 } from '../controllers/business-profile.controller';
 import { replyToReview, reportReview } from '../controllers/review.controller';
 import { getBusinessStats } from '../controllers/business-stats.controller';
+import { getAnalyticsDashboard } from '../controllers/analytics-dashboard.controller';
 import { requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -126,12 +127,27 @@ const statsQuerySchema = z.object({
   staff_id: z.string().uuid().optional(),
 });
 
+const analyticsDashboardQuerySchema = z.object({
+  period: z.enum(['day', 'week', 'month']).default('week'),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
+    .optional(),
+});
+
 const slotsQuerySchema = z.object({
   staff_id: z.string().uuid().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
+
+// GET /business/analytics/dashboard — analytics dashboard (admin=all, employee=own)
+router.get(
+  '/analytics/dashboard',
+  validate({ query: analyticsDashboardQuerySchema }),
+  getAnalyticsDashboard,
+);
 
 // GET /business/stats — business statistics (admin=all, employee=own)
 router.get('/stats', validate({ query: statsQuerySchema }), getBusinessStats);
