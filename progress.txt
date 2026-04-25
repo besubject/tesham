@@ -2662,3 +2662,30 @@ TASK-041 — E2E тест основного флоу — DONE
 - TASK-053 (pending, deps: TASK-052) ✅ разблокирована
 - TASK-054 (pending, deps: TASK-052) ✅ разблокирована
 - TASK-055 (pending, deps: TASK-052, TASK-054) — частично разблокирована (ждёт TASK-054)
+
+---
+## TASK-053 — Backend API дашборда аналитики
+**Дата:** 2026-04-26
+**Статус:** done
+**Ветка:** new-features
+**Коммит:** fab7cf6
+
+### Что сделано
+- Создан `backend/src/services/analytics-dashboard.service.ts`:
+  - Вычисление date range: day=календарный день, week=ISO пн-вс, month=календарный месяц
+  - Occupancy: COUNT(все слоты) * 60 мин = total_minutes; COUNT(слоты confirmed/completed) * 60 = busy_minutes
+  - Bookings: count + sum_planned (цена услуги) + разбивка by_source {app, walk_in, link}
+  - Clients: visited (period), new (first completed в периоде), total (ever), segments
+  - Сегменты: regulars (≥2 completed за 90 дней), sleeping (последний 30-180 дней), lost (>180 дней), not_visited (0 completed)
+  - RBAC: employee → staff_id фильтр, admin → весь бизнес
+  - Event: analytics_dashboard_opened с {period, role}
+- Создан `backend/src/controllers/analytics-dashboard.controller.ts`
+- Обновлён `backend/src/routes/business.ts`: добавлен route `GET /business/analytics/dashboard` с Zod-валидацией
+
+### Результаты тестов
+- `npm run lint` — 0 ошибок (3 предупреждения в существующем тест-файле, не в новом коде)
+- `npx tsc --noEmit` — 0 ошибок
+- `npm test` — 198/198 passed
+
+### Разблокированные задачи
+- Задачи, зависящие от TASK-053 (UI дашборда аналитики)
