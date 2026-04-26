@@ -2851,3 +2851,28 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированы
 - TASK-059 — Веб-панель mettig.ru: экраны Аналитика, Клиенты, Карточка клиента, Рассылки (все deps: TASK-053..058 теперь done)
+
+---
+## TASK-060 — Удаление карты из проекта (MapLibre + OSM)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- Удалена папка `apps/client/src/screens/map/` (MapScreen.tsx)
+- `HomeScreen.tsx` переписан: удалён весь MapLibre-код (динамический import, mapRef, cameraRef, userLocation, geoJSON, mapBusinessesRef, isMapLoading, initLocation, fetchMapBusinesses, handleShapePress, handleMapPress, handleCenterUser, bottom sheet с PanResponder, кнопка геолокации, mini-карточка выбранного бизнеса). HomeScreen стал простым экраном: поиск + chip-категории + FlatList бизнесов + pull-to-refresh + infinite scroll
+- `BusinessDetailsScreen.tsx`: удалены компоненты `StaticMap` и `MiniMapSection` (включая OSM static map image). Добавлен блок «Адрес и навигация» с кнопками «Яндекс.Карты» и «2ГИС» (deep links через Linking.openURL — остались без изменений)
+- `apps/client/package.json`: удалена зависимость `@maplibre/maplibre-react-native`; запущен `npm install` (package-lock.json обновлён)
+- `CLAUDE.md`: удалена строка `- **Карты:** MapLibre GL + OpenStreetMap` из раздела стека
+- `README.md`: удалена строка про MapLibre + OpenStreetMap
+- PRD.md уже содержал актуальный текст раздела 3.3 («Адрес и навигация», без мини-карты); MapLibre в PRD отсутствовал
+
+### Проверки
+- `grep -r 'maplibre\|MapLibre\|MapView\|MapScreen\|@maplibre' apps/client/src apps/client/package.json` → 0 результатов ✅
+- Backend: GET /businesses/map никогда не существовал ✅
+- map_opened / map_business_marker_clicked в track-event.ts не существовали ✅
+- i18n map.* ключи в ru/ce.json не существовали ✅
+- `npx tsc --noEmit` в apps/client/ → 0 ошибок ✅
+- `npm run lint` в apps/client/ → 0 ошибок, 0 предупреждений ✅
+
+### Разблокированные задачи
+- TASK-062 (Mettig клиент: новая главная навигация) — теперь TASK-060 выполнен; ещё нужен TASK-061

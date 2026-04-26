@@ -1619,7 +1619,7 @@
         "npm run build в apps/client успешен (Expo prebuild)"
       ],
       "dependencies": [],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-061",

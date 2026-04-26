@@ -181,93 +181,6 @@ const serviceStyles = StyleSheet.create({
   },
 });
 
-// ─── Static Map ───────────────────────────────────────────────────────────────
-
-interface StaticMapProps {
-  lat: number;
-  lng: number;
-  onYandexMaps: () => void;
-  onTwoGis: () => void;
-}
-
-function StaticMap({ lat, lng, onYandexMaps, onTwoGis }: StaticMapProps): React.JSX.Element {
-  const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=16&size=600x200&markers=${lat},${lng},ol-marker`;
-
-  return (
-    <View style={mapStyles.container}>
-      <Image
-        source={{ uri: mapUrl }}
-        style={mapStyles.image}
-        resizeMode="cover"
-        accessibilityLabel="Карта расположения"
-      />
-      <View style={mapStyles.buttons}>
-        <TouchableOpacity style={mapStyles.mapBtn} onPress={onYandexMaps} activeOpacity={0.8}>
-          <Text style={mapStyles.mapBtnText}>Яндекс.Карты</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={mapStyles.mapBtn} onPress={onTwoGis} activeOpacity={0.8}>
-          <Text style={mapStyles.mapBtnText}>2ГИС</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-const mapStyles = StyleSheet.create({
-  container: {
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  image: {
-    width: '100%',
-    height: 180,
-    backgroundColor: colors.surfaceAlt,
-  },
-  buttons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.surface,
-  },
-  mapBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  mapBtnText: {
-    ...typography.label,
-    color: colors.text,
-  },
-});
-
-// ─── Mini-map section ─────────────────────────────────────────────────────────
-
-interface MiniMapSectionProps {
-  lat: number;
-  lng: number;
-  onYandexMaps: (lat: number, lng: number) => void;
-  onTwoGis: (lat: number, lng: number) => void;
-}
-
-function MiniMapSection({ lat, lng, onYandexMaps, onTwoGis }: MiniMapSectionProps): React.JSX.Element {
-  return (
-    <View style={styles.section}>
-      <SectionHeader title="На карте" />
-      <StaticMap
-        lat={lat}
-        lng={lng}
-        onYandexMaps={() => onYandexMaps(lat, lng)}
-        onTwoGis={() => onTwoGis(lat, lng)}
-      />
-    </View>
-  );
-}
-
 // ─── Section header ───────────────────────────────────────────────────────────
 
 function SectionHeader({ title }: { title: string }): React.JSX.Element {
@@ -504,14 +417,27 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
           ) : null}
         </View>
 
-        {/* Mini-map */}
+        {/* Адрес и навигация */}
         {business.lat !== null && business.lng !== null ? (
-          <MiniMapSection
-            lat={business.lat}
-            lng={business.lng}
-            onYandexMaps={openYandexMaps}
-            onTwoGis={openTwoGis}
-          />
+          <View style={styles.section}>
+            <SectionHeader title="Адрес и навигация" />
+            <View style={navStyles.buttons}>
+              <TouchableOpacity
+                style={navStyles.mapBtn}
+                onPress={() => openYandexMaps(business.lat as number, business.lng as number)}
+                activeOpacity={0.8}
+              >
+                <Text style={navStyles.mapBtnText}>Яндекс.Карты</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={navStyles.mapBtn}
+                onPress={() => openTwoGis(business.lat as number, business.lng as number)}
+                activeOpacity={0.8}
+              >
+                <Text style={navStyles.mapBtnText}>2ГИС</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : null}
 
         {/* Staff */}
@@ -737,6 +663,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   allReviewsBtnText: {
+    ...typography.label,
+    color: colors.text,
+  },
+});
+
+const navStyles = StyleSheet.create({
+  buttons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  mapBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  mapBtnText: {
     ...typography.label,
     color: colors.text,
   },
