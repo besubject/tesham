@@ -2876,3 +2876,26 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированные задачи
 - TASK-062 (Mettig клиент: новая главная навигация) — теперь TASK-060 выполнен; ещё нужен TASK-061
+
+## TASK-061 — Backend API для новой главной навигации [done] — 2026-04-26
+
+### Что сделано
+- **GET /businesses/popular?limit=N** — топ-N бизнесов по combined score:
+  `score = 0.7 * (rating_avg / 5) + 0.3 * (bookings_30d / max_bookings_30d)`
+  Учитываются только completed bookings за последние 30 дней. Accept-Language поддерживается.
+- **GET /businesses** расширен:
+  - Новый параметр `sort=rating|distance` (default: rating)
+  - При `sort=distance` обязательны `lat` и `lng`, иначе 400 (Zod refine + controller guard)
+  - PostGIS `ST_Distance` для сортировки по расстоянию, `distance_meters` в ответе
+  - Cursor-based пагинация через параметр `cursor` (base64url encoded offset), `next_cursor` в ответе
+  - Обратная совместимость с параметром `page`
+- **GET /categories/search?q=** — поиск категорий и бизнесов с группировкой, лимит 5+5, Accept-Language
+- Rate limiting (`publicRateLimit`) на все /businesses и /categories эндпоинты
+- Event tracking: `popular_businesses_fetched`, `catalog_search`, обновлён `search_query`
+
+### Тесты
+- `npx tsc --noEmit` — OK (0 ошибок)
+- `npm test` — 198/198 passed
+
+### Разблокированные задачи
+- **TASK-062** — Mettig (клиент): новая главная навигация (CategoriesScreen + CatalogScreen)

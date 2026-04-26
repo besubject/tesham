@@ -1653,7 +1653,7 @@
         "npx tsc --noEmit в backend/ проходит"
       ],
       "dependencies": [],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-062",
