@@ -197,6 +197,40 @@
       "noSlug": "Хьажар дузуш яц"
     }
   },
+  "analytics": {
+    "title": "Аналитика",
+    "noData": "ЖамӀаш яц хIинца",
+    "noDataHint": "Хьалха язбинарг кхолла, жамӀаш хьажа",
+    "period": {
+      "today": "Де",
+      "week": "Kиллсо",
+      "month": "Бутт"
+    },
+    "occupancy": {
+      "title": "Схьалацар",
+      "busy": "дозуш ду"
+    },
+    "bookings": {
+      "title": "Язбинарш",
+      "count": "язбинарш",
+      "planned": "план ₽",
+      "sourceApp": "Mettig-чул",
+      "sourceWalkIn": "Walk-in",
+      "sourceLink": "Хьажарчул"
+    },
+    "clients": {
+      "title": "Клиенташ",
+      "visited": "Баьхна",
+      "new": "КерланиIа",
+      "allClients": "Дерриге клиенташ",
+      "segments": {
+        "regulars": "Бевзаш берш",
+        "sleeping": "Малкхина берш",
+        "lost": "ДӀагIерта берш",
+        "not_visited": "Ца баьхнарш"
+      }
+    }
+  },
   "chat": {
     "title": "Говор хIоттам хьалха",
     "inputPlaceholder": "Хаам...",

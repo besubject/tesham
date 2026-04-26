@@ -197,6 +197,40 @@
       "noSlug": "Ссылка ещё не задана"
     }
   },
+  "analytics": {
+    "title": "Аналитика",
+    "noData": "Нет данных пока",
+    "noDataHint": "Создайте первую запись, чтобы увидеть аналитику",
+    "period": {
+      "today": "Сегодня",
+      "week": "Неделя",
+      "month": "Месяц"
+    },
+    "occupancy": {
+      "title": "Загруженность",
+      "busy": "занято"
+    },
+    "bookings": {
+      "title": "Записи",
+      "count": "записей",
+      "planned": "план ₽",
+      "sourceApp": "Из Mettig",
+      "sourceWalkIn": "Walk-in",
+      "sourceLink": "Из ссылки"
+    },
+    "clients": {
+      "title": "Клиенты",
+      "visited": "Посетили",
+      "new": "Новые",
+      "allClients": "Все клиенты",
+      "segments": {
+        "regulars": "Постоянные",
+        "sleeping": "Спящие",
+        "lost": "Пропавшие",
+        "not_visited": "Не посещали"
+      }
+    }
+  },
   "chat": {
     "title": "Чат с мастером",
     "inputPlaceholder": "Сообщение...",

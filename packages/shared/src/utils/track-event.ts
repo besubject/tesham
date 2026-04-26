@@ -21,7 +21,9 @@ export type EventType =
   | 'walk_in_form_opened'
   | 'walk_in_booking_created'
   | 'chat_opened'
-  | 'chat_message_sent';
+  | 'chat_message_sent'
+  | 'analytics_dashboard_opened'
+  | 'analytics_period_changed';
 
 export interface EventPayload {
   [key: string]: unknown;

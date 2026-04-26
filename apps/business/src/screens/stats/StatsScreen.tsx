@@ -13,7 +13,7 @@ import { apiClient, tokenStorage } from '@mettig/shared';
 import type { BusinessStatsDto, StaffStatItemDto } from '@mettig/shared';
 import type { StatsStackScreenProps } from '../../navigation/types';
 
-type Props = StatsStackScreenProps<'StatsMain'>;
+type Props = StatsStackScreenProps<'AnalyticsMain'>;
 
 type Period = 'day' | 'week' | 'month';
 

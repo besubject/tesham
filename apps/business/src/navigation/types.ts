@@ -32,7 +32,8 @@ export type BookingsStackParamList = {
 
 // Stats stack navigator params
 export type StatsStackParamList = {
-  StatsMain: undefined;
+  AnalyticsMain: undefined;
+  ClientsScreen: { segment?: string } | undefined;
 };
 
 // Business profile stack navigator params
@@ -67,6 +68,9 @@ export type StatsStackScreenProps<T extends keyof StatsStackParamList> = Composi
   NativeStackScreenProps<StatsStackParamList, T>,
   BottomTabScreenProps<RootTabParamList>
 >;
+
+export type AnalyticsStackScreenProps<T extends keyof StatsStackParamList> =
+  StatsStackScreenProps<T>;
 
 export type BusinessProfileStackScreenProps<T extends keyof BusinessProfileStackParamList> =
   CompositeScreenProps<
