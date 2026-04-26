@@ -2899,3 +2899,30 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированные задачи
 - **TASK-062** — Mettig (клиент): новая главная навигация (CategoriesScreen + CatalogScreen)
+
+---
+## TASK-059 — Веб-панель: Аналитика, Клиенты, Карточка клиента, Рассылки
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- `apps/web/src/pages/analytics/` — AnalyticsPage: дашборд с gauge загруженности, блоки записей и клиентов с источниками и сегментами. 2-колоночная сетка на десктопе, переключатель периода (день/неделя/месяц). Клик по сегменту → /clients?segment=...
+- `apps/web/src/pages/clients/` — ClientsPage: 5 сегментных карточек сверху, таблица (Имя|Телефон|Последний визит|Визиты|Сегмент), поиск с debounce 300ms, фильтрация по сегменту (chips + URL-параметр), infinite scroll через IntersectionObserver
+- `apps/web/src/pages/client-card/` — ClientCardPage: 2-колоночная разметка (профиль+метрики слева, история записей справа), пагинация истории "Загрузить ещё"
+- `apps/web/src/pages/broadcasts/` — BroadcastsPage: wizard в модальном окне (3 шага: аудитория → сообщение → подтверждение), история рассылок с infinite scroll, RBAC через JWT-декодинг (только admin), toast-уведомления
+- `apps/web/src/utils/track-event.ts` — web-совместимый trackEvent без expo-зависимостей
+- Обновлены `Layout.constants.ts` (3 новых пункта меню) и `App.tsx` (4 новых роута)
+- `npx tsc --noEmit` в apps/web/ — 0 ошибок
+- SCSS Modules, адаптив 768px–1920px
+
+### Test steps
+- ✅ /analytics — дашборд отображается, переключение периода работает
+- ✅ /clients — таблица клиентов, поиск и фильтры работают
+- ✅ /clients/:clientId — карточка клиента с историей записей
+- ✅ /broadcasts — wizard в модальном окне, история на основной странице
+- ✅ employee (не admin) видит страницу "Нет доступа" на /broadcasts
+- ✅ SCSS Modules, адаптив
+- ✅ npx tsc --noEmit проходит без ошибок
+
+### Разблокированные задачи
+- **TASK-062** (high) — Mettig client: новая главная навигация (CategoriesScreen + CatalogScreen)
