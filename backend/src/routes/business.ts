@@ -30,6 +30,11 @@ import {
   getClientList,
   getClientCard,
 } from '../controllers/clients.controller';
+import {
+  createBroadcast,
+  getBroadcasts,
+  getBroadcastDetail,
+} from '../controllers/broadcasts.controller';
 import { requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -143,6 +148,21 @@ const clientCardQuerySchema = z.object({
   booking_cursor: z.string().optional(),
 });
 
+const createBroadcastSchema = z.object({
+  audience: z.enum(['all', 'regulars', 'sleeping', 'lost', 'new']),
+  title: z.string().min(1).max(40),
+  body: z.string().min(1).max(160),
+});
+
+const broadcastsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+});
+
+const broadcastDetailQuerySchema = z.object({
+  recipient_cursor: z.string().optional(),
+});
+
 const analyticsDashboardQuerySchema = z.object({
   period: z.enum(['day', 'week', 'month']).default('week'),
   date: z
@@ -169,6 +189,24 @@ router.get(
   '/clients/:clientId',
   validate({ query: clientCardQuerySchema }),
   getClientCard,
+);
+
+// POST /business/broadcasts — create broadcast and send push notifications (admin only)
+router.post(
+  '/broadcasts',
+  requireRole('admin'),
+  validate({ body: createBroadcastSchema }),
+  createBroadcast,
+);
+
+// GET /business/broadcasts — list broadcasts with pagination
+router.get('/broadcasts', validate({ query: broadcastsQuerySchema }), getBroadcasts);
+
+// GET /business/broadcasts/:broadcastId — broadcast details + recipients
+router.get(
+  '/broadcasts/:broadcastId',
+  validate({ query: broadcastDetailQuerySchema }),
+  getBroadcastDetail,
 );
 
 // GET /business/analytics/dashboard — analytics dashboard (admin=all, employee=own)
