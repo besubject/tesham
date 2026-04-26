@@ -2757,3 +2757,36 @@ TASK-041 — E2E тест основного флоу — DONE
 ### Разблокированные задачи
 - TASK-058 (Mettig Business: экран Рассылок — мобильное)
 - TASK-059 (Веб-панель: Аналитика, Клиенты, Рассылки) — теперь разблокированы все зависимости
+
+---
+## TASK-056 — AnalyticsScreen для Mettig Business (мобильное)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Выполнено
+- Создан `apps/business/src/screens/analytics/AnalyticsScreen.tsx`
+  - Период: Сегодня/Неделя/Месяц с Zustand-store (`analytics-store.ts`) для персистентного выбора
+  - Шапка: заголовок «Аналитика» + подзаголовок с датами периода
+  - Блок Загруженность: кастомный полукруговой gauge (чистый RN без SVG-зависимостей)
+  - Блок Записи: 2 метрики (количество, план ₽) + цветные полоски by_source (app/walk_in/link)
+  - Блок Клиенты: 2 метрики (Посетили, Новые) + всего + 4 строки сегментов с цветной точкой и %
+  - Тап на сегмент → навигация на `ClientsScreen` с предвыбранным фильтром (stub до TASK-057)
+  - Pull-to-refresh через `useQueryClient().invalidateQueries`
+  - Skeleton loading state (3 блока-заглушки)
+  - Empty state: «Нет данных пока» при 0 записях и 0 клиентах
+  - TanStack Query с staleTime 30_000ms
+- Добавлен `@tanstack/react-query` в `apps/business/package.json`
+- Добавлен `QueryClientProvider` в `App.tsx`
+- Создан `apps/business/src/store/analytics-store.ts` (Zustand, period persistent)
+- Обновлён `StatsStackNavigator.tsx`: AnalyticsMain + stub ClientsScreen
+- Обновлены nav types: `StatsStackParamList` → `AnalyticsMain`, `ClientsScreen`
+- Добавлены i18n ключи `analytics.*` в ru.json и ce.json
+- Добавлены event types `analytics_dashboard_opened`, `analytics_period_changed` в shared/utils/track-event.ts
+- API endpoint: `GET /business/analytics/dashboard?period=day|week|month&date=YYYY-MM-DD`
+
+### Тест-шаги
+- `npx tsc --noEmit` в apps/business/ — ✅ 0 ошибок
+- `npm run lint` в apps/business/ — ✅ 0 ошибок
+
+### Разблокированные задачи
+- TASK-059 (зависит от TASK-056 + 057 + 058 — теперь осталось 057 и 058)
