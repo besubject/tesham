@@ -2717,3 +2717,43 @@ TASK-041 — E2E тест основного флоу — DONE
 - TASK-057 (Mettig Business: экран Аналитика — веб)
 - TASK-060 (Удаление карты из проекта)
 - TASK-061 (Backend API для новой главной навигации)
+
+## [TASK-055] Backend API рассылок Expo Push
+**Дата:** 2026-04-26 00:00
+**Статус:** done
+
+### Что сделано
+- Создан `backend/src/services/broadcasts.service.ts`:
+  - `createBroadcast` — POST /business/broadcasts
+    - Проверка роли admin (403 для employee)
+    - Daily limit: 1 рассылка/день/бизнес по timezone Europe/Moscow → 429 при превышении
+    - Сегментация по audience (all|regulars|sleeping|lost|new) с той же логикой что TASK-054
+    - LEFT JOIN push_tokens для подсчёта skipped_no_token
+    - Rate-limit: 7-дневная защита от повторной отправки → skipped_rate_limit
+    - Подстановка {first_name} и {business_name} per recipient
+    - Отправка через Expo Push API в чанках по 100 токенов
+    - Запись в `broadcasts` и `broadcast_recipients`
+    - Обновление sent_at после отправки
+    - Event tracking: broadcast_created, broadcast_sent
+  - `getBroadcasts` — GET /business/broadcasts (cursor-based пагинация)
+  - `getBroadcastDetail` — GET /business/broadcasts/:id (детали + список получателей)
+- Создан `backend/src/controllers/broadcasts.controller.ts`
+- Обновлён `backend/src/routes/business.ts`:
+  - Добавлены Zod-схемы (createBroadcastSchema, broadcastsQuerySchema, broadcastDetailQuerySchema)
+  - POST /business/broadcasts — requireRole('admin') + validate
+  - GET /business/broadcasts — открыт для всего staff
+  - GET /business/broadcasts/:broadcastId — открыт для всего staff
+
+### Файлы затронуты
+- `backend/src/services/broadcasts.service.ts` — создан
+- `backend/src/controllers/broadcasts.controller.ts` — создан
+- `backend/src/routes/business.ts` — изменён
+
+### Тесты
+- `npx tsc --noEmit`: 0 ошибок
+- `npm run lint`: 0 ошибок (2 предупреждения non-null assertion в новом файле, паттерн совпадает с существующим кодом)
+- `npm test`: 198/198 passed
+
+### Разблокированные задачи
+- TASK-058 (Mettig Business: экран Рассылок — мобильное)
+- TASK-059 (Веб-панель: Аналитика, Клиенты, Рассылки) — теперь разблокированы все зависимости
