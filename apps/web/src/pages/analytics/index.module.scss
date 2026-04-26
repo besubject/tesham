@@ -1,0 +1,334 @@
+.page {
+  padding: 24px;
+  max-width: 1400px;
+}
+
+.header {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a18;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #8a8a86;
+  margin: 4px 0 0;
+}
+
+.periodRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.periodChip {
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid #e8e8e4;
+  background: #f5f5f2;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5c5c58;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #1d6b4f;
+    color: #1d6b4f;
+  }
+
+  &.active {
+    background: #1d6b4f;
+    border-color: #1d6b4f;
+    color: #fff;
+  }
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e8e8e4;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a18;
+  margin: 0 0 16px;
+}
+
+/* Occupancy */
+.occupancyBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.occupancyGauge {
+  position: relative;
+  width: 140px;
+}
+
+.gaugeSvg {
+  width: 140px;
+  height: 70px;
+  display: block;
+}
+
+.gaugeLabel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gaugePct {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a18;
+  line-height: 1;
+}
+
+.gaugeHint {
+  font-size: 12px;
+  color: #8a8a86;
+}
+
+.occupancyMeta {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #8a8a86;
+  text-align: center;
+}
+
+/* Metrics */
+.metricsRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.metric {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.metricValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a18;
+}
+
+.metricLabel {
+  font-size: 12px;
+  color: #8a8a86;
+}
+
+.metricDivider {
+  width: 1px;
+  height: 40px;
+  background: #e8e8e4;
+  margin: 0 12px;
+}
+
+/* Source bars */
+.sourceBars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sourceBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sourceDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sourceLabel {
+  font-size: 13px;
+  color: #5c5c58;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.sourceTrack {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #f5f5f2;
+  overflow: hidden;
+}
+
+.sourceFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.sourceCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a18;
+  width: 32px;
+  text-align: right;
+}
+
+/* Clients block */
+.totalClientsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid #e8e8e4;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.totalClientsLabel {
+  font-size: 14px;
+  color: #5c5c58;
+}
+
+.totalClientsValue {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a18;
+}
+
+.segmentsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.segmentRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #f0f0ee;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+
+  &:hover {
+    background: #fafaf8;
+  }
+}
+
+.segDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.segLabel {
+  flex: 1;
+  font-size: 14px;
+  color: #1a1a18;
+}
+
+.segCount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a18;
+  width: 36px;
+  text-align: right;
+}
+
+.segPct {
+  font-size: 13px;
+  color: #8a8a86;
+  width: 36px;
+  text-align: right;
+}
+
+/* States */
+.skeleton {
+  background: #e8e8e4;
+  border-radius: 12px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  gap: 12px;
+}
+
+.emptyIcon {
+  font-size: 48px;
+}
+
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a18;
+  margin: 0;
+}
+
+.emptyHint {
+  font-size: 14px;
+  color: #8a8a86;
+  margin: 0;
+  text-align: center;
+}
+
+.errorText {
+  font-size: 15px;
+  color: #c4462a;
+  margin: 0;
+}
+
+.retryBtn {
+  padding: 10px 20px;
+  background: #1d6b4f;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
