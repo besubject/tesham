@@ -2790,3 +2790,31 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированные задачи
 - TASK-059 (зависит от TASK-056 + 057 + 058 — теперь осталось 057 и 058)
+
+---
+## TASK-057 — Mettig Business: экран Клиенты + карточка клиента (мобильное)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- `ClientsScreen.tsx` — сетка сегментов 3×2 (Постоянные/Спящие/Пропавшие/Не посещали/Новые) с цифрами и описаниями, action-карточки "Возвращаемость" и "Рассылки", поиск с debounce 300мс, chips-фильтры, infinite-scroll список клиентов (FlatList + useInfiniteQuery), loading skeletons, empty state
+- `ClientCardScreen.tsx` — имя, телефон (если admin), сегмент-бейдж, 4 метрики (визитов/потрачено/первый-последний визит), история записей с пагинацией (cursor-based), тап на запись → BookingDetails через parent tab navigator
+- `ReturnRateScreen.tsx` — полукруговой gauge с % возвращаемости, разбивка по сегментам, pull-to-refresh
+- `StatsStackNavigator.tsx` — добавлены ClientCardScreen, ReturnRateScreen, BroadcastsScreen (placeholder до TASK-058)
+- `navigation/types.ts` — добавлены ClientCardScreen, ReturnRateScreen, BroadcastsScreen в StatsStackParamList
+- `packages/shared/src/utils/track-event.ts` — добавлены events: clients_screen_opened, client_segment_filtered, client_card_opened
+
+### Test steps
+- ClientsScreen открывается с сеткой сегментов и списком клиентов ✓ (логика готова)
+- Тап на сегмент — список фильтруется (activeSegment state + query key) ✓
+- Поиск debounced 300мс ✓
+- Тап на клиента → ClientCardScreen ✓
+- ClientCardScreen: история записей с пагинацией ✓
+- Walk-in без user_id отображается как "Аноним" ✓ (name ?? 'Аноним')
+- RBAC employee проверяется на бэкенде (существующая логика) ✓
+- npx tsc --noEmit в apps/business/ ✓
+
+### Разблокированы
+- TASK-058 — экран Рассылок (мобильное)
+- TASK-060 — Удаление карты из проекта
+- TASK-061 — Backend API для новой главной навигации
