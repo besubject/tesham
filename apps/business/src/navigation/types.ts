@@ -34,6 +34,9 @@ export type BookingsStackParamList = {
 export type StatsStackParamList = {
   AnalyticsMain: undefined;
   ClientsScreen: { segment?: string } | undefined;
+  ClientCardScreen: { clientId: string; clientName: string | null };
+  ReturnRateScreen: undefined;
+  BroadcastsScreen: undefined;
 };
 
 // Business profile stack navigator params

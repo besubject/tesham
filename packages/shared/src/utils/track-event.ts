@@ -23,7 +23,10 @@ export type EventType =
   | 'chat_opened'
   | 'chat_message_sent'
   | 'analytics_dashboard_opened'
-  | 'analytics_period_changed';
+  | 'analytics_period_changed'
+  | 'clients_screen_opened'
+  | 'client_segment_filtered'
+  | 'client_card_opened';
 
 export interface EventPayload {
   [key: string]: unknown;
