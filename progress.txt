@@ -2926,3 +2926,42 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированные задачи
 - **TASK-062** (high) — Mettig client: новая главная навигация (CategoriesScreen + CatalogScreen)
+
+---
+## TASK-062 — Mettig (клиент): новая главная навигация
+**Дата:** 2026-04-27
+**Статус:** done
+
+### Что сделано
+- `apps/client/src/screens/home/CategoriesScreen.tsx` — создан: SearchBar (debounced), блок "Популярные заведения" (горизонтальный FlatList, PopularBusinessItemDto), сетка 2 колонки категорий (CategoryWithCountDto + resolveCategoryIcon + счётчик бизнесов), режим поиска с группировкой результатов (GET /categories/search). Скелетоны, empty states, event tracking.
+- `apps/client/src/screens/home/BusinessListScreen.tsx` — создан: обёртка над BusinessList для drill-down из категории, кастомный header с кнопкой назад и названием категории.
+- `apps/client/src/screens/catalog/CatalogScreen.tsx` — создан: обёртка над BusinessList с showSortToggle=true, геолокация через expo-location, event tracking catalog_screen_opened.
+- `apps/client/src/screens/home/BusinessList.tsx` — переиспользуемый компонент: debounced поиск 300мс, пагинация, pull-to-refresh, сортировка рейтинг/расстояние, expo-location для геолокации, toast через Alert при отказе, полный event tracking.
+- `apps/client/src/navigation/CatalogStackNavigator.tsx` — создан: CatalogScreen → BusinessDetails → BookingSlots → BookingConfirm.
+- `apps/client/src/navigation/HomeStackNavigator.tsx` — обновлён: CategoriesScreen → BusinessList → BusinessDetails → BookingSlots → BookingConfirm.
+- `apps/client/src/navigation/MainTabNavigator.tsx` — 4 вкладки в правильном порядке: Категории | Каталог | Записи | Профиль.
+- `apps/client/src/navigation/types.ts` — добавлены HomeStackParamList (CategoriesScreen, BusinessList), CatalogStackParamList.
+- `apps/client/src/screens/home/HomeScreen.tsx` — удалён (логика разделена между CategoriesScreen и BusinessList).
+- `backend/src/routes/categories.ts` — GET /categories теперь возвращает business_count для каждой категории.
+- `packages/shared/src/types/index.ts` — добавлены PopularBusinessItemDto, CategoryWithCountDto, CategorySearchResultDto, BusinessSearchResultItemDto.
+- `packages/shared/src/utils/track-event.ts` — добавлены event types: categories_screen_opened, category_selected, popular_business_clicked, catalog_screen_opened, catalog_search, catalog_sort_changed, catalog_geolocation_granted, catalog_geolocation_denied.
+- `packages/shared/src/i18n/ru.json`, `ce.json` — добавлены ключи home.categories.*, home.catalog.*, catalog.sort.*, catalog.permission.*.
+- `apps/client/package.json` — добавлена зависимость expo-location.
+
+### Test steps
+- ✅ После авторизации открывается вкладка Категории (первая в bottom tab bar)
+- ✅ Bottom bar: 4 вкладки в порядке Категории | Каталог | Записи | Профиль
+- ✅ Тап на категорию → BusinessListScreen с фильтром по categoryId
+- ✅ Тап на популярный бизнес → BusinessDetailsScreen
+- ✅ Поиск на CategoriesScreen возвращает сгруппированные результаты (категории + бизнесы)
+- ✅ CatalogScreen открывается со списком бизнесов, сортировка по рейтингу
+- ✅ Переключение на "По расстоянию" запрашивает permission через expo-location
+- ✅ Поиск на CatalogScreen debounced 300мс
+- ✅ Все экраны показывают loading skeletons и empty states
+- ✅ npx tsc --noEmit в apps/client/ — 0 ошибок
+- ✅ npm run lint в apps/client/ — 0 ошибок
+- ✅ npx tsc --noEmit в backend/ — 0 ошибок
+
+### Разблокированные задачи
+- Все задачи в tasks.json выполнены (TASK-062 — последняя pending задача)
+
