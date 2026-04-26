@@ -9,15 +9,45 @@ import {
 } from '../utils/search-normalize';
 import { trackEvent } from '../utils/track-event';
 
+// ─── Cursor helpers ───────────────────────────────────────────────────────────
+
+function encodeCursor(offset: number): string {
+  return Buffer.from(JSON.stringify({ offset })).toString('base64url');
+}
+
+function decodeCursor(cursor: string): number {
+  try {
+    const data = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as { offset?: number };
+    return typeof data.offset === 'number' ? data.offset : 0;
+  } catch {
+    return 0;
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface BusinessListParams {
   query?: string;
   category_id?: string;
+  sort?: 'rating' | 'distance';
   lat?: number;
   lng?: number;
+  /** Page-based pagination (legacy) */
   page: number;
   limit: number;
+  /** Cursor-based pagination (preferred) */
+  cursor?: string;
+}
+
+export interface PopularBusinessItem {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  rating_avg: number;
+  rating_count: number;
+  category_id: string;
+  category_name: string;
+  category_icon: string;
 }
 
 export interface BusinessListItem {
@@ -395,15 +425,22 @@ function buildBusinessSearchMatchValue(
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export class BusinessService {
-  async list(params: BusinessListParams): Promise<{ data: BusinessListItem[]; pagination: { page: number; limit: number; total: number } }> {
-    const { query, category_id, lat, lng, page, limit } = params;
-    const offset = (page - 1) * limit;
+  async list(params: BusinessListParams): Promise<{
+    data: BusinessListItem[];
+    pagination: { page: number; limit: number; total: number };
+    next_cursor: string | null;
+  }> {
+    const { query, category_id, sort = 'rating', lat, lng, page, limit, cursor } = params;
+
+    // Cursor-based pagination takes priority over page
+    const offset = cursor !== undefined ? decodeCursor(cursor) : (page - 1) * limit;
+
     const geoLat = lat ?? 0;
     const geoLng = lng ?? 0;
-    const hasGeo = lat !== undefined && lng !== undefined;
+    const sortByDistance = sort === 'distance';
 
     // Conditional distance expression (typed as number | null for both branches)
-    const distanceExpr = hasGeo
+    const distanceExpr = sortByDistance
       ? sql<number | null>`ST_Distance(b.location, ST_SetSRID(ST_MakePoint(${geoLng}, ${geoLat}), 4326)::geography)`
       : sql<number | null>`NULL`;
     const searchRankExpr = query ? buildBusinessSearchRank('b.id', 'b.name', query) : null;
@@ -452,7 +489,7 @@ export class BusinessService {
       qb = qb.orderBy(searchRankExpr, 'desc');
     }
 
-    if (hasGeo) {
+    if (sortByDistance) {
       qb = qb
         .orderBy(
           sql`ST_Distance(b.location, ST_SetSRID(ST_MakePoint(${geoLng}, ${geoLat}), 4326)::geography)`,
@@ -462,6 +499,9 @@ export class BusinessService {
     } else {
       qb = qb.orderBy(sql`(SELECT AVG(rating) FROM reviews WHERE business_id = b.id)`, 'desc');
     }
+
+    // Stable secondary sort by id to ensure deterministic cursor pagination
+    qb = qb.orderBy('b.id', 'asc');
 
     // Count query (mirrors filter logic)
     let countQb = db
@@ -485,11 +525,15 @@ export class BusinessService {
       countQb.executeTakeFirst(),
     ]);
 
+    const total = Number(countResult?.total ?? 0);
+    const nextOffset = offset + limit;
+    const nextCursor = nextOffset < total ? encodeCursor(nextOffset) : null;
+
     // Track search query event (fire-and-forget)
     if (query) {
       trackEvent({
         event_type: 'search_query',
-        payload: { query, category_id: category_id ?? null, has_geo: hasGeo },
+        payload: { query, category_id: category_id ?? null, sort, has_geo: sortByDistance },
       });
     }
 
@@ -516,9 +560,79 @@ export class BusinessService {
       pagination: {
         page,
         limit,
-        total: Number(countResult?.total ?? 0),
+        total,
       },
+      next_cursor: nextCursor,
     };
+  }
+
+  async getPopular(limit: number, lang: 'ru' | 'ce'): Promise<PopularBusinessItem[]> {
+    interface PopularRow {
+      id: string;
+      name: string;
+      photo_url: string | null;
+      rating_avg: string;
+      rating_count: string;
+      category_id: string;
+      category_name_ru: string;
+      category_name_ce: string;
+      category_icon: string;
+    }
+
+    const rows = await sql<PopularRow>`
+      WITH booking_counts AS (
+        SELECT business_id, COUNT(*)::float AS bookings_30d
+        FROM bookings
+        WHERE status = 'completed'
+          AND completed_at > NOW() - INTERVAL '30 days'
+        GROUP BY business_id
+      ),
+      max_bookings AS (
+        SELECT COALESCE(MAX(bookings_30d), 1.0) AS max_count
+        FROM booking_counts
+      )
+      SELECT
+        b.id,
+        b.name,
+        (b.photos)[1]                                                     AS photo_url,
+        b.category_id,
+        c.name_ru                                                         AS category_name_ru,
+        c.name_ce                                                         AS category_name_ce,
+        c.icon                                                            AS category_icon,
+        ROUND(COALESCE(
+          (SELECT AVG(rating) FROM reviews WHERE business_id = b.id), 0
+        )::numeric, 2)                                                    AS rating_avg,
+        (SELECT COUNT(*) FROM reviews WHERE business_id = b.id)          AS rating_count,
+        (
+          0.7 * (COALESCE(
+            (SELECT AVG(rating) FROM reviews WHERE business_id = b.id), 0
+          ) / 5.0)
+          + 0.3 * (COALESCE(bc.bookings_30d, 0) / mb.max_count)
+        )                                                                 AS score
+      FROM businesses b
+      JOIN categories c ON c.id = b.category_id
+      LEFT JOIN booking_counts bc ON bc.business_id = b.id
+      CROSS JOIN max_bookings mb
+      WHERE b.is_active = true
+      ORDER BY score DESC, b.id ASC
+      LIMIT ${limit}
+    `.execute(db);
+
+    trackEvent({
+      event_type: 'popular_businesses_fetched',
+      payload: { limit, count: rows.rows.length },
+    });
+
+    return rows.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      photo_url: row.photo_url,
+      rating_avg: Number(row.rating_avg),
+      rating_count: Number(row.rating_count),
+      category_id: row.category_id,
+      category_name: lang === 'ce' ? row.category_name_ce : row.category_name_ru,
+      category_icon: row.category_icon,
+    }));
   }
 
   async getById(id: string, lang: 'ru' | 'ce' = 'ru'): Promise<BusinessDetail> {
