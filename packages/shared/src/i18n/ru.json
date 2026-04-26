@@ -16,6 +16,8 @@
   },
   "tabs": {
     "home": "Главная",
+    "categories": "Категории",
+    "catalog": "Каталог",
     "map": "Карта",
     "bookings": "Записи",
     "profile": "Профиль",
@@ -43,7 +45,33 @@
     "nearYou": "Рядом с вами",
     "allCategories": "Все",
     "noResults": "Ничего не найдено",
-    "noResultsHint": "Попробуйте изменить запрос или категорию"
+    "noResultsHint": "Попробуйте изменить запрос или категорию",
+    "categories": {
+      "title": "Категории",
+      "searchPlaceholder": "Барбер, маникюр, стоматолог...",
+      "popular": "Популярные заведения",
+      "popularEmpty": "Скоро появятся",
+      "searchNoResults": "Ничего не найдено",
+      "businessesLabel": "Заведения",
+      "categoriesLabel": "Категории",
+      "businessesCount": "заведений"
+    },
+    "catalog": {
+      "title": "Каталог"
+    }
+  },
+  "catalog": {
+    "searchPlaceholder": "Барбер, маникюр, стоматолог...",
+    "sort": {
+      "rating": "По рейтингу",
+      "distance": "По расстоянию"
+    },
+    "permission": {
+      "denied": "Геолокация недоступна. Сортировка по рейтингу"
+    },
+    "noResults": "Ничего не найдено",
+    "noResultsHint": "Попробуйте изменить запрос",
+    "emptyCategory": "В этой категории пока нет заведений"
   },
   "business": {
     "book": "Записаться",

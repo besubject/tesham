@@ -10,10 +10,26 @@ router.get('/', async (_req, res, next) => {
   try {
     const categories = await db
       .selectFrom('categories')
-      .select(['id', 'name_ru', 'name_ce', 'icon'])
+      .select([
+        'id',
+        'name_ru',
+        'name_ce',
+        'icon',
+        sql<number>`(SELECT COUNT(*) FROM businesses WHERE category_id = categories.id AND is_active = true)`.as(
+          'business_count',
+        ),
+      ])
       .orderBy('sort_order', 'asc')
       .execute();
-    res.json(categories);
+    res.json(
+      categories.map((cat) => ({
+        id: cat.id,
+        name_ru: cat.name_ru,
+        name_ce: cat.name_ce,
+        icon: cat.icon,
+        business_count: Number(cat.business_count),
+      })),
+    );
   } catch (err) {
     next(err);
   }

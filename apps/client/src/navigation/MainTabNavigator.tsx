@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { Text } from 'react-native';
 import { BookingsStackNavigator } from './BookingsStackNavigator';
+import { CatalogStackNavigator } from './CatalogStackNavigator';
 import { HomeStackNavigator } from './HomeStackNavigator';
 import { ProfileStackNavigator } from './ProfileStackNavigator';
 import type { RootTabParamList } from './types';
@@ -30,9 +31,18 @@ export function MainTabNavigator(): React.JSX.Element {
         name="Home"
         component={HomeStackNavigator}
         options={{
-          tabBarLabel: 'Главная',
-          tabBarIcon: () => <TabIcon label="🏠" />,
-          tabBarAccessibilityLabel: 'Главная',
+          tabBarLabel: 'Категории',
+          tabBarIcon: () => <TabIcon label="🏷️" />,
+          tabBarAccessibilityLabel: 'Категории',
+        }}
+      />
+      <Tab.Screen
+        name="Catalog"
+        component={CatalogStackNavigator}
+        options={{
+          tabBarLabel: 'Каталог',
+          tabBarIcon: () => <TabIcon label="🔍" />,
+          tabBarAccessibilityLabel: 'Каталог',
         }}
       />
       <Tab.Screen

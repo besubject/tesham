@@ -1,4 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { initI18n, i18n, useAuthStore } from '@mettig/shared';
 import { registerRootComponent } from 'expo';
 import React, { useEffect } from 'react';
@@ -8,6 +9,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 globalThis.__METTIG_TOKEN_NAMESPACE__ = 'mettig_client';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
 initI18n('ru');
 
 interface ErrorBoundaryState { error: Error | null }
@@ -51,16 +61,18 @@ function I18nSync(): null {
 
 function App(): React.JSX.Element {
   return (
-    <I18nextProvider i18n={i18n}>
-      <ErrorBoundary>
-        <SafeAreaProvider>
-          <I18nSync />
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
-        </SafeAreaProvider>
-      </ErrorBoundary>
-    </I18nextProvider>
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={i18n}>
+        <ErrorBoundary>
+          <SafeAreaProvider>
+            <I18nSync />
+            <NavigationContainer>
+              <RootNavigator />
+            </NavigationContainer>
+          </SafeAreaProvider>
+        </ErrorBoundary>
+      </I18nextProvider>
+    </QueryClientProvider>
   );
 }
 

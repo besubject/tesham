@@ -29,7 +29,16 @@ export type EventType =
   | 'client_card_opened'
   | 'broadcast_wizard_opened'
   | 'broadcast_audience_selected'
-  | 'broadcast_created';
+  | 'broadcast_created'
+  | 'categories_screen_opened'
+  | 'category_selected'
+  | 'popular_business_clicked'
+  | 'catalog_screen_opened'
+  | 'catalog_search'
+  | 'catalog_sort_changed'
+  | 'catalog_geolocation_granted'
+  | 'catalog_geolocation_denied'
+  | 'popular_businesses_fetched';
 
 export interface EventPayload {
   [key: string]: unknown;

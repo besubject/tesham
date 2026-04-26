@@ -3,17 +3,15 @@ import React from 'react';
 import { BookingConfirmScreen } from '../screens/home/BookingConfirmScreen';
 import { BookingSlotsScreen } from '../screens/home/BookingSlotsScreen';
 import { BusinessDetailsScreen } from '../screens/home/BusinessDetailsScreen';
-import { BusinessListScreen } from '../screens/home/BusinessListScreen';
-import { CategoriesScreen } from '../screens/home/CategoriesScreen';
-import type { HomeStackParamList } from './types';
+import { CatalogScreen } from '../screens/catalog/CatalogScreen';
+import type { CatalogStackParamList } from './types';
 
-const Stack = createNativeStackNavigator<HomeStackParamList>();
+const Stack = createNativeStackNavigator<CatalogStackParamList>();
 
-export function HomeStackNavigator(): React.JSX.Element {
+export function CatalogStackNavigator(): React.JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="CategoriesScreen" component={CategoriesScreen} />
-      <Stack.Screen name="BusinessList" component={BusinessListScreen} />
+      <Stack.Screen name="CatalogScreen" component={CatalogScreen} />
       <Stack.Screen name="BusinessDetails" component={BusinessDetailsScreen} />
       <Stack.Screen name="BookingSlots" component={BookingSlotsScreen} />
       <Stack.Screen name="BookingConfirm" component={BookingConfirmScreen} />
