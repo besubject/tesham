@@ -2689,3 +2689,31 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированные задачи
 - Задачи, зависящие от TASK-053 (UI дашборда аналитики)
+
+---
+## TASK-054 — Backend API клиентов и сегментов
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- Сервис `clients.service.ts` уже был реализован (найден в untracked-файлах)
+- Создан `backend/src/controllers/clients.controller.ts` с тремя хендлерами:
+  - `getClientSegments` → GET /business/clients/segments
+  - `getClientList` → GET /business/clients (фильтры: segment, search, cursor-based pagination)
+  - `getClientCard` → GET /business/clients/:clientId (история бронирований с пагинацией)
+- Добавлены Zod-схемы `clientsQuerySchema` и `clientCardQuerySchema` в `business.ts`
+- Добавлены три маршрута в `backend/src/routes/business.ts`
+- RBAC: employee видит только своих клиентов; phone возвращается только admin/owner
+- clientId форматы: `user:{uuid}` и `walkin:{booking_id}`
+- Event tracking: clients_screen_opened, client_segment_filtered, client_card_opened
+
+### Тесты
+- `npm run lint`: 0 ошибок (8 предупреждений в существующих файлах)
+- `npm test`: 198/198 passed
+
+### Разблокированные задачи
+- TASK-055 (Mettig Business: экран Клиенты — мобильное)
+- TASK-056 (Mettig Business: экран Аналитика — мобильное)
+- TASK-057 (Mettig Business: экран Аналитика — веб)
+- TASK-060 (Удаление карты из проекта)
+- TASK-061 (Backend API для новой главной навигации)

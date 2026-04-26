@@ -25,6 +25,11 @@ import {
 import { replyToReview, reportReview } from '../controllers/review.controller';
 import { getBusinessStats } from '../controllers/business-stats.controller';
 import { getAnalyticsDashboard } from '../controllers/analytics-dashboard.controller';
+import {
+  getClientSegments,
+  getClientList,
+  getClientCard,
+} from '../controllers/clients.controller';
 import { requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -127,6 +132,17 @@ const statsQuerySchema = z.object({
   staff_id: z.string().uuid().optional(),
 });
 
+const clientsQuerySchema = z.object({
+  segment: z.enum(['regulars', 'sleeping', 'lost', 'not_visited', 'new']).optional(),
+  search: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+});
+
+const clientCardQuerySchema = z.object({
+  booking_cursor: z.string().optional(),
+});
+
 const analyticsDashboardQuerySchema = z.object({
   period: z.enum(['day', 'week', 'month']).default('week'),
   date: z
@@ -141,6 +157,19 @@ const slotsQuerySchema = z.object({
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
+
+// GET /business/clients/segments — segment counts (admin=all, employee=own)
+router.get('/clients/segments', getClientSegments);
+
+// GET /business/clients — client list with filters and pagination
+router.get('/clients', validate({ query: clientsQuerySchema }), getClientList);
+
+// GET /business/clients/:clientId — client card with booking history
+router.get(
+  '/clients/:clientId',
+  validate({ query: clientCardQuerySchema }),
+  getClientCard,
+);
 
 // GET /business/analytics/dashboard — analytics dashboard (admin=all, employee=own)
 router.get(
