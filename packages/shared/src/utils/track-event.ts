@@ -26,7 +26,10 @@ export type EventType =
   | 'analytics_period_changed'
   | 'clients_screen_opened'
   | 'client_segment_filtered'
-  | 'client_card_opened';
+  | 'client_card_opened'
+  | 'broadcast_wizard_opened'
+  | 'broadcast_audience_selected'
+  | 'broadcast_created';
 
 export interface EventPayload {
   [key: string]: unknown;

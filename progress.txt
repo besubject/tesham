@@ -2818,3 +2818,36 @@ TASK-041 — E2E тест основного флоу — DONE
 - TASK-058 — экран Рассылок (мобильное)
 - TASK-060 — Удаление карты из проекта
 - TASK-061 — Backend API для новой главной навигации
+
+---
+## TASK-058 — Mettig Business: экран Рассылок (мобильное)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- `BroadcastsScreen.tsx` — полный пошаговый wizard создания рассылки:
+  - Шаг 1 — Аудитория: 5 radio-опций (Все/Постоянные/Спящие/Пропавшие/Новые), счётчик «Получат N клиентов, X без приложения будут пропущены»
+  - Шаг 2 — Сообщение: title (max 40, с counter), body (max 160, с counter), hint про placeholder'ы {first_name}, {business_name}
+  - Шаг 3 — Превью: визуальная имитация push-уведомления, кнопка «Отправить»
+  - Экран успеха: числа (доставлено/пропущено) + кнопка «Создать ещё»
+- История рассылок (таб «История»): infinite scroll список с BroadcastRow, bottom sheet модальное окно с деталями
+- Лимит 1/день: ошибка DAILY_LIMIT_EXCEEDED от бэка → toast «Уже была рассылка сегодня»
+- Employee guard: декодирование JWT из SecureStore → если не admin, показывается «Доступно только администратору»
+- Toast компонент с auto-hide через 3.5 сек
+- Loading/error/empty states на обоих табах
+- StatsStackNavigator.tsx уже включал BroadcastsScreen (добавлено в TASK-057)
+- Добавлены event types в packages/shared/src/utils/track-event.ts: `broadcast_wizard_opened`, `broadcast_audience_selected`, `broadcast_created`
+- Event tracking: broadcast_wizard_opened (при открытии admin), broadcast_audience_selected, broadcast_created
+
+### Test steps
+- Admin открывает BroadcastsScreen → видны 2 таба ✓
+- Wizard шаг 1 → 2 → 3 → отправка → экран «Готово» ✓
+- Текст > 160 символов блокирует кнопку «Далее» ✓
+- Повторная попытка в тот же день → toast с ошибкой ✓ (DAILY_LIMIT_EXCEEDED от API)
+- Employee видит «Доступно только администратору» ✓
+- История рассылок отображается, тап → детали в bottom sheet ✓
+- `npx tsc --noEmit` в apps/business/ — ✅ 0 ошибок
+- `npm run lint` в apps/business/ — ✅ 0 ошибок
+
+### Разблокированы
+- TASK-059 — Веб-панель mettig.ru: экраны Аналитика, Клиенты, Карточка клиента, Рассылки (все deps: TASK-053..058 теперь done)
