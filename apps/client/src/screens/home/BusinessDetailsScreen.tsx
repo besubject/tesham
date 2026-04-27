@@ -14,18 +14,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   apiClient,
   AvatarInitials,
-  borderRadius,
   BusinessDetailDto,
   colors,
+  monoFont,
   PaginatedResponseDto,
-  ReviewCard,
   ReviewItemDto,
   ServiceItemDto,
-  SlotChip,
   SlotItemDto,
   spacing,
   StaffItemDto,
-  typography,
 } from '@mettig/shared';
 import type { HomeStackScreenProps } from '../../navigation/types';
 
@@ -54,7 +51,103 @@ function todayWorkingHours(hours: Record<string, { open: string; close: string }
   return `${h.open} – ${h.close}`;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function isOpenNow(hours: Record<string, { open: string; close: string } | null>): boolean {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const day = days[new Date().getDay()];
+  if (!day) return false;
+  return hours[day] != null;
+}
+
+// ─── MonoLabel ────────────────────────────────────────────────────────────────
+
+function MonoLabel({ children, style }: { children: string; style?: object }): React.JSX.Element {
+  return <Text style={[monoStyle, style]}>{children}</Text>;
+}
+const monoStyle = {
+  fontFamily: monoFont,
+  fontSize: 10,
+  letterSpacing: 0.6,
+  textTransform: 'uppercase' as const,
+  color: colors.textMuted,
+};
+
+// ─── Service card ─────────────────────────────────────────────────────────────
+
+interface ServiceCardProps {
+  service: ServiceItemDto;
+  selected: boolean;
+  onSelect: () => void;
+}
+
+function ServiceCard({ service, selected, onSelect }: ServiceCardProps): React.JSX.Element {
+  return (
+    <TouchableOpacity
+      style={[svcStyles.card, selected && svcStyles.cardSelected]}
+      onPress={onSelect}
+      activeOpacity={0.75}
+    >
+      <View style={svcStyles.left}>
+        <Text style={[svcStyles.name, selected && svcStyles.textInverted]}>{service.name}</Text>
+        <Text style={[svcStyles.dur, selected && svcStyles.durInverted]}>
+          {service.duration_minutes} мин
+        </Text>
+      </View>
+      <View style={svcStyles.right}>
+        <Text style={[svcStyles.price, selected && svcStyles.textInverted]}>
+          {service.price.toLocaleString('ru-RU')} ₽
+        </Text>
+        <View style={[svcStyles.checkBox, selected && svcStyles.checkBoxSelected]}>
+          <Text style={[svcStyles.checkIcon, selected && svcStyles.checkIconSelected]}>
+            {selected ? '✓' : '+'}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const svcStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  cardSelected: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  left: { flex: 1, gap: 4 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  name: { fontSize: 14, fontWeight: '600', color: colors.text },
+  dur: { fontFamily: monoFont, fontSize: 10, color: colors.textMuted, letterSpacing: 0.4 },
+  price: { fontSize: 14, fontWeight: '600', color: colors.text },
+  textInverted: { color: colors.surface },
+  durInverted: { color: 'rgba(251,250,246,0.55)' },
+  checkBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkBoxSelected: {
+    backgroundColor: colors.surface,
+    borderColor: colors.surface,
+  },
+  checkIcon: { fontSize: 13, color: colors.textMuted },
+  checkIconSelected: { color: colors.text },
+});
+
+// ─── Staff row ────────────────────────────────────────────────────────────────
 
 interface StaffRowProps {
   staff: StaffItemDto;
@@ -62,137 +155,78 @@ interface StaffRowProps {
   onBook: (staffId: string) => void;
 }
 
-function StaffRow({ staff, slots, onBook }: StaffRowProps): React.JSX.Element {
-  const staffSlots = slots
-    .filter((s) => s.staff_id === staff.id && !s.is_booked)
-    .slice(0, 4);
-
+function StaffRow({ staff, onBook }: StaffRowProps): React.JSX.Element {
   return (
     <View style={staffStyles.row}>
-      <View style={staffStyles.header}>
-        <AvatarInitials name={staff.name} avatarUrl={staff.avatar_url} size={44} />
-        <View style={staffStyles.info}>
-          <Text style={staffStyles.name}>{staff.name}</Text>
-          <Text style={staffStyles.role}>{staff.role}</Text>
-        </View>
-        <TouchableOpacity
-          style={staffStyles.bookBtn}
-          onPress={() => onBook(staff.id)}
-          activeOpacity={0.8}
-        >
-          <Text style={staffStyles.bookBtnText}>Записаться</Text>
-        </TouchableOpacity>
+      <AvatarInitials name={staff.name} avatarUrl={staff.avatar_url} size={44} />
+      <View style={staffStyles.info}>
+        <Text style={staffStyles.name}>{staff.name}</Text>
+        <Text style={staffStyles.role}>{staff.role}</Text>
       </View>
-
-      {staffSlots.length > 0 && (
-        <View style={staffStyles.slots}>
-          {staffSlots.map((slot) => (
-            <SlotChip key={slot.id} time={slot.start_time.slice(0, 5)} />
-          ))}
-        </View>
-      )}
+      <TouchableOpacity
+        style={staffStyles.bookBtn}
+        onPress={() => onBook(staff.id)}
+        activeOpacity={0.8}
+      >
+        <Text style={staffStyles.bookBtnText}>Записаться</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const staffStyles = StyleSheet.create({
   row: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-  },
-  header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    padding: spacing.md,
+    marginBottom: 8,
   },
-  info: {
-    flex: 1,
-    gap: 2,
-  },
-  name: {
-    ...typography.bodyMedium,
-    color: colors.text,
-  },
-  role: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
+  info: { flex: 1, gap: 2 },
+  name: { fontSize: 14, fontWeight: '600', color: colors.text },
+  role: { fontFamily: monoFont, fontSize: 10, color: colors.textMuted, letterSpacing: 0.4 },
   bookBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.text,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  bookBtnText: {
-    ...typography.buttonSmall,
-    color: colors.white,
-  },
-  slots: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
+  bookBtnText: { fontSize: 12, fontWeight: '600', color: colors.surface },
 });
 
-interface ServiceRowProps {
-  service: ServiceItemDto;
-}
+// ─── Review item ──────────────────────────────────────────────────────────────
 
-function ServiceRow({ service }: ServiceRowProps): React.JSX.Element {
+function ReviewItem({ review }: { review: ReviewItemDto }): React.JSX.Element {
   return (
-    <View style={serviceStyles.row}>
-      <View style={serviceStyles.info}>
-        <Text style={serviceStyles.name}>{service.name}</Text>
-        <Text style={serviceStyles.duration}>{service.duration_minutes} мин</Text>
+    <View style={revStyles.card}>
+      <View style={revStyles.header}>
+        <Text style={revStyles.author}>{review.user_name_short ?? 'Аноним'}</Text>
+        <MonoLabel>{`${review.rating}/5`}</MonoLabel>
       </View>
-      <Text style={serviceStyles.price}>{service.price.toLocaleString('ru-RU')} ₽</Text>
+      {review.comment != null && (
+        <Text style={revStyles.text}>{review.comment}</Text>
+      )}
     </View>
   );
 }
 
-const serviceStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+const revStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 8,
+    gap: 6,
   },
-  info: {
-    flex: 1,
-    gap: 2,
-  },
-  name: {
-    ...typography.body,
-    color: colors.text,
-  },
-  duration: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  price: {
-    ...typography.bodyMedium,
-    color: colors.accent,
-  },
-});
-
-// ─── Section header ───────────────────────────────────────────────────────────
-
-function SectionHeader({ title }: { title: string }): React.JSX.Element {
-  return <Text style={sectionHeaderStyles.title}>{title}</Text>;
-}
-
-const sectionHeaderStyles = StyleSheet.create({
-  title: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  author: { fontSize: 13, fontWeight: '600', color: colors.text },
+  text: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
 });
 
 // ─── BusinessDetailsScreen ────────────────────────────────────────────────────
@@ -208,8 +242,9 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
 
-  // ── Load data ───────────────────────────────────────────────────────────────
+  // ── Load ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     const today = todayDate();
     Promise.all([
@@ -229,7 +264,7 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
       .finally(() => setIsLoading(false));
   }, [businessId]);
 
-  // ── Favorite toggle ─────────────────────────────────────────────────────────
+  // ── Favorite ───────────────────────────────────────────────────────────────
   const handleFavoriteToggle = useCallback(async () => {
     if (isTogglingFavorite) return;
     setIsTogglingFavorite(true);
@@ -239,46 +274,32 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
         setIsFavorite(false);
         setFavoriteId(null);
       } else {
-        const res = await apiClient.post<{ id: string }>('/favorites', {
-          business_id: businessId,
-        });
+        const res = await apiClient.post<{ id: string }>('/favorites', { business_id: businessId });
         setIsFavorite(true);
         setFavoriteId(res.data.id);
       }
     } catch {
-      // API not yet available (TASK-014 pending) — toggle optimistically
       setIsFavorite((prev) => !prev);
     } finally {
       setIsTogglingFavorite(false);
     }
   }, [isFavorite, favoriteId, businessId, isTogglingFavorite]);
 
-  // ── Navigation deep links ───────────────────────────────────────────────────
+  // ── Maps ───────────────────────────────────────────────────────────────────
   const openYandexMaps = useCallback((lat: number, lng: number) => {
     const marker = `${lng},${lat},pm2rdm`;
-    const deepLink = `yandexmaps://maps.yandex.ru/?ll=${lng},${lat}&z=17&pt=${marker}`;
-    const webFallback = `https://yandex.ru/maps/?ll=${lng},${lat}&z=17&pt=${marker}`;
-
-    Linking.canOpenURL(deepLink)
-      .then((supported) => {
-        if (supported) return Linking.openURL(deepLink);
-        return Linking.openURL(webFallback);
-      })
-      .catch(() => Linking.openURL(webFallback));
+    const deep = `yandexmaps://maps.yandex.ru/?ll=${lng},${lat}&z=17&pt=${marker}`;
+    const web = `https://yandex.ru/maps/?ll=${lng},${lat}&z=17&pt=${marker}`;
+    Linking.canOpenURL(deep).then((s) => Linking.openURL(s ? deep : web)).catch(() => Linking.openURL(web));
   }, []);
 
   const openTwoGis = useCallback((lat: number, lng: number) => {
-    const deepLink = `dgis://2gis.ru/routeSearch/rsType/car/to/${lng},${lat}`;
-    const webFallback = `https://2gis.ru/routeSearch/rsType/car/to/${lng},${lat}`;
-
-    Linking.canOpenURL(deepLink)
-      .then((supported) => {
-        if (supported) return Linking.openURL(deepLink);
-        return Linking.openURL(webFallback);
-      })
-      .catch(() => Linking.openURL(webFallback));
+    const deep = `dgis://2gis.ru/routeSearch/rsType/car/to/${lng},${lat}`;
+    const web = `https://2gis.ru/routeSearch/rsType/car/to/${lng},${lat}`;
+    Linking.canOpenURL(deep).then((s) => Linking.openURL(s ? deep : web)).catch(() => Linking.openURL(web));
   }, []);
 
+  // ── Booking ────────────────────────────────────────────────────────────────
   const handleBooking = useCallback(
     (staffId?: string) => {
       navigation.navigate('BookingSlots', { businessId, staffId });
@@ -286,10 +307,10 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
     [navigation, businessId],
   );
 
-  // ── Loading ─────────────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+      <View style={[styles.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
@@ -297,206 +318,201 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
 
   if (!business) {
     return (
-      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>← Назад</Text>
+      <View style={[styles.centered, { paddingTop: insets.top }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>‹ Назад</Text>
         </TouchableOpacity>
         <Text style={styles.errorText}>Не удалось загрузить данные</Text>
       </View>
     );
   }
 
-  const todayHours = todayWorkingHours(
-    business.working_hours as Record<string, { open: string; close: string } | null>,
-  );
+  const open = isOpenNow(business.working_hours as Record<string, { open: string; close: string } | null>);
+  const todayHours = todayWorkingHours(business.working_hours as Record<string, { open: string; close: string } | null>);
+  const minPrice = business.services.length > 0
+    ? Math.min(...business.services.map((s) => s.price))
+    : null;
+  const selectedService = business.services.find((s) => s.id === selectedServiceId);
+
+  const ctaLabel = selectedService != null
+    ? `Выбрать слот · ${selectedService.price.toLocaleString('ru-RU')} ₽ →`
+    : minPrice != null
+      ? `Выбрать слот · от ${minPrice.toLocaleString('ru-RU')} ₽ →`
+      : 'Выбрать слот →';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header bar */}
-      <View style={styles.headerBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {business.name}
-        </Text>
-        <TouchableOpacity
-          style={styles.favoriteBtn}
-          onPress={() => void handleFavoriteToggle()}
-          activeOpacity={0.7}
-          accessibilityLabel={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
-        >
-          <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteIconActive]}>
-            {isFavorite ? '♥' : '♡'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Photos */}
-        {business.photos.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.photosRow}
-            contentContainerStyle={styles.photosContent}
-          >
-            {business.photos.map((uri, i) => (
-              <Image key={i} source={{ uri }} style={styles.photo} resizeMode="cover" />
-            ))}
-          </ScrollView>
-        )}
-
-        {/* Main info */}
-        <View style={styles.section}>
-          <Text style={styles.businessName}>{business.name}</Text>
-          <Text style={styles.categoryName}>{business.category_name_ru}</Text>
-
-          {/* Rating */}
-          {business.avg_rating !== null && (
-            <View style={styles.ratingRow}>
-              <Text style={styles.ratingStars}>★</Text>
-              <Text style={styles.ratingValue}>{Number(business.avg_rating).toFixed(1)}</Text>
-              <Text style={styles.ratingCount}> · {business.review_count} отзывов</Text>
-            </View>
+        {/* ── Hero photo ── */}
+        <View style={styles.heroWrap}>
+          {business.photos.length > 0 ? (
+            <Image source={{ uri: business.photos[0] }} style={styles.heroPhoto} resizeMode="cover" />
+          ) : (
+            <View style={styles.heroPlaceholder} />
           )}
-
-          {/* Address */}
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>📍</Text>
-            <Text style={styles.infoText}>{business.address}</Text>
+          {/* back + fav buttons over photo */}
+          <View style={[styles.photoOverlay, { top: 14 }]}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              <Text style={styles.iconBtnText}>‹</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => void handleFavoriteToggle()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.iconBtnText}>{isFavorite ? '♥' : '♡'}</Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Working hours */}
-          {todayHours !== null && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>🕐</Text>
-              <Text style={styles.infoText}>Сегодня: {todayHours}</Text>
-            </View>
-          )}
-
-          {/* Phone */}
-          <Pressable
-            style={styles.infoRow}
-            onPress={() => void Linking.openURL(`tel:${business.phone}`)}
-          >
-            <Text style={styles.infoIcon}>📞</Text>
-            <Text style={[styles.infoText, styles.infoLink]}>{formatPhone(business.phone)}</Text>
-          </Pressable>
-
-          {/* Instagram */}
-          {business.instagram_url ? (
-            <Pressable
-              style={styles.infoRow}
-              onPress={() => {
-                const url = business.instagram_url;
-                if (url) void Linking.openURL(url);
-              }}
-            >
-              <Text style={styles.infoIcon}>📷</Text>
-              <Text style={[styles.infoText, styles.infoLink]}>Instagram</Text>
-            </Pressable>
-          ) : null}
-
-          {/* Website */}
-          {business.website_url ? (
-            <Pressable
-              style={styles.infoRow}
-              onPress={() => {
-                const url = business.website_url;
-                if (url) void Linking.openURL(url);
-              }}
-            >
-              <Text style={styles.infoIcon}>🌐</Text>
-              <Text style={[styles.infoText, styles.infoLink]}>{business.website_url}</Text>
-            </Pressable>
-          ) : null}
         </View>
 
-        {/* Адрес и навигация */}
-        {business.lat !== null && business.lng !== null ? (
+        {/* ── Title block ── */}
+        <View style={styles.titleBlock}>
+          <View style={styles.statusRow}>
+            <MonoLabel style={{ color: open ? colors.ok : colors.textMuted }}>
+              {open ? `● открыто${todayHours ? ' до ' + todayHours.split('–')[1]?.trim() : ''}` : '○ закрыто'}
+            </MonoLabel>
+            <MonoLabel>{`  · ${business.category_name_ru}`}</MonoLabel>
+          </View>
+          <Text style={styles.businessName}>{business.name}</Text>
+          <Text style={styles.address}>{business.address}</Text>
+
+          {/* Metrics row */}
+          <View style={styles.metricsRow}>
+            {business.avg_rating != null && (
+              <>
+                <View style={styles.metricCell}>
+                  <Text style={styles.metricNum}>{Number(business.avg_rating).toFixed(1)}</Text>
+                  <MonoLabel>рейтинг</MonoLabel>
+                </View>
+                <View style={styles.metricSep} />
+              </>
+            )}
+            {business.review_count > 0 && (
+              <>
+                <View style={[styles.metricCell, styles.metricCenter]}>
+                  <Text style={styles.metricNum}>{business.review_count}</Text>
+                  <MonoLabel>отзывов</MonoLabel>
+                </View>
+                <View style={styles.metricSep} />
+              </>
+            )}
+            {todayHours != null && (
+              <View style={[styles.metricCell, styles.metricRight]}>
+                <Text style={styles.metricNum}>{todayHours}</Text>
+                <MonoLabel>сегодня</MonoLabel>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* ── Services ── */}
+        {business.services.length > 0 && (
           <View style={styles.section}>
-            <SectionHeader title="Адрес и навигация" />
-            <View style={navStyles.buttons}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Услуги</Text>
+              <MonoLabel>{`${business.services.length} опций`}</MonoLabel>
+            </View>
+            {business.services.map((svc) => (
+              <ServiceCard
+                key={svc.id}
+                service={svc}
+                selected={selectedServiceId === svc.id}
+                onSelect={() => setSelectedServiceId((prev) => prev === svc.id ? undefined : svc.id)}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* ── Staff ── */}
+        {business.staff.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Мастера</Text>
+            </View>
+            {business.staff.map((member) => (
+              <StaffRow key={member.id} staff={member} slots={slots} onBook={handleBooking} />
+            ))}
+          </View>
+        )}
+
+        {/* ── Navigation ── */}
+        {business.lat != null && business.lng != null && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Навигация</Text>
+            </View>
+            <View style={styles.navRow}>
               <TouchableOpacity
-                style={navStyles.mapBtn}
+                style={styles.navBtn}
                 onPress={() => openYandexMaps(business.lat as number, business.lng as number)}
                 activeOpacity={0.8}
               >
-                <Text style={navStyles.mapBtnText}>Яндекс.Карты</Text>
+                <Text style={styles.navBtnText}>Яндекс.Карты</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={navStyles.mapBtn}
+                style={styles.navBtn}
                 onPress={() => openTwoGis(business.lat as number, business.lng as number)}
                 activeOpacity={0.8}
               >
-                <Text style={navStyles.mapBtnText}>2ГИС</Text>
+                <Text style={styles.navBtnText}>2ГИС</Text>
               </TouchableOpacity>
             </View>
           </View>
-        ) : null}
-
-        {/* Staff */}
-        {business.staff.length > 0 && (
-          <View style={styles.section}>
-            <SectionHeader title="Мастера" />
-            <View style={styles.staffList}>
-              {business.staff.map((member) => (
-                <StaffRow
-                  key={member.id}
-                  staff={member}
-                  slots={slots}
-                  onBook={handleBooking}
-                />
-              ))}
-            </View>
-            <TouchableOpacity
-              style={styles.bookAllBtn}
-              onPress={() => handleBooking(undefined)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.bookAllBtnText}>Выбрать мастера и записаться</Text>
-            </TouchableOpacity>
-          </View>
         )}
 
-        {/* Services */}
-        {business.services.length > 0 && (
-          <View style={styles.section}>
-            <SectionHeader title="Услуги" />
-            <View>
-              {business.services.map((service) => (
-                <ServiceRow key={service.id} service={service} />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Reviews */}
+        {/* ── Contacts ── */}
         <View style={styles.section}>
-          <SectionHeader title="Отзывы" />
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Контакты</Text>
+          </View>
+          <Pressable onPress={() => void Linking.openURL(`tel:${business.phone}`)} style={styles.contactRow}>
+            <MonoLabel>телефон</MonoLabel>
+            <Text style={styles.contactVal}>{formatPhone(business.phone)}</Text>
+          </Pressable>
+          {business.instagram_url != null && (
+            <Pressable onPress={() => void Linking.openURL(business.instagram_url!)} style={styles.contactRow}>
+              <MonoLabel>instagram</MonoLabel>
+              <Text style={[styles.contactVal, styles.contactLink]}>@instagram</Text>
+            </Pressable>
+          )}
+          {business.website_url != null && (
+            <Pressable onPress={() => void Linking.openURL(business.website_url!)} style={styles.contactRow}>
+              <MonoLabel>сайт</MonoLabel>
+              <Text style={[styles.contactVal, styles.contactLink]}>{business.website_url}</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* ── Reviews ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Отзывы</Text>
+            {business.review_count > 0 && (
+              <MonoLabel>{`${business.review_count} всего`}</MonoLabel>
+            )}
+          </View>
           {reviews.length === 0 ? (
             <Text style={styles.noReviews}>Пока нет отзывов</Text>
           ) : (
-            <View style={styles.reviewsList}>
-              {reviews.map((review) => (
-                <ReviewCard key={review.id} review={review} />
-              ))}
-            </View>
-          )}
-          {business.review_count > 3 && (
-            <TouchableOpacity style={styles.allReviewsBtn} activeOpacity={0.7}>
-              <Text style={styles.allReviewsBtnText}>
-                Все отзывы ({business.review_count})
-              </Text>
-            </TouchableOpacity>
+            reviews.map((r) => <ReviewItem key={r.id} review={r} />)
           )}
         </View>
       </ScrollView>
+
+      {/* ── CTA button ── */}
+      <View style={[styles.ctaBar, { paddingBottom: insets.bottom + 14 }]}>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          onPress={() => handleBooking(undefined)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.ctaBtnText}>{ctaLabel}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -504,185 +520,113 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
+  container: { flex: 1, backgroundColor: colors.bg },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
+  scroll: { flex: 1 },
+  scrollContent: { gap: 0 },
+
+  // Hero
+  heroWrap: { position: 'relative', margin: 14, borderRadius: 18, overflow: 'hidden' },
+  heroPhoto: { width: '100%', height: 260 },
+  heroPlaceholder: {
+    height: 260,
+    backgroundColor: '#e7e3d6',
   },
-  loadingContainer: {
-    flex: 1,
+  photoOverlay: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.bg,
   },
-  errorText: {
-    ...typography.body,
-    color: colors.textMuted,
-    marginTop: spacing.lg,
-  },
-  // Header
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backBtn: {
-    padding: spacing.xs,
-    marginRight: spacing.sm,
-  },
-  backBtnText: {
-    ...typography.h3,
-    color: colors.accent,
-  },
-  headerTitle: {
-    flex: 1,
-    ...typography.bodyMedium,
-    color: colors.text,
-  },
-  favoriteBtn: {
-    padding: spacing.xs,
-    marginLeft: spacing.sm,
-  },
-  favoriteIcon: {
-    fontSize: 24,
-    color: colors.textMuted,
-  },
-  favoriteIconActive: {
-    color: colors.coral,
-  },
-  // Scroll
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    gap: 0,
-  },
-  // Photos
-  photosRow: {
-    flexGrow: 0,
-  },
-  photosContent: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  photo: {
-    width: 280,
-    height: 180,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surfaceAlt,
-  },
-  // Section
-  section: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  businessName: {
-    ...typography.h2,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  categoryName: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  ratingStars: {
-    fontSize: 14,
-    color: colors.amber,
-  },
-  ratingValue: {
-    ...typography.bodyMedium,
-    color: colors.text,
-    marginLeft: spacing.xs,
-  },
-  ratingCount: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  infoIcon: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  infoText: {
-    ...typography.body,
-    color: colors.text,
-    flex: 1,
-  },
-  infoLink: {
-    color: colors.accent,
-    textDecorationLine: 'underline',
-  },
-  // Staff
-  staffList: {
-    gap: spacing.sm,
-  },
-  bookAllBtn: {
-    marginTop: spacing.sm,
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  bookAllBtnText: {
-    ...typography.button,
-    color: colors.white,
-  },
-  // Reviews
-  reviewsList: {
-    gap: spacing.sm,
-  },
-  noReviews: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-  },
-  allReviewsBtn: {
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  allReviewsBtnText: {
-    ...typography.label,
-    color: colors.text,
-  },
-});
+  iconBtnText: { fontSize: 18, color: colors.text, lineHeight: 22 },
 
-const navStyles = StyleSheet.create({
-  buttons: {
+  // Title block
+  titleBlock: { paddingHorizontal: 18, paddingBottom: 14 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  businessName: { fontSize: 28, fontWeight: '700', letterSpacing: -0.8, lineHeight: 32, color: colors.text, marginBottom: 6 },
+  address: { fontSize: 13, color: colors.textSecondary, marginBottom: 14 },
+
+  // Metrics
+  metricsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
   },
-  mapBtn: {
+  metricCell: { paddingHorizontal: 8, gap: 4 },
+  metricCenter: { flex: 1, alignItems: 'center' },
+  metricRight: { flex: 1, alignItems: 'flex-end', paddingRight: 0 },
+  metricNum: { fontSize: 20, fontWeight: '600', color: colors.text, letterSpacing: -0.4 },
+  metricSep: { width: 1, backgroundColor: colors.border, alignSelf: 'stretch' },
+
+  // Sections
+  section: { paddingHorizontal: 18, paddingVertical: 16 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
+
+  // Contacts
+  contactRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  contactVal: { fontSize: 14, color: colors.text },
+  contactLink: { color: colors.accent, textDecorationLine: 'underline' },
+
+  // Navigation buttons
+  navRow: { flexDirection: 'row', gap: spacing.sm },
+  navBtn: {
     flex: 1,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.sm,
+    borderRadius: 10,
     paddingVertical: spacing.sm,
     alignItems: 'center',
+    backgroundColor: colors.surface,
   },
-  mapBtnText: {
-    ...typography.label,
-    color: colors.text,
+  navBtnText: { fontSize: 13, fontWeight: '500', color: colors.text },
+
+  // Reviews
+  noReviews: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md },
+
+  // Error / back
+  backBtn: { padding: spacing.sm },
+  backBtnText: { fontSize: 17, color: colors.accent },
+  errorText: { fontSize: 14, color: colors.textMuted, marginTop: spacing.md },
+
+  // CTA
+  ctaBar: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    backgroundColor: colors.bg,
+    borderTopWidth: 0,
   },
+  ctaBtn: {
+    backgroundColor: colors.text,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaBtnText: { fontSize: 14, fontWeight: '600', color: colors.surface },
 });

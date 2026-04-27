@@ -11,15 +11,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   apiClient,
   AvatarInitials,
-  borderRadius,
   BusinessDetailDto,
   colors,
+  monoFont,
   ServiceItemDto,
-  SlotChip,
   SlotItemDto,
   spacing,
   StaffItemDto,
-  typography,
 } from '@mettig/shared';
 import type { HomeStackScreenProps } from '../../navigation/types';
 
@@ -46,29 +44,86 @@ function generateCalendarDays(count: number): Date[] {
   return days;
 }
 
-function formatDisplayDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year as number, (month as number) - 1, day as number);
-  const weekdays = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-  const months = [
-    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-  ];
-  const wd = weekdays[date.getDay()] ?? '';
-  const mn = months[date.getMonth()] ?? '';
-  return `${date.getDate()} ${mn}, ${wd}`;
+function slotHour(time: string): number {
+  return parseInt(time.slice(0, 2), 10);
 }
 
 const DAY_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] as const;
-const MONTH_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'] as const;
+const MONTH_RU = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'] as const;
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── MonoLabel ────────────────────────────────────────────────────────────────
 
-interface StaffOptionProps {
-  staff: StaffItemDto;
-  selected: boolean;
-  onSelect: () => void;
+function MonoLabel({ children, style }: { children: string; style?: object }): React.JSX.Element {
+  return <Text style={[monoStyle, style]}>{children}</Text>;
 }
+const monoStyle = {
+  fontFamily: monoFont,
+  fontSize: 10,
+  letterSpacing: 0.6,
+  textTransform: 'uppercase' as const,
+  color: colors.textMuted,
+};
+
+// ─── Slot chip ────────────────────────────────────────────────────────────────
+
+interface SlotProps { time: string; selected: boolean; taken: boolean; onPress: () => void }
+
+function SlotTile({ time, selected, taken, onPress }: SlotProps): React.JSX.Element {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={taken}
+      activeOpacity={0.7}
+      style={[
+        slotStyles.tile,
+        selected && slotStyles.tileSelected,
+        taken && slotStyles.tileTaken,
+      ]}
+    >
+      <Text style={[
+        slotStyles.label,
+        selected && slotStyles.labelSelected,
+        taken && slotStyles.labelTaken,
+      ]}>
+        {time}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+const slotStyles = StyleSheet.create({
+  tile: {
+    flex: 1,
+    paddingVertical: 11,
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    minWidth: 80,
+  },
+  tileSelected: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  tileTaken: {
+    borderColor: colors.border,
+    backgroundColor: 'transparent',
+    opacity: 0.55,
+  },
+  label: {
+    fontFamily: monoFont,
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  labelSelected: { color: colors.surface },
+  labelTaken: { color: colors.textMuted, textDecorationLine: 'line-through' },
+});
+
+// ─── Staff option ─────────────────────────────────────────────────────────────
+
+interface StaffOptionProps { staff: StaffItemDto; selected: boolean; onSelect: () => void }
 
 function StaffOption({ staff, selected, onSelect }: StaffOptionProps): React.JSX.Element {
   return (
@@ -95,132 +150,78 @@ const staffStyles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     marginBottom: spacing.sm,
   },
-  rowSelected: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accentLight,
-  },
-  info: {
-    flex: 1,
-    gap: 2,
-  },
-  name: {
-    ...typography.bodyMedium,
-    color: colors.text,
-  },
-  role: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
+  rowSelected: { borderColor: colors.text, backgroundColor: colors.surfaceAlt },
+  info: { flex: 1, gap: 2 },
+  name: { fontSize: 14, fontWeight: '600', color: colors.text },
+  role: { fontFamily: monoFont, fontSize: 10, color: colors.textMuted, letterSpacing: 0.4 },
   radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  radioSelected: {
-    borderColor: colors.accent,
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.accent,
-  },
+  radioSelected: { borderColor: colors.text },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.text },
 });
 
-interface ServiceOptionProps {
-  service: ServiceItemDto;
-  selected: boolean;
-  onSelect: () => void;
-}
+// ─── Service option ───────────────────────────────────────────────────────────
+
+interface ServiceOptionProps { service: ServiceItemDto; selected: boolean; onSelect: () => void }
 
 function ServiceOption({ service, selected, onSelect }: ServiceOptionProps): React.JSX.Element {
   return (
     <TouchableOpacity
-      style={[serviceStyles.row, selected && serviceStyles.rowSelected]}
+      style={[svcStyles.row, selected && svcStyles.rowSelected]}
       onPress={onSelect}
       activeOpacity={0.7}
     >
-      <View style={serviceStyles.info}>
-        <Text style={serviceStyles.name}>{service.name}</Text>
-        <Text style={serviceStyles.meta}>{service.duration_minutes} мин</Text>
+      <View style={svcStyles.info}>
+        <Text style={svcStyles.name}>{service.name}</Text>
+        <Text style={svcStyles.meta}>{service.duration_minutes} мин</Text>
       </View>
-      <Text style={[serviceStyles.price, selected && serviceStyles.priceSelected]}>
+      <Text style={[svcStyles.price, selected && svcStyles.priceSelected]}>
         {service.price.toLocaleString('ru-RU')} ₽
       </Text>
-      <View style={[serviceStyles.radio, selected && serviceStyles.radioSelected]}>
-        {selected && <View style={serviceStyles.radioInner} />}
+      <View style={[svcStyles.radio, selected && svcStyles.radioSelected]}>
+        {selected && <View style={svcStyles.radioInner} />}
       </View>
     </TouchableOpacity>
   );
 }
 
-const serviceStyles = StyleSheet.create({
+const svcStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     marginBottom: spacing.sm,
   },
-  rowSelected: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accentLight,
-  },
-  info: {
-    flex: 1,
-    gap: 2,
-  },
-  name: {
-    ...typography.body,
-    color: colors.text,
-  },
-  meta: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  price: {
-    ...typography.bodyMedium,
-    color: colors.accent,
-    marginRight: spacing.sm,
-  },
-  priceSelected: {
-    color: colors.accent,
-  },
+  rowSelected: { borderColor: colors.text, backgroundColor: colors.surfaceAlt },
+  info: { flex: 1, gap: 2 },
+  name: { fontSize: 14, color: colors.text },
+  meta: { fontFamily: monoFont, fontSize: 10, color: colors.textMuted, letterSpacing: 0.4 },
+  price: { fontSize: 14, fontWeight: '500', color: colors.accent, marginRight: spacing.sm },
+  priceSelected: { color: colors.text },
   radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  radioSelected: {
-    borderColor: colors.accent,
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.accent,
-  },
+  radioSelected: { borderColor: colors.text },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.text },
 });
 
-// ─── BookingCreateResponse ─────────────────────────────────────────────────────
+// ─── Booking response ─────────────────────────────────────────────────────────
 
 interface BookingCreateResponse {
   id: string;
@@ -238,54 +239,43 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
   const { businessId, staffId: initialStaffId } = route.params;
   const insets = useSafeAreaInsets();
 
-  // Business data
   const [business, setBusiness] = useState<BusinessDetailDto | null>(null);
   const [isLoadingBusiness, setIsLoadingBusiness] = useState(true);
 
-  // Selection state
   const [selectedStaffId, setSelectedStaffId] = useState<string | undefined>(initialStaffId);
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const [selectedDate, setSelectedDate] = useState<string>(formatDateIso(new Date()));
   const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>(undefined);
+  const [selectedSlotTime, setSelectedSlotTime] = useState<string | undefined>(undefined);
 
-  // Slots
   const [slots, setSlots] = useState<SlotItemDto[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-
-  // Booking
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
   const calendarDays = useMemo(() => generateCalendarDays(30), []);
 
-  // ── Load business ──────────────────────────────────────────────────────────
+  // ── Load business ─────────────────────────────────────────────────────────
   useEffect(() => {
     apiClient
       .get<BusinessDetailDto>(`/businesses/${businessId}`)
       .then((res) => {
         setBusiness(res.data);
-        if (res.data.services.length === 1) {
-          setSelectedServiceId(res.data.services[0]?.id);
-        }
-        if (!initialStaffId && res.data.staff.length === 1) {
-          setSelectedStaffId(res.data.staff[0]?.id);
-        }
+        if (res.data.services.length === 1) setSelectedServiceId(res.data.services[0]?.id);
+        if (!initialStaffId && res.data.staff.length === 1) setSelectedStaffId(res.data.staff[0]?.id);
       })
-      .catch(() => {
-        // will show error state
-      })
+      .catch(() => undefined)
       .finally(() => setIsLoadingBusiness(false));
   }, [businessId, initialStaffId]);
 
-  // ── Load slots when date or staff changes ──────────────────────────────────
+  // ── Load slots ────────────────────────────────────────────────────────────
   useEffect(() => {
     setIsLoadingSlots(true);
     setSelectedSlotId(undefined);
+    setSelectedSlotTime(undefined);
     setBookingError(null);
-
     const params: Record<string, string> = { date: selectedDate };
     if (selectedStaffId) params['staff_id'] = selectedStaffId;
-
     apiClient
       .get<{ slots: SlotItemDto[] }>(`/businesses/${businessId}/slots`, { params })
       .then((res) => setSlots((res.data.slots ?? []).filter((s) => !s.is_booked)))
@@ -293,7 +283,7 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
       .finally(() => setIsLoadingSlots(false));
   }, [businessId, selectedDate, selectedStaffId]);
 
-  // ── Book ───────────────────────────────────────────────────────────────────
+  // ── Book ──────────────────────────────────────────────────────────────────
   const handleBook = useCallback(async () => {
     if (!selectedSlotId || !selectedServiceId) return;
     setIsBooking(true);
@@ -320,7 +310,32 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
     }
   }, [selectedSlotId, selectedServiceId, navigation]);
 
-  // ── Loading / Error states ─────────────────────────────────────────────────
+  // ── Slot groups ───────────────────────────────────────────────────────────
+  const slotGroups = useMemo(() => {
+    const morning = slots.filter((s) => slotHour(s.start_time) < 12);
+    const afternoon = slots.filter((s) => { const h = slotHour(s.start_time); return h >= 12 && h < 17; });
+    const evening = slots.filter((s) => slotHour(s.start_time) >= 17);
+    return [
+      { title: 'Утро', from: '09', to: '12', items: morning },
+      { title: 'День', from: '12', to: '17', items: afternoon },
+      { title: 'Вечер', from: '17', to: '22', items: evening },
+    ].filter((g) => g.items.length > 0);
+  }, [slots]);
+
+  // ── Selected date display ─────────────────────────────────────────────────
+  const selectedDateObj = useMemo(() => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    return new Date(y as number, (m as number) - 1, d as number);
+  }, [selectedDate]);
+
+  const selectedService = business?.services.find((s) => s.id === selectedServiceId);
+  const ctaLabel = selectedSlotTime && selectedDate
+    ? `${DAY_SHORT[selectedDateObj.getDay()]} · ${selectedDateObj.getDate()} ${MONTH_RU[selectedDateObj.getMonth()]} · ${selectedSlotTime} →`
+    : 'Выбрать время';
+
+  const canConfirm = !!selectedSlotId && !!selectedServiceId;
+
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoadingBusiness) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
@@ -332,36 +347,56 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
   if (!business) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtnFallback}>
-          <Text style={styles.backBtnText}>← Назад</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>← Назад</Text>
         </TouchableOpacity>
-        <Text style={styles.errorText}>Не удалось загрузить данные</Text>
       </View>
     );
   }
 
-  const canConfirm = !!selectedSlotId && !!selectedServiceId;
+  // Progress: 1=staff, 2=service, 3=slot → at least we show step 2
+  const progressStep = selectedSlotId ? 3 : selectedServiceId ? 2 : 1;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Запись в {business.name}</Text>
-        <View style={styles.headerPlaceholder} />
-      </View>
-
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 96 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Master selection */}
+        {/* ── Header ── */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>‹</Text>
+          </TouchableOpacity>
+          <MonoLabel>04 / Слот</MonoLabel>
+        </View>
+
+        {/* ── Progress bar ── */}
+        <View style={styles.progressWrap}>
+          <View style={[styles.progressBar, progressStep >= 1 && styles.progressBarFilled]} />
+          <View style={[styles.progressBar, progressStep >= 2 && styles.progressBarFilled]} />
+          <View style={[styles.progressBar, progressStep >= 3 && styles.progressBarFilled]} />
+        </View>
+
+        {/* ── Title ── */}
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>
+            {'Удобное время'}
+            <Text style={{ color: colors.accent }}>.</Text>
+          </Text>
+          <Text style={styles.subTitle}>
+            {business.name}
+            {selectedService != null ? ` · ${selectedService.name} · ${selectedService.duration_minutes} мин` : ''}
+          </Text>
+        </View>
+
+        {/* ── Staff selection ── */}
         {business.staff.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Мастер</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Мастер</Text>
+            </View>
             {business.staff.map((staff) => (
               <StaffOption
                 key={staff.id}
@@ -370,55 +405,55 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
                 onSelect={() => {
                   setSelectedStaffId(staff.id);
                   setSelectedSlotId(undefined);
+                  setSelectedSlotTime(undefined);
                 }}
               />
             ))}
           </View>
         )}
 
-        {/* Service selection */}
+        {/* ── Service selection ── */}
         {business.services.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Услуга</Text>
-            {business.services.map((service) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Услуга</Text>
+            </View>
+            {business.services.map((svc) => (
               <ServiceOption
-                key={service.id}
-                service={service}
-                selected={selectedServiceId === service.id}
-                onSelect={() => setSelectedServiceId(service.id)}
+                key={svc.id}
+                service={svc}
+                selected={selectedServiceId === svc.id}
+                onSelect={() => setSelectedServiceId(svc.id)}
               />
             ))}
           </View>
         )}
 
-        {/* Horizontal calendar */}
+        {/* ── Date picker ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Дата</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Дата</Text>
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.calendarContent}
+            contentContainerStyle={styles.calendarRow}
           >
             {calendarDays.map((day) => {
               const dateStr = formatDateIso(day);
-              const isSelected = selectedDate === dateStr;
-              const dayName = DAY_SHORT[day.getDay()] ?? '';
-              const monthName = MONTH_SHORT[day.getMonth()] ?? '';
+              const active = selectedDate === dateStr;
               return (
                 <TouchableOpacity
                   key={dateStr}
-                  style={[styles.dayChip, isSelected && styles.dayChipSelected]}
+                  style={[styles.dayChip, active && styles.dayChipActive]}
                   onPress={() => setSelectedDate(dateStr)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.dayName, isSelected && styles.dayTextSelected]}>
-                    {dayName}
+                  <Text style={[styles.dayName, active && styles.dayTextActive]}>
+                    {DAY_SHORT[day.getDay()]}
                   </Text>
-                  <Text style={[styles.dayNum, isSelected && styles.dayTextSelected]}>
+                  <Text style={[styles.dayNum, active && styles.dayTextActive]}>
                     {day.getDate()}
-                  </Text>
-                  <Text style={[styles.dayMonth, isSelected && styles.dayTextSelected]}>
-                    {monthName}
                   </Text>
                 </TouchableOpacity>
               );
@@ -426,48 +461,61 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
           </ScrollView>
         </View>
 
-        {/* Slots */}
+        {/* ── Slot groups ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Время · {formatDisplayDate(selectedDate)}
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Время</Text>
+          </View>
+
           {isLoadingSlots ? (
-            <ActivityIndicator color={colors.accent} style={styles.slotsLoader} />
+            <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.lg }} />
           ) : slots.length === 0 ? (
-            <Text style={styles.noSlots}>Нет свободных слотов на эту дату</Text>
+            <Text style={styles.noSlots}>Нет свободных слотов</Text>
           ) : (
-            <View style={styles.slotsGrid}>
-              {slots.map((slot) => (
-                <SlotChip
-                  key={slot.id}
-                  time={slot.start_time.slice(0, 5)}
-                  selected={selectedSlotId === slot.id}
-                  onPress={() => setSelectedSlotId(slot.id)}
-                />
-              ))}
-            </View>
+            slotGroups.map((group) => (
+              <View key={group.title} style={styles.slotGroup}>
+                <View style={styles.slotGroupHeader}>
+                  <Text style={styles.slotGroupTitle}>{group.title}</Text>
+                  <MonoLabel>{`${group.from}—${group.to} · ${group.items.length} свободно`}</MonoLabel>
+                </View>
+                <View style={styles.slotsGrid}>
+                  {group.items.map((slot) => (
+                    <SlotTile
+                      key={slot.id}
+                      time={slot.start_time.slice(0, 5)}
+                      selected={selectedSlotId === slot.id}
+                      taken={false}
+                      onPress={() => {
+                        setSelectedSlotId(slot.id);
+                        setSelectedSlotTime(slot.start_time.slice(0, 5));
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+            ))
           )}
         </View>
 
-        {bookingError !== null && (
+        {bookingError != null && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{bookingError}</Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Confirm button */}
+      {/* ── CTA ── */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
         <TouchableOpacity
-          style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
+          style={[styles.ctaBtn, !canConfirm && styles.ctaBtnDisabled]}
           onPress={() => void handleBook()}
           disabled={!canConfirm || isBooking}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           {isBooking ? (
-            <ActivityIndicator color={colors.white} />
+            <ActivityIndicator color={colors.surface} />
           ) : (
-            <Text style={styles.confirmBtnText}>Подтвердить запись</Text>
+            <Text style={styles.ctaBtnText}>{ctaLabel}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -478,153 +526,125 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg,
-  },
-  // Header
-  header: {
+  container: { flex: 1, backgroundColor: colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
+  scroll: { flex: 1 },
+  scrollContent: { gap: 0 },
+  backText: { fontSize: 16, color: colors.accent },
+
+  // Top bar
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
   },
   backBtn: {
-    padding: spacing.xs,
-    marginRight: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  backBtnFallback: {
-    padding: spacing.sm,
+  backBtnText: { fontSize: 20, color: colors.text, lineHeight: 24 },
+
+  // Progress
+  progressWrap: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
   },
-  backBtnText: {
-    ...typography.h3,
-    color: colors.accent,
-  },
-  headerTitle: {
+  progressBar: {
     flex: 1,
-    ...typography.bodyMedium,
-    color: colors.text,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.border,
   },
-  headerPlaceholder: {
-    width: 32,
+  progressBarFilled: {
+    backgroundColor: colors.text,
   },
-  // Scroll
-  scroll: {
-    flex: 1,
+
+  // Title
+  titleBlock: { paddingHorizontal: 18, paddingBottom: 14 },
+  title: { fontSize: 28, fontWeight: '700', letterSpacing: -0.8, lineHeight: 32, color: colors.text },
+  subTitle: { marginTop: 6, fontSize: 12, color: colors.textMuted },
+
+  // Sections
+  section: { paddingHorizontal: 18, paddingBottom: 14 },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 12,
   },
-  scrollContent: {
-    gap: 0,
-  },
-  // Section
-  section: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: colors.text },
+
   // Calendar
-  calendarContent: {
-    gap: spacing.sm,
-    paddingRight: spacing.md,
-  },
+  calendarRow: { gap: 8, paddingRight: spacing.md },
   dayChip: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 52,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
+    minWidth: 46,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    gap: 2,
   },
-  dayChipSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+  dayChipActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
   },
-  dayName: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
+  dayName: { fontFamily: monoFont, fontSize: 9, color: colors.textMuted },
+  dayNum: { fontSize: 18, fontWeight: '600', color: colors.text, marginTop: 4 },
+  dayTextActive: { color: colors.surface },
+
+  // Slot groups
+  slotGroup: { marginBottom: 14 },
+  slotGroupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingVertical: 8,
   },
-  dayNum: {
-    ...typography.bodyMedium,
-    color: colors.text,
-  },
-  dayMonth: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  dayTextSelected: {
-    color: colors.white,
-  },
-  // Slots
-  slotsLoader: {
-    marginVertical: spacing.lg,
-  },
-  noSlots: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: spacing.lg,
-  },
+  slotGroupTitle: { fontSize: 14, fontWeight: '600', color: colors.text },
   slotsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 8,
   },
+  noSlots: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.lg },
+
   // Error
-  errorText: {
-    ...typography.body,
-    color: colors.textMuted,
-    marginTop: spacing.lg,
-  },
   errorBanner: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
+    marginHorizontal: 18,
+    marginBottom: spacing.sm,
     backgroundColor: colors.coralLight,
-    borderRadius: borderRadius.md,
+    borderRadius: 12,
     padding: spacing.md,
   },
-  errorBannerText: {
-    ...typography.body,
-    color: colors.coral,
-  },
+  errorBannerText: { fontSize: 13, color: colors.coral },
+
   // Footer
   footer: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 18,
     paddingTop: spacing.md,
     backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
-  confirmBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
+  ctaBtn: {
+    backgroundColor: colors.text,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     height: 52,
   },
-  confirmBtnDisabled: {
-    backgroundColor: colors.textMuted,
-  },
-  confirmBtnText: {
-    ...typography.button,
-    color: colors.white,
-  },
+  ctaBtnDisabled: { opacity: 0.4 },
+  ctaBtnText: { fontSize: 14, fontWeight: '600', color: colors.surface },
 });

@@ -7,22 +7,22 @@ import React, {
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import {
   apiClient,
-  BusinessCard,
   BusinessListItemDto,
   PaginatedResponseDto,
-  SearchBar,
   colors,
+  monoFont,
   spacing,
   trackEvent,
-  typography,
 } from '@mettig/shared';
 import * as Location from 'expo-location';
 
@@ -36,33 +36,272 @@ export interface BusinessListProps {
 
 type SortMode = 'rating' | 'distance';
 
-// ─── Skeletons ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isOpen(hours: Record<string, { open: string; close: string } | null>): boolean {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const day = days[new Date().getDay()];
+  if (!day) return false;
+  return hours[day] != null;
+}
+
+function fmtDistance(m: number | null): string | null {
+  if (m == null) return null;
+  if (m < 1000) return `${Math.round(m)} м`;
+  return `${(m / 1000).toFixed(1)} км`;
+}
+
+// ─── B-style Business Card ────────────────────────────────────────────────────
+
+interface BCardProps {
+  item: BusinessListItemDto;
+  index: number;
+  onPress: () => void;
+}
+
+function BBusinessCard({ item, index, onPress }: BCardProps): React.JSX.Element {
+  const open = isOpen(item.working_hours);
+  const dist = fmtDistance(item.distance_m);
+  const rating = item.avg_rating != null ? item.avg_rating.toFixed(1) : null;
+  const photo = item.photos[0];
+
+  return (
+    <TouchableOpacity
+      style={cardStyles.card}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      {/* ── Left content ── */}
+      <View style={cardStyles.left}>
+        {/* Status + category */}
+        <View style={cardStyles.statusRow}>
+          <Text style={[cardStyles.openTag, !open && cardStyles.closedTag]}>
+            {open ? '● открыто' : '○ закрыто'}
+          </Text>
+          <Text style={cardStyles.catTag}> · {item.category_name_ru}</Text>
+        </View>
+
+        {/* Name */}
+        <Text style={cardStyles.name} numberOfLines={2}>{item.name}</Text>
+
+        {/* Stats */}
+        <View style={cardStyles.statsRow}>
+          {rating != null && (
+            <>
+              <View style={cardStyles.statBlock}>
+                <Text style={cardStyles.statHead}>рейтинг</Text>
+                <Text style={cardStyles.statVal}>
+                  {rating}
+                  <Text style={cardStyles.statSub}> · {item.review_count}</Text>
+                </Text>
+              </View>
+              <View style={cardStyles.statSep} />
+            </>
+          )}
+          {dist != null && (
+            <View style={cardStyles.statBlock}>
+              <Text style={cardStyles.statHead}>далеко</Text>
+              <Text style={cardStyles.statVal}>{dist}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* ── Right photo ── */}
+      <View style={cardStyles.photoBox}>
+        {photo != null ? (
+          <Image source={{ uri: photo }} style={cardStyles.photo} resizeMode="cover" />
+        ) : (
+          <View style={cardStyles.photoPlaceholder} />
+        )}
+        {/* index badge */}
+        <View style={cardStyles.indexBadge}>
+          <Text style={cardStyles.indexText}>{String(index + 1).padStart(2, '0')}</Text>
+        </View>
+        {/* arrow */}
+        <View style={cardStyles.arrowBadge}>
+          <Text style={cardStyles.arrowText}>→</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const cardStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  left: {
+    flex: 1,
+    padding: 14,
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  openTag: {
+    fontFamily: monoFont,
+    fontSize: 9,
+    letterSpacing: 0.4,
+    color: colors.ok,
+  },
+  closedTag: {
+    color: colors.textMuted,
+  },
+  catTag: {
+    fontFamily: monoFont,
+    fontSize: 9,
+    letterSpacing: 0.4,
+    color: colors.textMuted,
+  },
+  name: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text,
+    letterSpacing: -0.3,
+    lineHeight: 22,
+    marginTop: 6,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 0,
+    marginTop: 10,
+  },
+  statBlock: {
+    marginRight: 14,
+  },
+  statSep: {
+    width: 1,
+    height: 28,
+    backgroundColor: colors.border,
+    marginRight: 14,
+    alignSelf: 'center',
+  },
+  statHead: {
+    fontFamily: monoFont,
+    fontSize: 8,
+    color: colors.textMuted,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  statVal: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 2,
+  },
+  statSub: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: colors.textMuted,
+  },
+  // Photo
+  photoBox: {
+    width: 90,
+    position: 'relative',
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    flex: 1,
+    backgroundColor: '#e7e3d6',
+  },
+  indexBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(251,250,246,0.85)',
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  indexText: {
+    fontFamily: monoFont,
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  arrowBadge: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    backgroundColor: 'rgba(251,250,246,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowText: {
+    fontSize: 13,
+    color: colors.text,
+  },
+});
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SkeletonCard(): React.JSX.Element {
   return (
-    <View style={skeletonStyles.card}>
-      <View style={skeletonStyles.image} />
-      <View style={skeletonStyles.content}>
-        <View style={[skeletonStyles.line, { width: '70%' }]} />
-        <View style={[skeletonStyles.line, { width: '50%' }]} />
-        <View style={[skeletonStyles.line, { width: '85%' }]} />
-      </View>
+    <View style={[cardStyles.card, { height: 110, opacity: 0.5 }]}>
+      <View style={[cardStyles.left, { backgroundColor: colors.surfaceAlt }]} />
+      <View style={[cardStyles.photoBox, { backgroundColor: colors.surfaceAlt }]} />
     </View>
   );
 }
 
-const skeletonStyles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+// ─── Sort pill ────────────────────────────────────────────────────────────────
+
+interface SortPillProps {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}
+
+function SortPill({ label, active, onPress }: SortPillProps): React.JSX.Element {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[pillStyles.pill, active && pillStyles.pillActive]}
+    >
+      <Text style={[pillStyles.label, active && pillStyles.labelActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const pillStyles = StyleSheet.create({
+  pill: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
+    backgroundColor: 'transparent',
   },
-  image: { width: '100%', height: 140, backgroundColor: colors.surfaceAlt },
-  content: { padding: spacing.md, gap: spacing.sm },
-  line: { height: 12, backgroundColor: colors.surfaceAlt, borderRadius: 4 },
+  pillActive: {
+    borderColor: colors.text,
+    backgroundColor: colors.text,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  labelActive: {
+    color: colors.surface,
+  },
 });
 
 // ─── BusinessList ─────────────────────────────────────────────────────────────
@@ -86,14 +325,14 @@ export function BusinessList({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // ── Поиск ─────────────────────────────────────────────────────────────────
+  // ── Search ────────────────────────────────────────────────────────────────
   const handleSearchChange = useCallback((text: string) => {
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setDebouncedQuery(text), 300);
   }, []);
 
-  // ── Загрузка бизнесов ─────────────────────────────────────────────────────
+  // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchBusinesses = useCallback(
     async (
       p: number,
@@ -147,11 +386,10 @@ export function BusinessList({
     );
   }, [isLoadingMore, hasMore, isLoading, page, debouncedQuery, categoryId, sort, location, fetchBusinesses]);
 
-  // ── Переключение сортировки ───────────────────────────────────────────────
+  // ── Sort toggle ───────────────────────────────────────────────────────────
   const handleSortToggle = useCallback(
     async (mode: SortMode) => {
       if (mode === sort) return;
-
       if (mode === 'distance') {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -162,33 +400,36 @@ export function BusinessList({
         const pos = await Location.getCurrentPositionAsync({});
         setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       }
-
-      void trackEvent({
-        event_type: 'catalog_sort_changed',
-        payload: { sort: mode },
-      });
+      void trackEvent({ event_type: 'catalog_sort_changed', payload: { sort: mode } });
       setSort(mode);
     },
     [sort],
   );
 
-  // ── Рендер ────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   const renderItem = useCallback(
-    ({ item }: { item: BusinessListItemDto }) => (
-      <View style={styles.cardWrapper}>
-        <BusinessCard business={item} onPress={() => onBusinessPress(item.id)} />
-      </View>
+    ({ item, index }: { item: BusinessListItemDto; index: number }) => (
+      <BBusinessCard item={item} index={index} onPress={() => onBusinessPress(item.id)} />
     ),
     [onBusinessPress],
   );
 
+  const renderHeader = useCallback(() => {
+    if (!showSortToggle) return null;
+    return (
+      <View style={listStyles.sortRow}>
+        <SortPill label="По рейтингу" active={sort === 'rating'} onPress={() => { void handleSortToggle('rating'); }} />
+        <SortPill label="По расстоянию" active={sort === 'distance'} onPress={() => { void handleSortToggle('distance'); }} />
+      </View>
+    );
+  }, [showSortToggle, sort, handleSortToggle]);
+
   const renderEmpty = useCallback(() => {
     if (isLoading) return null;
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🔍</Text>
-        <Text style={styles.emptyText}>Ничего не найдено</Text>
-        <Text style={styles.emptyHint}>Попробуйте изменить запрос</Text>
+      <View style={listStyles.emptyContainer}>
+        <Text style={listStyles.emptyText}>Ничего не найдено</Text>
+        <Text style={listStyles.emptyHint}>Попробуйте изменить запрос</Text>
       </View>
     );
   }, [isLoading]);
@@ -196,51 +437,37 @@ export function BusinessList({
   const renderFooter = useCallback(() => {
     if (!isLoadingMore) return null;
     return (
-      <View style={styles.footerLoader}>
+      <View style={listStyles.footerLoader}>
         <ActivityIndicator color={colors.accent} size="small" />
       </View>
     );
   }, [isLoadingMore]);
 
-  const renderHeader = useCallback(() => {
-    if (!showSortToggle) return null;
-    return (
-      <View style={styles.sortRow}>
-        <TouchableOpacity
-          style={[styles.sortBtn, sort === 'rating' && styles.sortBtnActive]}
-          onPress={() => { void handleSortToggle('rating'); }}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.sortBtnText, sort === 'rating' && styles.sortBtnTextActive]}>
-            По рейтингу
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.sortBtn, sort === 'distance' && styles.sortBtnActive]}
-          onPress={() => { void handleSortToggle('distance'); }}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.sortBtnText, sort === 'distance' && styles.sortBtnTextActive]}>
-            По расстоянию
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }, [showSortToggle, sort, handleSortToggle]);
+  const inputRef = useRef<TextInput>(null);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchWrapper}>
-        <SearchBar
+    <View style={listStyles.container}>
+      {/* B-style search bar */}
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={() => inputRef.current?.focus()}
+        style={listStyles.searchBar}
+      >
+        <Text style={listStyles.searchIcon}>⌕</Text>
+        <TextInput
+          ref={inputRef}
           value={query}
           onChangeText={handleSearchChange}
-          placeholder="Барбер, маникюр, стоматолог..."
+          placeholder="Внутри категории…"
+          placeholderTextColor={colors.textMuted}
+          style={listStyles.searchInput}
+          returnKeyType="search"
         />
-      </View>
+        <Text style={listStyles.searchFilter}>filter ↓</Text>
+      </TouchableOpacity>
 
       {isLoading ? (
-        <View style={styles.listContent}>
-          {renderHeader()}
+        <View style={listStyles.listContent}>
           <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />
@@ -253,7 +480,7 @@ export function BusinessList({
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={renderFooter}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={listStyles.listContent}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           showsVerticalScrollIndicator={false}
@@ -272,17 +499,41 @@ export function BusinessList({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const listStyles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  searchWrapper: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 18,
+    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  searchIcon: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    padding: 0,
+  },
+  searchFilter: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    color: colors.textMuted,
   },
   listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingHorizontal: 18,
+    paddingBottom: 120,
   },
   sortRow: {
     flexDirection: 'row',
@@ -290,45 +541,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     marginTop: spacing.xs,
   },
-  sortBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-  },
-  sortBtnActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  sortBtnText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  sortBtnTextActive: {
-    color: '#FFFFFF',
-  },
-  cardWrapper: {
-    marginBottom: spacing.md,
-  },
   emptyContainer: {
     alignItems: 'center',
-    paddingTop: spacing.xxxl,
+    paddingTop: 48,
     gap: spacing.sm,
   },
-  emptyIcon: {
-    fontSize: 40,
-  },
   emptyText: {
-    ...typography.bodyMedium,
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.text,
   },
   emptyHint: {
-    ...typography.bodySmall,
+    fontSize: 13,
     color: colors.textMuted,
     textAlign: 'center',
   },

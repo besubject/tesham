@@ -1,25 +1,38 @@
+import { Platform } from 'react-native';
+
+// ── B · Soft Mono token palette ───────────────────────────────────────────────
+
 export const colors = {
-  bg: '#FAFAF8',
-  surface: '#FFFFFF',
-  surfaceAlt: '#F5F5F2',
-  accent: '#1D6B4F',
-  accentLight: '#E8F4EF',
+  bg: '#f3f1ec',
+  surface: '#fbfaf6',
+  surfaceAlt: '#ece9e0',
+  accent: '#008c19',       // green — tweaks override from app.jsx
+  accentLight: '#b8dfbf',  // mix(#008c19, #fff, 0.72)
+  accentSoft: '#b8dfbf',   // alias
+  ok: '#3a6b3c',           // open / success
   amber: '#D97706',
   amberLight: '#FEF3C7',
   coral: '#C4462A',
   coralLight: '#FDECEA',
   blue: '#2563EB',
   blueLight: '#EFF6FF',
-  border: '#E8E8E4',
-  borderStrong: '#D4D4CE',
-  text: '#1A1A18',
-  textSecondary: '#5C5C58',
-  textMuted: '#8A8A86',
+  border: '#dbd6c8',       // hair
+  borderStrong: '#c5bfb0',
+  text: '#3a3935',         // ink
+  textSecondary: '#54514a', // ink2
+  textMuted: '#8a877c',    // muted
   white: '#FFFFFF',
   overlay: 'rgba(0,0,0,0.5)',
   error: '#C4462A',
   errorLight: '#FDECEA',
 } as const;
+
+// System monospace font — used for labels, metadata, numbers
+export const monoFont = Platform.select({
+  ios: 'Menlo',
+  android: 'monospace',
+  default: 'monospace',
+}) as string;
 
 export const typography = {
   h1: { fontSize: 28, fontWeight: '700' as const, lineHeight: 36 },

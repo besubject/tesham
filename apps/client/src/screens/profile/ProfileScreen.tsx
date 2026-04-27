@@ -16,9 +16,8 @@ import {
   useAuthStore,
   sendDeleteAccountCode,
   colors,
-  typography,
+  monoFont,
   spacing,
-  borderRadius,
   ConfirmationModal,
   CodeConfirmationModal,
   type UserLanguage,
@@ -26,6 +25,18 @@ import {
 import type { ProfileStackScreenProps } from '../../navigation/types';
 
 type Props = ProfileStackScreenProps<'ProfileMain'>;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+// ─── ProfileScreen ────────────────────────────────────────────────────────────
 
 export function ProfileScreen({ navigation }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
@@ -160,161 +171,180 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
   }
 
   const currentLanguage = user.language || 'ru';
+  const initials = getInitials(user.name ?? 'МК');
 
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.screenTitle}>{t('profile.title')}</Text>
+      {/* Page header */}
+      <View style={styles.topBar}>
+        <Text style={styles.topBarLeft}>09 / Я</Text>
+        <Text style={styles.topBarRight}>MTG</Text>
       </View>
 
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + spacing.xl },
+          { paddingBottom: insets.bottom + 100 },
         ]}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Email protection banner */}
-        {showEmailBanner && (
-          <View style={styles.emailBanner}>
-            <View style={styles.emailBannerContent}>
-              <Text style={styles.emailBannerTitle}>Защитите аккаунт</Text>
-              <Text style={styles.emailBannerText}>
-                Если ваш номер перейдёт другому человеку — аккаунт будет потерян. Привяжите email, чтобы этого не произошло.
-              </Text>
-              <TouchableOpacity
-                style={styles.emailBannerButton}
-                onPress={() => {
-                  setShowEmailBanner(false);
-                  navigation.navigate('EmailSetup');
-                }}
-              >
-                <Text style={styles.emailBannerButtonText}>Привязать email</Text>
-              </TouchableOpacity>
+        {/* Avatar + name card */}
+        <View style={styles.padded}>
+          <View style={styles.profileCard}>
+            <View style={styles.profileRow}>
+              {/* Initials block */}
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>{user.name}</Text>
+                <Text style={styles.profilePhone}>{user.phone}</Text>
+              </View>
             </View>
-            <TouchableOpacity onPress={() => setShowEmailBanner(false)} style={styles.emailBannerClose}>
-              <Text style={styles.emailBannerCloseText}>✕</Text>
+
+            {/* Stats row */}
+            <View style={styles.statsRow}>
+              <View style={[styles.statCell, { alignItems: 'flex-start' }]}>
+                <Text style={styles.statNum}>—</Text>
+                <Text style={styles.statLabel}>записей</Text>
+              </View>
+              <View style={[styles.statCell, styles.statCellBordered, { alignItems: 'center' }]}>
+                <Text style={styles.statNum}>—</Text>
+                <Text style={styles.statLabel}>избранных</Text>
+              </View>
+              <View style={[styles.statCell, styles.statCellBordered, { alignItems: 'flex-end' }]}>
+                <Text style={styles.statNum}>—</Text>
+                <Text style={styles.statLabel}>★</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Email banner */}
+        {showEmailBanner && (
+          <View style={styles.padded}>
+            <TouchableOpacity
+              style={styles.emailBanner}
+              activeOpacity={0.85}
+              onPress={() => {
+                setShowEmailBanner(false);
+                navigation.navigate('EmailSetup');
+              }}
+            >
+              <View style={styles.emailDot} />
+              <View style={styles.emailBannerText}>
+                <Text style={styles.emailBannerTitle}>Подтвердите email</Text>
+                <Text style={styles.emailBannerSub}>
+                  Чтобы восстановить доступ при потере телефона
+                </Text>
+              </View>
+              <Text style={styles.emailBannerArrow}>→</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* User Info Section */}
-        <View style={styles.section}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('profile.nameLabel')}</Text>
-              <Text style={styles.infoValue}>{user.name}</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('profile.phoneLabel')}</Text>
-              <Text style={styles.infoValue}>{user.phone}</Text>
-            </View>
-            <View style={styles.divider} />
+        {/* Settings: Аккаунт */}
+        <View style={styles.padded}>
+          <Text style={styles.groupLabel}>Аккаунт</Text>
+          <View style={styles.settingsCard}>
+            {/* Email row */}
             <TouchableOpacity
-              style={styles.infoRow}
+              style={styles.settingsRow}
               onPress={() => navigation.navigate('EmailSetup')}
+              activeOpacity={0.7}
             >
-              <Text style={styles.infoLabel}>Email</Text>
-              {user.email && user.email_verified ? (
-                <Text style={styles.infoValue}>{user.email}</Text>
-              ) : (
-                <Text style={styles.infoValueAccent}>
-                  {user.email ? 'Не подтверждён →' : 'Не привязан →'}
-                </Text>
-              )}
+              <Text style={styles.settingsRowText}>
+                {'Email · '}
+                {user.email && user.email_verified
+                  ? user.email
+                  : user.email
+                    ? 'не подтверждён'
+                    : 'не привязан'}
+              </Text>
+              <Text style={styles.settingsArrow}>›</Text>
+            </TouchableOpacity>
+
+            {/* Language toggle */}
+            <View style={[styles.settingsRow, styles.settingsRowBordered]}>
+              <Text style={styles.settingsRowText}>Язык</Text>
+              <View style={styles.langToggle}>
+                <Pressable
+                  style={[styles.langBtn, currentLanguage === 'ru' && styles.langBtnActive]}
+                  onPress={() => void handleLanguageChange('ru')}
+                  disabled={isLoading}
+                >
+                  <Text style={[styles.langBtnText, currentLanguage === 'ru' && styles.langBtnTextActive]}>
+                    Рус
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.langBtn, currentLanguage === 'ce' && styles.langBtnActive]}
+                  onPress={() => void handleLanguageChange('ce')}
+                  disabled={isLoading}
+                >
+                  <Text style={[styles.langBtnText, currentLanguage === 'ce' && styles.langBtnTextActive]}>
+                    Нох
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Settings: Активность */}
+        <View style={styles.padded}>
+          <Text style={styles.groupLabel}>Активность</Text>
+          <View style={styles.settingsCard}>
+            <TouchableOpacity
+              style={styles.settingsRow}
+              onPress={handleFavoritesPress}
+              disabled={isLoading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.settingsRowText}>{t('profile.favorites')}</Text>
+              <Text style={styles.settingsArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingsRow, styles.settingsRowBordered]}
+              disabled={isLoading}
+              activeOpacity={0.7}
+            >
+              <View>
+                <Text style={styles.settingsRowText}>{t('profile.about')}</Text>
+                <Text style={styles.settingsRowSub}>Mettig v1.0.0</Text>
+              </View>
+              <Text style={styles.settingsArrow}>›</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Language Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('profile.language')}</Text>
-          <View style={styles.languageToggle}>
-            <Pressable
-              style={[
-                styles.languageButton,
-                currentLanguage === 'ru' && styles.languageButtonActive,
-              ]}
-              onPress={() => void handleLanguageChange('ru')}
+        {/* Settings: Прочее */}
+        <View style={styles.padded}>
+          <Text style={styles.groupLabel}>Прочее</Text>
+          <View style={styles.settingsCard}>
+            <TouchableOpacity
+              style={styles.settingsRow}
+              onPress={handleLogoutPress}
               disabled={isLoading}
+              activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.languageButtonText,
-                  currentLanguage === 'ru' && styles.languageButtonTextActive,
-                ]}
-              >
-                Русский
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.languageButton,
-                currentLanguage === 'ce' && styles.languageButtonActive,
-              ]}
-              onPress={() => void handleLanguageChange('ce')}
+              <Text style={styles.settingsRowText}>{t('profile.logout')}</Text>
+              <Text style={styles.settingsArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingsRow, styles.settingsRowBordered]}
+              onPress={handleDeletePress}
               disabled={isLoading}
+              activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.languageButtonText,
-                  currentLanguage === 'ce' && styles.languageButtonTextActive,
-                ]}
-              >
-                Нохчийн
+              <Text style={[styles.settingsRowText, styles.deleteText]}>
+                {t('profile.deleteAccount')}
               </Text>
-            </Pressable>
+              <Text style={[styles.settingsArrow, { color: colors.coral }]}>›</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Actions Section */}
-        <View style={styles.section}>
-          {/* Favorites Button */}
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleFavoritesPress}
-            activeOpacity={0.7}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>{t('profile.favorites')}</Text>
-            <Text style={styles.buttonArrow}>›</Text>
-          </TouchableOpacity>
-
-          {/* About Button */}
-          <TouchableOpacity
-            style={styles.button}
-            disabled={isLoading}
-            activeOpacity={0.7}
-          >
-            <View>
-              <Text style={styles.buttonText}>{t('profile.about')}</Text>
-              <Text style={styles.buttonSubtext}>Mettig v1.0.0</Text>
-            </View>
-            <Text style={styles.buttonArrow}>›</Text>
-          </TouchableOpacity>
-
-          {/* Logout Button */}
-          <TouchableOpacity
-            style={[styles.button, styles.logoutButton]}
-            onPress={handleLogoutPress}
-            activeOpacity={0.7}
-            disabled={isLoading}
-          >
-            <Text style={styles.logoutButtonText}>{t('profile.logout')}</Text>
-          </TouchableOpacity>
-
-          {/* Delete Account Button */}
-          <TouchableOpacity
-            style={[styles.button, styles.deleteButton]}
-            onPress={handleDeletePress}
-            activeOpacity={0.7}
-            disabled={isLoading}
-          >
-            <Text style={styles.deleteButtonText}>{t('profile.deleteAccount')}</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -386,176 +416,208 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
 // ─── Styles ────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
+  container: { flex: 1, backgroundColor: colors.bg },
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  screenTitle: {
-    ...typography.h2,
-    color: colors.text,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  section: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+  topBarLeft: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    color: colors.textMuted,
   },
-  infoCard: {
+  topBarRight: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+  },
+
+  scrollContent: { flexGrow: 1 },
+  padded: { paddingHorizontal: 18, paddingBottom: 14 },
+
+  // Profile card
+  profileCard: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.md,
+    borderRadius: 18,
+    padding: 18,
   },
-  infoRow: {
+  profileRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 14,
   },
-  infoLabel: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  infoValue: {
-    ...typography.body,
+  avatarText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.surface,
+    letterSpacing: -1,
+  },
+  profileInfo: { flex: 1, minWidth: 0 },
+  profileName: {
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.text,
-    fontWeight: '500',
+    letterSpacing: -0.4,
+    lineHeight: 24,
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
+  profilePhone: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: colors.textMuted,
+    marginTop: 6,
   },
-  languageToggle: {
+
+  // Stats row
+  statsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    marginTop: 18,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  languageButton: {
+  statCell: {
     flex: 1,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
+    paddingHorizontal: 8,
   },
-  languageButtonActive: {
-    backgroundColor: colors.accentLight,
-    borderColor: colors.accent,
+  statCellBordered: {
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
   },
-  languageButtonText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  languageButtonTextActive: {
-    color: colors.accent,
-  },
-  button: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  buttonText: {
-    ...typography.body,
+  statNum: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4,
     color: colors.text,
   },
-  buttonSubtext: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  statLabel: {
+    fontFamily: monoFont,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
     marginTop: 2,
   },
-  buttonArrow: {
-    fontSize: 20,
-    color: colors.textSecondary,
-  },
-  logoutButton: {
-    justifyContent: 'center',
+
+  // Email banner
+  emailBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderColor: colors.accent,
-    backgroundColor: colors.accentLight,
+    gap: 12,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accentSoft,
+    borderRadius: 14,
+    padding: 14,
   },
-  logoutButtonText: {
-    ...typography.button,
-    color: colors.accent,
+  emailDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 99,
+    backgroundColor: colors.accent,
+    flexShrink: 0,
   },
-  deleteButton: {
-    justifyContent: 'center',
+  emailBannerText: { flex: 1, minWidth: 0 },
+  emailBannerTitle: { fontSize: 13, fontWeight: '600', color: colors.text },
+  emailBannerSub: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  emailBannerArrow: { fontSize: 18, color: colors.text },
+
+  // Settings groups
+  groupLabel: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    marginBottom: 8,
+  },
+  settingsCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderColor: colors.coral,
-    backgroundColor: colors.coralLight,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
-  deleteButtonText: {
-    ...typography.button,
+  settingsRowBordered: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  settingsRowText: {
+    fontSize: 14,
+    color: colors.text,
+  },
+  settingsRowSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  settingsArrow: {
+    fontSize: 18,
+    color: colors.textMuted,
+  },
+  deleteText: {
     color: colors.coral,
   },
+
+  // Language toggle
+  langToggle: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  langBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
+  langBtnActive: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
+  },
+  langBtnText: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    color: colors.textMuted,
+  },
+  langBtnTextActive: {
+    color: colors.accent,
+  },
+
+  // Loading
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
+    backgroundColor: 'rgba(58,57,53,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  emailBanner: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    backgroundColor: '#FFF8E7',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: '#F0D080',
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  emailBannerContent: { flex: 1 },
-  emailBannerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#7A5800',
-    marginBottom: 4,
-  },
-  emailBannerText: {
-    fontSize: 13,
-    color: '#7A5800',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  emailBannerButton: {
-    backgroundColor: '#1D6B4F',
-    borderRadius: borderRadius.sm,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignSelf: 'flex-start',
-  },
-  emailBannerButtonText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
-  emailBannerClose: { padding: 4, marginLeft: 8 },
-  emailBannerCloseText: { fontSize: 14, color: '#7A5800' },
-  infoValueAccent: {
-    ...typography.body,
-    color: colors.accent,
-    fontWeight: '500',
   },
 });

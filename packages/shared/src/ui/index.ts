@@ -1,4 +1,4 @@
-export { colors, typography, spacing, borderRadius, shadow } from './theme';
+export { colors, typography, spacing, borderRadius, shadow, monoFont } from './theme';
 export { AvatarInitials } from './AvatarInitials';
 export { RatingBadge } from './RatingBadge';
 export { StatusBadge } from './StatusBadge';

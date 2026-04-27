@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  SectionList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,12 +11,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   apiClient,
-  BookingCard,
-  borderRadius,
   colors,
   ConfirmationModal,
+  monoFont,
   spacing,
-  typography,
   WarningBanner,
 } from '@mettig/shared';
 import type { BookingItemDto, ChatUnreadCountDto } from '@mettig/shared';
@@ -26,119 +24,223 @@ type Props = BookingsStackScreenProps<'BookingsList'>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function isUpcoming(booking: BookingItemDto): boolean {
-  return booking.status === 'confirmed';
+const MONTHS_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'] as const;
+const DAYS_SHORT = ['вс','пн','вт','ср','чт','пт','сб'] as const;
+
+function fmtBookingDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y as number, (m as number) - 1, d as number);
+  const day = DAYS_SHORT[dt.getDay()] ?? '';
+  const mon = MONTHS_SHORT[dt.getMonth()] ?? '';
+  return `${String(dt.getDate()).padStart(2, '0')} ${mon} · ${day}`;
 }
 
-function isPast(booking: BookingItemDto): boolean {
+function isUpcoming(b: BookingItemDto): boolean { return b.status === 'confirmed'; }
+function isPast(b: BookingItemDto): boolean {
+  return b.status === 'completed' || b.status === 'cancelled' || b.status === 'no_show';
+}
+function isWithinCancellationThreshold(b: BookingItemDto): boolean {
+  const [y, mo, d] = b.slot_date.split('-').map(Number);
+  const [hh, mm] = b.slot_start_time.split(':').map(Number);
+  const dt = new Date(y ?? 0, (mo ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0);
+  const diff = (dt.getTime() - Date.now()) / (1000 * 60);
+  return diff >= 0 && diff < b.cancellation_threshold_minutes;
+}
+
+// ─── Dark hero card (nearest upcoming) ────────────────────────────────────────
+
+function HeroCard({
+  booking,
+  onChat,
+  onCancel,
+  unread,
+}: {
+  booking: BookingItemDto;
+  onChat: () => void;
+  onCancel: () => void;
+  unread: number;
+}): React.JSX.Element {
   return (
-    booking.status === 'completed' ||
-    booking.status === 'cancelled' ||
-    booking.status === 'no_show'
-  );
-}
+    <View style={heroStyles.card}>
+      <View style={heroStyles.topRow}>
+        <Text style={heroStyles.label}>Сегодня · ближайшая</Text>
+        {unread > 0 && (
+          <View style={heroStyles.unreadBadge}>
+            <Text style={heroStyles.unreadText}>{unread}</Text>
+          </View>
+        )}
+      </View>
 
-function isWithinCancellationThreshold(booking: BookingItemDto): boolean {
-  const dateParts = booking.slot_date.split('-').map(Number);
-  const timeParts = booking.slot_start_time.split(':').map(Number);
-  const slotDateTime = new Date(
-    dateParts[0] ?? 0,
-    (dateParts[1] ?? 1) - 1,
-    dateParts[2] ?? 1,
-    timeParts[0] ?? 0,
-    timeParts[1] ?? 0,
-  );
-  const diffMinutes = (slotDateTime.getTime() - Date.now()) / (1000 * 60);
-  return diffMinutes >= 0 && diffMinutes < booking.cancellation_threshold_minutes;
-}
-
-// ─── Section header ───────────────────────────────────────────────────────────
-
-function SectionHeader({ title, count }: { title: string; count: number }): React.JSX.Element {
-  return (
-    <View style={sectionStyles.container}>
-      <Text style={sectionStyles.title}>{title}</Text>
-      <View style={sectionStyles.badge}>
-        <Text style={sectionStyles.badgeText}>{count}</Text>
+      <View style={heroStyles.body}>
+        <View>
+          <Text style={heroStyles.bigTime}>{booking.slot_start_time.slice(0, 5)}</Text>
+          <Text style={heroStyles.businessName}>{booking.business_name}</Text>
+          <Text style={heroStyles.detail}>{booking.service_name} · {booking.staff_name}</Text>
+        </View>
+        <View style={heroStyles.actions}>
+          <TouchableOpacity style={heroStyles.actionBtn} onPress={onChat} activeOpacity={0.7}>
+            <Text style={heroStyles.actionBtnText}>✉ Чат</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={heroStyles.actionBtn} onPress={onCancel} activeOpacity={0.7}>
+            <Text style={heroStyles.actionBtnText}>✕ Отмена</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
-const sectionStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
+const heroStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.text,
+    borderRadius: 18,
+    padding: 18,
+    marginHorizontal: 18,
+    marginBottom: 10,
+  },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  label: { fontFamily: monoFont, fontSize: 10, color: 'rgba(251,250,246,0.55)', letterSpacing: 0.6, textTransform: 'uppercase' },
+  unreadBadge: {
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    minWidth: 20,
+    height: 20,
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.bg,
+    justifyContent: 'center',
+    paddingHorizontal: 5,
   },
-  title: {
-    ...typography.h3,
-    color: colors.text,
+  unreadText: { fontFamily: monoFont, fontSize: 10, color: '#fff', fontWeight: '700' },
+  body: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  bigTime: { fontSize: 48, fontWeight: '700', letterSpacing: -2, lineHeight: 48, color: colors.surface },
+  businessName: { fontSize: 13, color: 'rgba(251,250,246,0.7)', marginTop: 8 },
+  detail: { fontSize: 12, color: 'rgba(251,250,246,0.55)', marginTop: 2 },
+  actions: { gap: 6 },
+  actionBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
-  badge: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    minWidth: 24,
-    alignItems: 'center',
-  },
-  badgeText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
+  actionBtnText: { fontSize: 11, fontWeight: '500', color: colors.surface },
 });
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+// ─── Compact booking card ─────────────────────────────────────────────────────
 
-function EmptyState(): React.JSX.Element {
+function BookingRow({
+  booking,
+  onChat,
+  onCancel,
+  onBookAgain,
+  onLeaveReview,
+  onReviews,
+  unread,
+  showWarning,
+}: {
+  booking: BookingItemDto;
+  onChat?: () => void;
+  onCancel?: () => void;
+  onBookAgain?: () => void;
+  onLeaveReview?: () => void;
+  onReviews?: () => void;
+  unread: number;
+  showWarning: boolean;
+}): React.JSX.Element {
+  const statusColor = booking.status === 'confirmed'
+    ? colors.ok
+    : booking.status === 'cancelled' ? colors.coral : colors.textMuted;
+  const statusLabel = booking.status === 'confirmed' ? 'подтверждено'
+    : booking.status === 'completed' ? 'завершено'
+    : booking.status === 'cancelled' ? 'отменено' : 'неявка';
+
   return (
-    <View style={emptyStyles.container}>
-      <Text style={emptyStyles.icon}>📅</Text>
-      <Text style={emptyStyles.title}>Нет записей</Text>
-      <Text style={emptyStyles.subtitle}>
-        Ваши будущие и прошлые записи будут отображаться здесь
-      </Text>
+    <View style={rowStyles.wrap}>
+      {showWarning && (
+        <WarningBanner
+          variant="warning"
+          message={`Поздняя отмена — менее ${booking.cancellation_threshold_minutes} мин. до визита`}
+        />
+      )}
+      <View style={rowStyles.card}>
+        <View style={rowStyles.mainRow}>
+          <Text style={rowStyles.time}>{booking.slot_start_time.slice(0, 5)}</Text>
+          <View style={rowStyles.info}>
+            <Text style={rowStyles.name} numberOfLines={1}>{booking.business_name}</Text>
+            <Text style={rowStyles.sub} numberOfLines={1}>{booking.service_name} · {fmtBookingDate(booking.slot_date)}</Text>
+          </View>
+          <Text style={[rowStyles.status, { color: statusColor }]}>{statusLabel}</Text>
+        </View>
+
+        {/* Action buttons */}
+        {(onChat != null || onCancel != null || onBookAgain != null || onLeaveReview != null) && (
+          <View style={rowStyles.actionsRow}>
+            {onChat != null && (
+              <TouchableOpacity style={rowStyles.actBtn} onPress={onChat} activeOpacity={0.7}>
+                <Text style={rowStyles.actBtnText}>
+                  Чат{unread > 0 ? ` (${unread})` : ''}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {onCancel != null && (
+              <TouchableOpacity style={[rowStyles.actBtn, rowStyles.actBtnDanger]} onPress={onCancel} activeOpacity={0.7}>
+                <Text style={[rowStyles.actBtnText, rowStyles.actBtnDangerText]}>Отмена</Text>
+              </TouchableOpacity>
+            )}
+            {onBookAgain != null && (
+              <TouchableOpacity style={rowStyles.actBtn} onPress={onBookAgain} activeOpacity={0.7}>
+                <Text style={rowStyles.actBtnText}>Снова</Text>
+              </TouchableOpacity>
+            )}
+            {onReviews != null && (
+              <TouchableOpacity style={rowStyles.actBtn} onPress={onReviews} activeOpacity={0.7}>
+                <Text style={rowStyles.actBtnText}>Отзывы</Text>
+              </TouchableOpacity>
+            )}
+            {onLeaveReview != null && (
+              <TouchableOpacity style={[rowStyles.actBtn, rowStyles.actBtnAccent]} onPress={onLeaveReview} activeOpacity={0.7}>
+                <Text style={[rowStyles.actBtnText, rowStyles.actBtnAccentText]}>★ Отзыв</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
-const emptyStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxxl,
-    gap: spacing.md,
+const rowStyles = StyleSheet.create({
+  wrap: { gap: spacing.xs },
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
   },
-  icon: {
-    fontSize: 48,
-    lineHeight: 56,
+  mainRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  time: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5, color: colors.text, minWidth: 52 },
+  info: { flex: 1, gap: 2 },
+  name: { fontSize: 13, fontWeight: '600', color: colors.text },
+  sub: { fontFamily: monoFont, fontSize: 10, color: colors.textMuted, letterSpacing: 0.3 },
+  status: { fontFamily: monoFont, fontSize: 9, letterSpacing: 0.4, textTransform: 'uppercase' },
+  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  actBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
   },
-  title: {
-    ...typography.h3,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  actBtnText: { fontSize: 11, fontWeight: '500', color: colors.textSecondary },
+  actBtnDanger: { borderColor: colors.coral, backgroundColor: colors.coralLight },
+  actBtnDangerText: { color: colors.coral },
+  actBtnAccent: { borderColor: colors.accent, backgroundColor: colors.accentLight },
+  actBtnAccentText: { color: colors.accent },
 });
 
 // ─── BookingsScreen ───────────────────────────────────────────────────────────
-
-type Section = {
-  title: string;
-  data: BookingItemDto[];
-};
 
 export function BookingsScreen({ navigation }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
@@ -150,63 +252,39 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
   const [isCancelling, setIsCancelling] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
-  const cancelTarget =
-    cancelTargetId != null ? (bookings.find((b) => b.id === cancelTargetId) ?? null) : null;
+  const cancelTarget = cancelTargetId != null ? (bookings.find((b) => b.id === cancelTargetId) ?? null) : null;
   const isLateCancellation = cancelTarget != null && isWithinCancellationThreshold(cancelTarget);
 
-  // ── Data fetching ────────────────────────────────────────────────────────
-
-  const fetchUnreadCounts = useCallback(async (confirmedIds: string[]) => {
-    if (confirmedIds.length === 0) return;
+  // ── Fetch ─────────────────────────────────────────────────────────────────
+  const fetchUnreadCounts = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
     const results = await Promise.allSettled(
-      confirmedIds.map((id) =>
-        apiClient.get<ChatUnreadCountDto>(`/bookings/${id}/messages/unread-count`),
-      ),
+      ids.map((id) => apiClient.get<ChatUnreadCountDto>(`/bookings/${id}/messages/unread-count`)),
     );
     const counts: Record<string, number> = {};
     results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        counts[confirmedIds[index] ?? ''] = result.value.data.unread_count;
-      }
+      if (result.status === 'fulfilled') counts[ids[index] ?? ''] = result.value.data.unread_count;
     });
     setUnreadCounts(counts);
   }, []);
 
   const fetchBookings = useCallback(async (refresh = false) => {
-    if (refresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
+    if (refresh) setIsRefreshing(true);
+    else setIsLoading(true);
     try {
       const res = await apiClient.get<{ bookings: BookingItemDto[] }>('/bookings/my');
       setBookings(res.data.bookings);
-      const confirmedIds = res.data.bookings
-        .filter((b) => b.status === 'confirmed')
-        .map((b) => b.id);
+      const confirmedIds = res.data.bookings.filter((b) => b.status === 'confirmed').map((b) => b.id);
       void fetchUnreadCounts(confirmedIds);
-    } catch {
-      // keep existing state on error
-    } finally {
+    } catch { /* keep existing */ } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [fetchUnreadCounts]);
 
-  useEffect(() => {
-    void fetchBookings();
-  }, [fetchBookings]);
+  useEffect(() => { void fetchBookings(); }, [fetchBookings]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-
-  const handleCancelPress = useCallback((bookingId: string) => {
-    setCancelTargetId(bookingId);
-  }, []);
-
-  const handleCancelDismiss = useCallback(() => {
-    setCancelTargetId(null);
-  }, []);
-
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCancelConfirm = useCallback(async () => {
     if (cancelTargetId == null) return;
     const id = cancelTargetId;
@@ -214,30 +292,11 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
     setIsCancelling(true);
     try {
       await apiClient.delete(`/bookings/${id}`);
-      setBookings((prev) =>
-        prev.map((b) =>
-          b.id === id
-            ? { ...b, status: 'cancelled' as const, cancelled_at: new Date().toISOString() }
-            : b,
-        ),
-      );
-    } catch {
-      // re-fetch to sync state on failure
-      void fetchBookings();
-    } finally {
-      setIsCancelling(false);
-    }
+      setBookings((prev) => prev.map((b) =>
+        b.id === id ? { ...b, status: 'cancelled' as const, cancelled_at: new Date().toISOString() } : b,
+      ));
+    } catch { void fetchBookings(); } finally { setIsCancelling(false); }
   }, [cancelTargetId, fetchBookings]);
-
-  const handleBookAgain = useCallback(
-    (businessId: string) => {
-      navigation.navigate('Home', {
-        screen: 'BusinessDetails',
-        params: { businessId },
-      });
-    },
-    [navigation],
-  );
 
   const handleOpenChat = useCallback(
     (booking: BookingItemDto) => {
@@ -251,166 +310,112 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
     [navigation],
   );
 
-  // ── Build sections ────────────────────────────────────────────────────────
+  const handleBookAgain = useCallback(
+    (businessId: string) => { navigation.navigate('Home', { screen: 'BusinessDetails', params: { businessId } }); },
+    [navigation],
+  );
 
+  // ── Data ──────────────────────────────────────────────────────────────────
   const upcoming = bookings.filter(isUpcoming);
   const past = bookings.filter(isPast);
-
-  const sections: Section[] = [];
-  if (upcoming.length > 0) {
-    sections.push({ title: 'Текущие', data: upcoming });
-  }
-  if (past.length > 0) {
-    sections.push({ title: 'Прошлые', data: past });
-  }
-
-  // ── Cancel modal message ──────────────────────────────────────────────────
-
-  const cancelMessage = isLateCancellation
-    ? `Вы отменяете запись менее чем за ${cancelTarget?.cancellation_threshold_minutes ?? 60} минут до визита. Отмена в последний момент может быть неудобна для мастера.`
-    : `Вы уверены, что хотите отменить запись в ${cancelTarget?.business_name ?? ''}?`;
+  const nearestUpcoming = upcoming[0];
+  const restUpcoming = upcoming.slice(1);
 
   // ── Loading ───────────────────────────────────────────────────────────────
-
   if (isLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.screenTitle}>Мои записи</Text>
+        <View style={styles.topBar}>
+          <Text style={styles.pageLabel}>06 / Записи</Text>
+          <Text style={styles.totalLabel}>{isCancelling ? '...' : ''}</Text>
         </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
+        <View style={styles.centered}><ActivityIndicator size="large" color={colors.accent} /></View>
       </View>
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const cancelMessage = isLateCancellation
+    ? `Отменяете запись менее чем за ${cancelTarget?.cancellation_threshold_minutes ?? 60} мин. до визита.`
+    : `Отменить запись в ${cancelTarget?.business_name ?? ''}?`;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.screenTitle}>Мои записи</Text>
-        {isCancelling && <ActivityIndicator size="small" color={colors.accent} />}
+      <View style={styles.topBar}>
+        <Text style={styles.pageLabel}>06 / Записи</Text>
+        <Text style={styles.totalLabel}>{bookings.length > 0 ? `${bookings.length} за всё время` : ''}</Text>
       </View>
 
-      {/* Content */}
-      {sections.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <SectionList<BookingItemDto, Section>
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + spacing.xl },
-          ]}
-          stickySectionHeadersEnabled={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => void fetchBookings(true)}
-              tintColor={colors.accent}
-            />
-          }
-          renderSectionHeader={({ section }) => (
-            <SectionHeader title={section.title} count={section.data.length} />
-          )}
-          renderItem={({ item, section }) => {
-            const isPastSection = section.title === 'Прошлые';
-            const showWarning =
-              item.status === 'confirmed' && isWithinCancellationThreshold(item);
+      <Text style={styles.screenTitle}>Мои записи</Text>
 
-            return (
-              <View style={styles.cardWrapper}>
-                {/* Late-cancellation warning shown above the card */}
-                {showWarning && (
-                  <WarningBanner
-                    variant="warning"
-                    message={`Поздняя отмена — менее ${item.cancellation_threshold_minutes} мин. до визита`}
-                  />
-                )}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => void fetchBookings(true)} tintColor={colors.accent} />
+        }
+      >
+        {/* Empty state */}
+        {bookings.length === 0 && (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>Нет записей</Text>
+            <Text style={styles.emptySub}>Ваши записи появятся здесь</Text>
+          </View>
+        )}
 
-                <BookingCard
-                  booking={item}
-                  onCancel={
-                    item.status === 'confirmed'
-                      ? () => handleCancelPress(item.id)
-                      : undefined
-                  }
+        {/* Hero card — nearest upcoming */}
+        {nearestUpcoming != null && (
+          <HeroCard
+            booking={nearestUpcoming}
+            unread={unreadCounts[nearestUpcoming.id] ?? 0}
+            onChat={() => handleOpenChat(nearestUpcoming)}
+            onCancel={() => setCancelTargetId(nearestUpcoming.id)}
+          />
+        )}
+
+        {/* Rest upcoming */}
+        {restUpcoming.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Предстоящие</Text>
+            <View style={styles.group}>
+              {restUpcoming.map((b) => (
+                <BookingRow
+                  key={b.id}
+                  booking={b}
+                  unread={unreadCounts[b.id] ?? 0}
+                  showWarning={isWithinCancellationThreshold(b)}
+                  onChat={() => handleOpenChat(b)}
+                  onCancel={() => setCancelTargetId(b.id)}
                 />
+              ))}
+            </View>
+          </>
+        )}
 
-                {/* Chat button for confirmed bookings */}
-                {item.status === 'confirmed' && (
-                  <TouchableOpacity
-                    style={styles.chatBtn}
-                    onPress={() => handleOpenChat(item)}
-                    activeOpacity={0.7}
-                    accessibilityLabel="Открыть чат с мастером"
-                  >
-                    <Text style={styles.chatBtnIcon}>💬</Text>
-                    <Text style={styles.chatBtnText}>Чат с мастером</Text>
-                    {(unreadCounts[item.id] ?? 0) > 0 && (
-                      <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadBadgeText}>
-                          {unreadCounts[item.id]}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )}
+        {/* Past bookings */}
+        {past.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Прошлые</Text>
+            <View style={styles.group}>
+              {past.map((b) => (
+                <BookingRow
+                  key={b.id}
+                  booking={b}
+                  unread={0}
+                  showWarning={false}
+                  onBookAgain={() => handleBookAgain(b.business_id)}
+                  onReviews={() => navigation.navigate('ReviewsList', { businessId: b.business_id, businessName: b.business_name })}
+                  onLeaveReview={b.status === 'completed'
+                    ? () => navigation.navigate('LeaveReview', { bookingId: b.id, businessName: b.business_name })
+                    : undefined}
+                />
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
 
-                {/* Action buttons for past bookings */}
-                {isPastSection && (
-                  <View style={styles.actionRow}>
-                    <TouchableOpacity
-                      style={styles.bookAgainBtn}
-                      onPress={() => handleBookAgain(item.business_id)}
-                      activeOpacity={0.7}
-                      accessibilityLabel={`Записаться снова в ${item.business_name}`}
-                    >
-                      <Text style={styles.bookAgainText}>Записаться снова</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.reviewsBtn}
-                      onPress={() =>
-                        navigation.navigate('ReviewsList', {
-                          businessId: item.business_id,
-                          businessName: item.business_name,
-                        })
-                      }
-                      activeOpacity={0.7}
-                      accessibilityLabel={`Все отзывы о ${item.business_name}`}
-                    >
-                      <Text style={styles.reviewsBtnText}>Отзывы</Text>
-                    </TouchableOpacity>
-
-                    {item.status === 'completed' && (
-                      <TouchableOpacity
-                        style={styles.leaveReviewBtn}
-                        onPress={() =>
-                          navigation.navigate('LeaveReview', {
-                            bookingId: item.id,
-                            businessName: item.business_name,
-                          })
-                        }
-                        activeOpacity={0.7}
-                        accessibilityLabel={`Оставить отзыв о ${item.business_name}`}
-                      >
-                        <Text style={styles.leaveReviewBtnText}>★ Оставить отзыв</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          }}
-        />
-      )}
-
-      {/* Cancel confirmation modal (with late-cancellation warning in message) */}
       <ConfirmationModal
         visible={cancelTargetId != null}
         title="Отменить запись?"
@@ -418,7 +423,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
         confirmLabel="Да, отменить"
         cancelLabel="Нет, оставить"
         onConfirm={() => void handleCancelConfirm()}
-        onCancel={handleCancelDismiss}
+        onCancel={() => setCancelTargetId(null)}
         isLoading={isCancelling}
         destructive
       />
@@ -429,109 +434,30 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  header: {
+  container: { flex: 1, backgroundColor: colors.bg },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  topBar: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  screenTitle: {
-    ...typography.h2,
-    color: colors.text,
-  },
-  loadingContainer: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
-  listContent: {
-    flexGrow: 1,
-  },
-  cardWrapper: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  bookAgainBtn: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
-  bookAgainText: {
-    ...typography.buttonSmall,
-    color: colors.accent,
-  },
-  reviewsBtn: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  reviewsBtnText: {
-    ...typography.buttonSmall,
+  pageLabel: { fontFamily: monoFont, fontSize: 10, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.textMuted },
+  totalLabel: { fontFamily: monoFont, fontSize: 10, color: colors.textMuted, letterSpacing: 0.3 },
+  screenTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.8, color: colors.text, paddingHorizontal: 18, paddingBottom: 14 },
+  scroll: { flex: 1 },
+  scrollContent: { gap: 0 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textSecondary,
+    paddingHorizontal: 18,
+    paddingBottom: 8,
+    paddingTop: 14,
   },
-  leaveReviewBtn: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.amberLight,
-    borderWidth: 1,
-    borderColor: colors.amber,
-  },
-  leaveReviewBtnText: {
-    ...typography.buttonSmall,
-    color: colors.amber,
-  },
-  chatBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.accentLight,
-    alignSelf: 'flex-start',
-  },
-  chatBtnIcon: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  chatBtnText: {
-    ...typography.buttonSmall,
-    color: colors.accent,
-  },
-  unreadBadge: {
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.full,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  unreadBadgeText: {
-    ...typography.caption,
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  group: { paddingHorizontal: 18, gap: spacing.sm },
+  emptyWrap: { alignItems: 'center', paddingTop: 60, gap: spacing.sm },
+  emptyText: { fontSize: 18, fontWeight: '600', color: colors.text },
+  emptySub: { fontSize: 13, color: colors.textMuted },
 });
