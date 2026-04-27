@@ -458,7 +458,7 @@ export function BusinessList({
           ref={inputRef}
           value={query}
           onChangeText={handleSearchChange}
-          placeholder="Внутри категории…"
+          placeholder="Барбер, маникюр, стоматолог…"
           placeholderTextColor={colors.textMuted}
           style={listStyles.searchInput}
           returnKeyType="search"

@@ -326,7 +326,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
-          <Text style={styles.pageLabel}>06 / Записи</Text>
+          <Text style={styles.pageLabel}>Записи</Text>
           <Text style={styles.totalLabel}>{isCancelling ? '...' : ''}</Text>
         </View>
         <View style={styles.centered}><ActivityIndicator size="large" color={colors.accent} /></View>
@@ -342,7 +342,7 @@ export function BookingsScreen({ navigation }: Props): React.JSX.Element {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.topBar}>
-        <Text style={styles.pageLabel}>06 / Записи</Text>
+        <Text style={styles.pageLabel}>Записи</Text>
         <Text style={styles.totalLabel}>{bookings.length > 0 ? `${bookings.length} за всё время` : ''}</Text>
       </View>
 
