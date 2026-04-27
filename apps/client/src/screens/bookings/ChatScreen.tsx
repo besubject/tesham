@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { apiClient, borderRadius, colors, spacing, trackEvent, typography } from '@mettig/shared';
+import { apiClient, borderRadius, colors, monoFont, spacing, trackEvent, typography } from '@mettig/shared';
 import type { ChatMessageDto, ChatMessagesResponseDto } from '@mettig/shared';
 import type { BookingsStackScreenProps } from '../../navigation/types';
 import { uploadPhoto } from '../../utils/photo-upload';
@@ -61,51 +61,34 @@ const bubbleStyles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs / 2,
   },
-  rowRight: {
-    alignItems: 'flex-end',
-  },
-  rowLeft: {
-    alignItems: 'flex-start',
-  },
+  rowRight: { alignItems: 'flex-end' },
+  rowLeft: { alignItems: 'flex-start' },
   bubble: {
-    maxWidth: '75%',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
+    maxWidth: '78%',
+    borderRadius: 14,
+    padding: spacing.sm + 2,
+    borderWidth: 1,
   },
   bubbleOwn: {
-    backgroundColor: colors.accent,
-    borderBottomRightRadius: 4,
+    backgroundColor: colors.text,         // ink
+    borderColor: colors.text,
   },
   bubbleOther: {
-    backgroundColor: colors.surfaceAlt,
-    borderBottomLeftRadius: 4,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
-  text: {
-    ...typography.body,
-  },
-  textOwn: {
-    color: colors.white,
-  },
-  textOther: {
-    color: colors.text,
-  },
-  image: {
-    width: 220,
-    height: 180,
-    borderRadius: borderRadius.sm,
-  },
+  text: { fontSize: 13, lineHeight: 19 },
+  textOwn: { color: colors.surface },
+  textOther: { color: colors.text },
+  image: { width: 220, height: 180, borderRadius: borderRadius.sm },
   time: {
-    ...typography.caption,
+    fontFamily: monoFont,
+    fontSize: 9,
+    letterSpacing: 0.3,
     marginTop: 4,
-    fontSize: 10,
   },
-  timeOwn: {
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'right',
-  },
-  timeOther: {
-    color: colors.textMuted,
-  },
+  timeOwn: { color: 'rgba(251,250,246,0.55)', textAlign: 'right' },
+  timeOther: { color: colors.textMuted },
 });
 
 // ─── ChatScreen ────────────────────────────────────────────────────────────────
@@ -283,7 +266,7 @@ export function ChatScreen({ route, navigation }: Props): React.JSX.Element {
           style={styles.backBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={styles.backText}>← Назад</Text>
+          <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
         <View style={styles.headerTitles}>
           <Text style={styles.headerTitle} numberOfLines={1}>
@@ -397,31 +380,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    margin: spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
     gap: spacing.sm,
   },
-  backBtn: {
-    paddingVertical: spacing.xs,
-  },
-  backText: {
-    ...typography.body,
-    color: colors.accent,
-  },
-  headerTitles: {
-    flex: 1,
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.text,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
+  backBtn: { paddingVertical: spacing.xs },
+  backText: { fontSize: 20, color: colors.text, lineHeight: 24 },
+  headerTitles: { flex: 1 },
+  headerTitle: { fontSize: 14, fontWeight: '600', color: colors.text, lineHeight: 18 },
+  headerSubtitle: { fontFamily: monoFont, fontSize: 9, color: colors.ok, letterSpacing: 0.4, marginTop: 2 },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
@@ -475,34 +447,34 @@ const styles = StyleSheet.create({
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.bg,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   photoBtn: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  photoBtnIcon: {
-    fontSize: 20,
-    lineHeight: 24,
-  },
+  photoBtnIcon: { fontSize: 18, lineHeight: 22 },
   input: {
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: borderRadius.md,
-    ...typography.body,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    fontSize: 13,
     color: colors.text,
   },
   sendBtn: {
@@ -510,15 +482,9 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.accent,
+    borderRadius: 12,
+    backgroundColor: colors.text,
   },
-  sendBtnDisabled: {
-    backgroundColor: colors.border,
-  },
-  sendBtnText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: '700',
-  },
+  sendBtnDisabled: { backgroundColor: colors.border },
+  sendBtnText: { color: colors.surface, fontSize: 16, fontWeight: '700' },
 });

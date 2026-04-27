@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography } from '@mettig/shared';
+import { colors, monoFont } from '@mettig/shared';
 import { BusinessList } from './BusinessList';
 import type { HomeStackScreenProps } from '../../navigation/types';
 
@@ -25,20 +25,22 @@ export function BusinessListScreen({ navigation, route }: Props): React.JSX.Elem
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
+      {/* B-style header */}
       <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={styles.backBtn}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{categoryName}</Text>
-        <View style={styles.backButton} />
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.categoryTitle}>{categoryName}</Text>
+          <Text style={styles.subLabel}>· сейчас</Text>
+        </View>
       </View>
 
-      {/* Business list filtered by category */}
       <BusinessList
         categoryId={categoryId}
         showSortToggle={false}
@@ -56,24 +58,42 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 12,
   },
-  backButton: {
+  backBtn: {
     width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backIcon: {
-    fontSize: 22,
+    fontSize: 20,
     color: colors.text,
+    lineHeight: 22,
   },
-  title: {
+  headerCenter: {
     flex: 1,
-    ...typography.h3,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  categoryTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.8,
     color: colors.text,
-    textAlign: 'center',
+    lineHeight: 32,
+  },
+  subLabel: {
+    fontFamily: monoFont,
+    fontSize: 11,
+    color: colors.accent,
+    letterSpacing: 0.4,
   },
 });

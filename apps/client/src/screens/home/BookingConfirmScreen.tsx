@@ -10,11 +10,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   apiClient,
-  borderRadius,
   colors,
   ConfirmationModal,
+  monoFont,
   spacing,
-  typography,
 } from '@mettig/shared';
 import type { HomeStackScreenProps } from '../../navigation/types';
 
@@ -22,56 +21,47 @@ type Props = HomeStackScreenProps<'BookingConfirm'>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatRuDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year as number, (month as number) - 1, day as number);
-  const weekdays = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
-  const months = [
-    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-  ];
-  const wd = weekdays[date.getDay()] ?? '';
-  const mn = months[date.getMonth()] ?? '';
-  return `${date.getDate()} ${mn} (${wd})`;
+const WEEKDAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'] as const;
+const MONTHS_RU = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'] as const;
+const MONTHS_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'] as const;
+const WEEKDAYS_SHORT = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'] as const;
+
+function parseDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y as number, (m as number) - 1, d as number);
 }
 
 // ─── Detail row ───────────────────────────────────────────────────────────────
 
-interface DetailRowProps {
-  label: string;
-  value: string;
-}
+interface DetailRowProps { label: string; value: string; last?: boolean }
 
-function DetailRow({ label, value }: DetailRowProps): React.JSX.Element {
+function DetailRow({ label, value, last = false }: DetailRowProps): React.JSX.Element {
   return (
-    <View style={detailStyles.row}>
-      <Text style={detailStyles.label}>{label}</Text>
-      <Text style={detailStyles.value}>{value}</Text>
+    <View style={[rowStyles.row, last && rowStyles.rowLast]}>
+      <Text style={rowStyles.label}>{label}</Text>
+      <Text style={rowStyles.value}>{value}</Text>
     </View>
   );
 }
 
-const detailStyles = StyleSheet.create({
+const rowStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
-    gap: spacing.md,
+    borderBottomColor: colors.border,
   },
+  rowLast: { borderBottomWidth: 0 },
   label: {
-    ...typography.body,
-    color: 'rgba(255,255,255,0.8)',
-    flex: 1,
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
   },
-  value: {
-    ...typography.bodyMedium,
-    color: colors.white,
-    flex: 1,
-    textAlign: 'right',
-  },
+  value: { fontSize: 13, color: colors.text, textAlign: 'right' },
 });
 
 // ─── BookingConfirmScreen ─────────────────────────────────────────────────────
@@ -84,10 +74,6 @@ export function BookingConfirmScreen({ navigation, route }: Props): React.JSX.El
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
 
-  const handleCancelPress = useCallback(() => {
-    setShowCancelModal(true);
-  }, []);
-
   const handleCancelConfirm = useCallback(async () => {
     setShowCancelModal(false);
     setIsCancelling(true);
@@ -95,117 +81,153 @@ export function BookingConfirmScreen({ navigation, route }: Props): React.JSX.El
       await apiClient.delete(`/bookings/${bookingId}`);
       setCancelled(true);
     } catch {
-      // Even if API fails show cancelled state optimistically — user already confirmed intent
       setCancelled(true);
     } finally {
       setIsCancelling(false);
     }
   }, [bookingId]);
 
-  const handleGoHome = useCallback(() => {
-    navigation.popToTop();
-  }, [navigation]);
+  const handleGoHome = useCallback(() => { navigation.popToTop(); }, [navigation]);
 
-  // ── Cancelled state ────────────────────────────────────────────────────────
+  // ── Cancelled ─────────────────────────────────────────────────────────────
   if (cancelled) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.cancelledContent}>
-          <View style={styles.cancelledIconCircle}>
-            <Text style={styles.cancelledIcon}>✕</Text>
+          <View style={styles.cancelledCircle}>
+            <Text style={styles.cancelledX}>✕</Text>
           </View>
           <Text style={styles.cancelledTitle}>Запись отменена</Text>
-          <Text style={styles.cancelledSubtitle}>
-            Ваша запись в {businessName} была отменена.
-          </Text>
-          <TouchableOpacity
-            style={styles.homeBtn}
-            onPress={handleGoHome}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.homeBtnText}>На главную</Text>
+          <Text style={styles.cancelledSub}>Ваша запись в {businessName} была отменена.</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleGoHome} activeOpacity={0.85}>
+            <Text style={styles.primaryBtnText}>На главную</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // ── Confirmed state ────────────────────────────────────────────────────────
+  // ── Date objects ──────────────────────────────────────────────────────────
+  const dateObj = parseDate(date);
+  const dayName = WEEKDAYS[dateObj.getDay()] ?? '';
+  const dayShort = WEEKDAYS_SHORT[dateObj.getDay()] ?? '';
+  const monthName = MONTHS_RU[dateObj.getMonth()] ?? '';
+  const monthShort = MONTHS_SHORT[dateObj.getMonth()] ?? '';
+  const dayNum = dateObj.getDate();
+  const year = dateObj.getFullYear();
+
+  const startH = startTime.slice(0, 5);
+  // approximate end time
+  const [hh, mm] = startH.split(':').map(Number);
+  const endDate = new Date(dateObj);
+  endDate.setHours(hh as number, mm as number);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Green confirmation card */}
-        <View style={styles.confirmCard}>
-          <View style={styles.checkCircle}>
-            <Text style={styles.checkIcon}>✓</Text>
-          </View>
-          <Text style={styles.confirmTitle}>Запись подтверждена!</Text>
-          <Text style={styles.confirmSubtitle}>
-            Ждём вас в {businessName}
+        {/* ── Header ── */}
+        <View style={styles.topBar}>
+          <Text style={styles.pageLabel}>
+            <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.textMuted }}>05 / Подтверждение</Text>
           </Text>
-
-          {/* Booking details */}
-          <View style={styles.detailsContainer}>
-            <DetailRow label="Мастер" value={staffName} />
-            <DetailRow label="Услуга" value={serviceName} />
-            <DetailRow label="Дата" value={formatRuDate(date)} />
-            <DetailRow label="Время" value={startTime.slice(0, 5)} />
-            <DetailRow label="Стоимость" value={`${price.toLocaleString('ru-RU')} ₽`} />
-          </View>
-        </View>
-
-        {/* Reminder info */}
-        <View style={styles.reminderCard}>
-          <Text style={styles.reminderIcon}>🔔</Text>
-          <View style={styles.reminderText}>
-            <Text style={styles.reminderTitle}>Напоминание</Text>
-            <Text style={styles.reminderBody}>
-              Мы напомним вам о записи за 24 часа и за 30 минут до начала.
-            </Text>
-          </View>
-        </View>
-
-        {/* Info */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoIcon}>ℹ️</Text>
-          <Text style={styles.infoText}>
-            Если вы не сможете прийти, пожалуйста, отмените запись заблаговременно.
+          <Text style={styles.stepLabel}>
+            <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.textMuted }}>3 / 3</Text>
           </Text>
         </View>
-      </ScrollView>
 
-      {/* Bottom actions */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+        {/* ── Progress (all filled) ── */}
+        <View style={styles.progressWrap}>
+          <View style={[styles.progressBar, styles.progressBarFilled]} />
+          <View style={[styles.progressBar, styles.progressBarFilled]} />
+          <View style={[styles.progressBar, styles.progressBarFilled]} />
+        </View>
+
+        {/* ── Title ── */}
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>
+            {'Всё верно'}
+            <Text style={{ color: colors.accent }}>?</Text>
+          </Text>
+        </View>
+
+        {/* ── Summary card ── */}
+        <View style={styles.cardWrap}>
+          <View style={styles.card}>
+            {/* Big time + mini calendar */}
+            <View style={styles.dateRow}>
+              <View style={styles.dateLeft}>
+                <Text style={styles.dayLabelMono}>{dayName.charAt(0).toUpperCase() + dayName.slice(1)}</Text>
+                <Text style={styles.bigTime}>{startH}</Text>
+                <Text style={styles.dateSubText}>{dayNum} {monthName} {year}</Text>
+              </View>
+              <View style={styles.miniCal}>
+                <View style={styles.miniCalMonth}>
+                  <Text style={styles.miniCalMonthText}>{monthShort}</Text>
+                </View>
+                <Text style={styles.miniCalDay}>{dayNum}</Text>
+              </View>
+            </View>
+
+            {/* Details rows */}
+            <View style={styles.detailsBlock}>
+              <DetailRow label="Заведение" value={businessName} />
+              <DetailRow label="Услуга" value={serviceName} />
+              <DetailRow label="Мастер" value={staffName} />
+              <DetailRow label="Дата" value={`${dayShort}, ${dayNum} ${monthName}`} />
+              <DetailRow label="Время" value={startH} />
+            </View>
+
+            {/* Price footer */}
+            <View style={styles.priceBar}>
+              <Text style={styles.priceLabelMono}>К оплате на месте</Text>
+              <Text style={styles.priceVal}>{price.toLocaleString('ru-RU')} ₽</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Policy note ── */}
+        <View style={styles.policyWrap}>
+          <View style={styles.policyCard}>
+            <View style={styles.policyDot} />
+            <View style={styles.policyText}>
+              <Text style={styles.policyTitle}>Бесплатная отмена до начала дня</Text>
+              <Text style={styles.policySub}>
+                Напомним за 24 ч и за 2 ч. Опоздание свыше 15 минут — слот может быть передан.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Cancel link ── */}
         <TouchableOpacity
-          style={[styles.cancelBtn, isCancelling && styles.cancelBtnDisabled]}
-          onPress={handleCancelPress}
+          style={styles.cancelLink}
+          onPress={() => setShowCancelModal(true)}
           disabled={isCancelling}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
           {isCancelling ? (
             <ActivityIndicator color={colors.coral} />
           ) : (
-            <Text style={styles.cancelBtnText}>Отменить запись</Text>
+            <Text style={styles.cancelLinkText}>Отменить запись</Text>
           )}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.homeBtn}
-          onPress={handleGoHome}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.homeBtnText}>На главную</Text>
+      </ScrollView>
+
+      {/* ── CTA ── */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <TouchableOpacity style={styles.primaryBtn} onPress={handleGoHome} activeOpacity={0.85}>
+          <Text style={styles.primaryBtnText}>На главную</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Cancel confirmation modal */}
       <ConfirmationModal
         visible={showCancelModal}
         title="Отменить запись?"
-        message={`Вы уверены, что хотите отменить запись к ${staffName} на ${startTime.slice(0, 5)}?`}
+        message={`Вы уверены, что хотите отменить запись к ${staffName} на ${startH}?`}
         confirmLabel="Да, отменить"
         cancelLabel="Нет, оставить"
         onConfirm={() => void handleCancelConfirm()}
@@ -219,163 +241,170 @@ export function BookingConfirmScreen({ navigation, route }: Props): React.JSX.El
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  // Green confirmation card
-  confirmCard: {
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  checkCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkIcon: {
-    fontSize: 32,
-    color: colors.white,
-    lineHeight: 40,
-  },
-  confirmTitle: {
-    ...typography.h2,
-    color: colors.white,
-    textAlign: 'center',
-  },
-  confirmSubtitle: {
-    ...typography.body,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-  },
-  detailsContainer: {
-    width: '100%',
-    marginTop: spacing.sm,
-  },
-  // Reminder card
-  reminderCard: {
+  container: { flex: 1, backgroundColor: colors.bg },
+  scroll: { flex: 1 },
+  scrollContent: {},
+
+  // Top bar
+  topBar: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    backgroundColor: colors.accentLight,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  pageLabel: {},
+  stepLabel: {},
+
+  // Progress
+  progressWrap: { flexDirection: 'row', gap: 6, paddingHorizontal: 18, paddingBottom: 14 },
+  progressBar: { flex: 1, height: 3, borderRadius: 2, backgroundColor: colors.border },
+  progressBarFilled: { backgroundColor: colors.text },
+
+  // Title
+  titleBlock: { paddingHorizontal: 18, paddingBottom: 18 },
+  title: { fontSize: 28, fontWeight: '700', letterSpacing: -0.8, lineHeight: 32, color: colors.text },
+
+  // Card
+  cardWrap: { paddingHorizontal: 18, paddingBottom: 14 },
+  card: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: colors.border,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
-  reminderIcon: {
-    fontSize: 20,
-    lineHeight: 24,
+  dateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  reminderText: {
-    flex: 1,
-    gap: spacing.xs,
+  dateLeft: { gap: 4 },
+  dayLabelMono: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
   },
-  reminderTitle: {
-    ...typography.bodyMedium,
-    color: colors.accent,
+  bigTime: {
+    fontSize: 34,
+    fontWeight: '700',
+    letterSpacing: -1,
+    lineHeight: 38,
+    color: colors.text,
+    marginTop: 4,
   },
-  reminderBody: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+  dateSubText: { fontSize: 12, color: colors.textMuted, marginTop: 6 },
+  miniCal: {
+    width: 52,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
   },
-  // Info card
-  infoCard: {
+  miniCalMonth: {
+    width: '100%',
+    backgroundColor: colors.accent,
+    paddingVertical: 3,
+    alignItems: 'center',
+  },
+  miniCalMonthText: {
+    fontFamily: monoFont,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: '#fff',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  miniCalDay: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.6,
+    paddingVertical: 6,
+  },
+  detailsBlock: {},
+  priceBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 18,
+    backgroundColor: colors.surfaceAlt,
+  },
+  priceLabelMono: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+  },
+  priceVal: { fontSize: 26, fontWeight: '700', letterSpacing: -0.6, color: colors.text },
+
+  // Policy
+  policyWrap: { paddingHorizontal: 18, paddingBottom: 14 },
+  policyCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.sm,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    gap: 10,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accentSoft,
+    borderRadius: 14,
+    padding: 14,
   },
-  infoIcon: {
-    fontSize: 16,
-    lineHeight: 22,
+  policyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 99,
+    backgroundColor: colors.accent,
+    marginTop: 5,
+    flexShrink: 0,
   },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
+  policyText: { flex: 1, gap: 4 },
+  policyTitle: { fontSize: 12, fontWeight: '600', color: colors.text },
+  policySub: { fontSize: 11, color: colors.textSecondary, lineHeight: 16 },
+
+  // Cancel link
+  cancelLink: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    marginHorizontal: 18,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
   },
+  cancelLinkText: { fontSize: 13, color: colors.coral },
+
   // Footer
   footer: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 18,
     paddingTop: spacing.md,
     backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.sm,
   },
-  cancelBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.coral,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
+  primaryBtn: {
+    backgroundColor: colors.text,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
   },
-  cancelBtnDisabled: {
-    opacity: 0.6,
-  },
-  cancelBtnText: {
-    ...typography.button,
-    color: colors.coral,
-  },
-  homeBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-  },
-  homeBtnText: {
-    ...typography.button,
-    color: colors.white,
-  },
-  // Cancelled state
-  cancelledContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  cancelledIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  primaryBtnText: { fontSize: 14, fontWeight: '600', color: colors.surface },
+
+  // Cancelled
+  cancelledContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: spacing.md },
+  cancelledCircle: {
+    width: 72, height: 72, borderRadius: 36,
     backgroundColor: colors.coralLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  cancelledIcon: {
-    fontSize: 32,
-    color: colors.coral,
-    lineHeight: 40,
-  },
-  cancelledTitle: {
-    ...typography.h2,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  cancelledSubtitle: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
+  cancelledX: { fontSize: 32, color: colors.coral, lineHeight: 40 },
+  cancelledTitle: { fontSize: 22, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  cancelledSub: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
 });

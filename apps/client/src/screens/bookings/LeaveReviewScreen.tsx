@@ -12,36 +12,35 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { apiClient, borderRadius, colors, spacing, typography } from '@mettig/shared';
+import { apiClient, colors, monoFont, spacing } from '@mettig/shared';
 import type { BookingsStackScreenProps } from '../../navigation/types';
 
 type Props = BookingsStackScreenProps<'LeaveReview'>;
 
-const STAR_COUNT = 5;
+const TAGS = ['Мастер', 'Атмосфера', 'Чистота', 'Удобство записи', 'Цена', 'Вовремя'] as const;
 
-// ─── StarRating ───────────────────────────────────────────────────────────────
+// ─── BlockRating ──────────────────────────────────────────────────────────────
 
-interface StarRatingProps {
+interface BlockRatingProps {
   rating: number;
   onChange: (value: number) => void;
 }
 
-function StarRating({ rating, onChange }: StarRatingProps): React.JSX.Element {
+function BlockRating({ rating, onChange }: BlockRatingProps): React.JSX.Element {
   return (
-    <View style={starStyles.row} accessibilityLabel={`Рейтинг: ${rating} из 5`}>
-      {Array.from({ length: STAR_COUNT }, (_, i) => {
-        const starValue = i + 1;
-        const filled = starValue <= rating;
+    <View style={blockStyles.row}>
+      {[1, 2, 3, 4, 5].map((i) => {
+        const filled = i <= rating;
         return (
           <TouchableOpacity
-            key={starValue}
-            onPress={() => onChange(starValue)}
-            accessibilityLabel={`${starValue} звезд`}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+            key={i}
+            style={[blockStyles.block, filled ? blockStyles.blockFilled : blockStyles.blockEmpty]}
+            onPress={() => onChange(i)}
+            activeOpacity={0.75}
+            accessibilityLabel={`Оценка ${i}`}
           >
-            <Text style={[starStyles.star, filled ? starStyles.filled : starStyles.empty]}>
-              {filled ? '★' : '☆'}
+            <Text style={[blockStyles.blockText, filled ? blockStyles.blockTextFilled : blockStyles.blockTextEmpty]}>
+              {i}
             </Text>
           </TouchableOpacity>
         );
@@ -50,21 +49,31 @@ function StarRating({ rating, onChange }: StarRatingProps): React.JSX.Element {
   );
 }
 
-const starStyles = StyleSheet.create({
+const blockStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: 6,
+    marginTop: 14,
   },
-  star: {
-    fontSize: 40,
-    lineHeight: 48,
+  block: {
+    flex: 1,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  filled: {
-    color: colors.amber,
+  blockFilled: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
   },
-  empty: {
-    color: colors.borderStrong,
+  blockEmpty: {
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
   },
+  blockText: { fontSize: 14, fontWeight: '600' },
+  blockTextFilled: { color: colors.surface },
+  blockTextEmpty: { color: colors.textMuted },
 });
 
 // ─── LeaveReviewScreen ────────────────────────────────────────────────────────
@@ -75,9 +84,22 @@ export function LeaveReviewScreen({ route, navigation }: Props): React.JSX.Eleme
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = rating > 0 && !isSubmitting;
+
+  const toggleTag = useCallback((tag: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) {
+        next.delete(tag);
+      } else {
+        next.add(tag);
+      }
+      return next;
+    });
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
@@ -122,192 +144,261 @@ export function LeaveReviewScreen({ route, navigation }: Props): React.JSX.Eleme
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.backBtn}
             onPress={() => navigation.goBack()}
-            accessibilityLabel="Назад"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.backIcon}>←</Text>
+            <Text style={styles.topBarLeft}>‹  Отзыв</Text>
           </TouchableOpacity>
-          <View style={styles.headerTitles}>
-            <Text style={styles.screenTitle}>Оставить отзыв</Text>
-            <Text style={styles.screenSubtitle} numberOfLines={1}>
-              {businessName}
-            </Text>
-          </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('BookingsList')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.topBarRight}>пропустить</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Form */}
         <ScrollView
-          contentContainerStyle={[
-            styles.formContent,
-            { paddingBottom: insets.bottom + spacing.xl },
-          ]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 90 }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Stars */}
+          {/* Title */}
+          <View style={styles.titleBlock}>
+            <Text style={styles.title}>
+              {'Как прошло\nв '}
+              <Text>{businessName}</Text>
+              <Text style={{ color: colors.accent }}>?</Text>
+            </Text>
+          </View>
+
+          {/* Rating card */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Ваша оценка</Text>
-            <View style={styles.starsContainer}>
-              <StarRating rating={rating} onChange={setRating} />
-              {rating > 0 && (
-                <Text style={styles.ratingHint}>{ratingLabel(rating)}</Text>
-              )}
+            <View style={styles.ratingCard}>
+              <View style={styles.ratingHeader}>
+                <Text style={styles.ratingBig}>
+                  {rating > 0 ? rating : '—'}
+                  <Text style={styles.ratingOf}>/5</Text>
+                </Text>
+                <Text style={styles.ratingLabel}>оценка</Text>
+              </View>
+              <BlockRating rating={rating} onChange={setRating} />
+            </View>
+          </View>
+
+          {/* Tags */}
+          <View style={styles.section}>
+            <Text style={styles.mono}>Что особенно понравилось</Text>
+            <View style={styles.tagsWrap}>
+              {TAGS.map((tag) => {
+                const active = selectedTags.has(tag);
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    style={[styles.tag, active ? styles.tagActive : styles.tagInactive]}
+                    onPress={() => toggleTag(tag)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.tagText, active ? styles.tagTextActive : styles.tagTextInactive]}>
+                      {tag}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
           {/* Comment */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Комментарий (необязательно)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={comment}
-              onChangeText={setComment}
-              placeholder="Расскажите о своём визите..."
-              placeholderTextColor={colors.textMuted}
-              multiline
-              maxLength={1000}
-              textAlignVertical="top"
-              accessibilityLabel="Комментарий к отзыву"
-            />
-            <Text style={styles.charCount}>{comment.length}/1000</Text>
+            <View style={styles.commentCard}>
+              <Text style={styles.mono}>Комментарий</Text>
+              <TextInput
+                style={styles.textInput}
+                value={comment}
+                onChangeText={setComment}
+                placeholder="Расскажите о своём визите..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                maxLength={500}
+                textAlignVertical="top"
+                editable={!isSubmitting}
+                accessibilityLabel="Комментарий к отзыву"
+              />
+            </View>
+            <Text style={styles.charCount}>{comment.length} / 500</Text>
           </View>
+        </ScrollView>
 
-          {/* Submit */}
+        {/* CTA footer */}
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
           <TouchableOpacity
-            style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+            style={[styles.publishBtn, !canSubmit && styles.publishBtnDisabled]}
             onPress={() => void handleSubmit()}
             disabled={!canSubmit}
-            accessibilityLabel="Отправить отзыв"
-            activeOpacity={0.8}
+            activeOpacity={0.85}
+            accessibilityLabel="Опубликовать отзыв"
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color={colors.white} />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
-              <Text style={styles.submitBtnText}>Отправить</Text>
+              <Text style={styles.publishBtnText}>Опубликовать отзыв</Text>
             )}
           </TouchableOpacity>
-
-          {rating === 0 && (
-            <Text style={styles.hintText}>Выберите оценку, чтобы отправить отзыв</Text>
-          )}
-        </ScrollView>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-function ratingLabel(rating: number): string {
-  switch (rating) {
-    case 1:
-      return 'Очень плохо';
-    case 2:
-      return 'Плохо';
-    case 3:
-      return 'Нормально';
-    case 4:
-      return 'Хорошо';
-    case 5:
-      return 'Отлично!';
-    default:
-      return '';
-  }
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  header: {
+  flex: { flex: 1 },
+  container: { flex: 1, backgroundColor: colors.bg },
+
+  topBar: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.bg,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
-  backBtn: {
-    padding: spacing.xs,
-  },
-  backIcon: {
-    fontSize: 22,
-    color: colors.text,
-    lineHeight: 26,
-  },
-  headerTitles: {
-    flex: 1,
-    gap: 2,
-  },
-  screenTitle: {
-    ...typography.h3,
-    color: colors.text,
-  },
-  screenSubtitle: {
-    ...typography.caption,
+  topBarLeft: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
     color: colors.textMuted,
   },
-  formContent: {
-    padding: spacing.lg,
-    gap: spacing.xl,
+  topBarRight: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
   },
-  section: {
-    gap: spacing.sm,
+
+  scroll: { paddingBottom: 20 },
+
+  titleBlock: { paddingHorizontal: 18, paddingBottom: 14 },
+  title: {
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: -1,
+    lineHeight: 34,
+    color: colors.text,
   },
-  sectionLabel: {
-    ...typography.label,
-    color: colors.textSecondary,
+
+  section: { paddingHorizontal: 18, paddingBottom: 18 },
+
+  mono: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    marginBottom: 10,
   },
-  starsContainer: {
-    gap: spacing.sm,
-    alignItems: 'flex-start',
-  },
-  ratingHint: {
-    ...typography.bodyMedium,
-    color: colors.amber,
-  },
-  textInput: {
+
+  // Rating card
+  ratingCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    ...typography.body,
+    borderRadius: 18,
+    padding: 18,
+  },
+  ratingHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  ratingBig: {
+    fontSize: 64,
+    fontWeight: '700',
+    letterSpacing: -3,
+    lineHeight: 70,
     color: colors.text,
+  },
+  ratingOf: {
+    fontSize: 32,
+    fontWeight: '400',
+    color: colors.textMuted,
+    letterSpacing: -1,
+  },
+  ratingLabel: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+  },
+
+  // Tags
+  tagsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  tagActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  tagInactive: {
+    backgroundColor: 'transparent',
+    borderColor: colors.border,
+  },
+  tagText: { fontSize: 12, fontWeight: '500' },
+  tagTextActive: { color: colors.surface },
+  tagTextInactive: { color: colors.text },
+
+  // Comment
+  commentCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    padding: 14,
     minHeight: 120,
   },
-  charCount: {
-    ...typography.caption,
-    color: colors.textMuted,
-    alignSelf: 'flex-end',
+  textInput: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 21,
+    marginTop: 8,
+    minHeight: 80,
   },
-  submitBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
+  charCount: {
+    fontFamily: monoFont,
+    fontSize: 9,
+    letterSpacing: 0.4,
+    color: colors.textMuted,
+    textAlign: 'right',
+    marginTop: 6,
+  },
+
+  // Footer
+  footer: {
+    paddingHorizontal: 18,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.bg,
+  },
+  publishBtn: {
+    backgroundColor: colors.text,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 50,
   },
-  submitBtnDisabled: {
-    opacity: 0.4,
+  publishBtnDisabled: {
+    backgroundColor: colors.border,
   },
-  submitBtnText: {
-    ...typography.button,
-    color: colors.white,
-  },
-  hintText: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
+  publishBtnText: { fontSize: 14, fontWeight: '600', color: colors.surface },
 });

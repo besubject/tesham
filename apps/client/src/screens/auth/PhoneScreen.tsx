@@ -1,24 +1,25 @@
 import { sendCode } from '@mettig/shared';
+import { colors, monoFont } from '@mettig/shared';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AuthStackScreenProps } from '../../navigation/types';
 
 type Props = AuthStackScreenProps<'PhoneScreen'>;
 
 function formatPhoneDisplay(digits: string): string {
-  // digits is only the 10 digits after +7
   const d = digits.padEnd(10, '_');
-  return `+7 (${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 8)}-${d.slice(8, 10)}`;
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 8)} ${d.slice(8, 10)}`;
 }
 
 function isPhoneValid(digits: string): boolean {
@@ -26,20 +27,18 @@ function isPhoneValid(digits: string): boolean {
 }
 
 export function PhoneScreen({ navigation }: Props): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const [digits, setDigits] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
 
   const handleChangeText = useCallback((text: string) => {
-    // Strip everything except digits
     const raw = text.replace(/\D/g, '');
-    // If user typed starting with 8 or 7, drop the leading digit
     let cleaned = raw;
     if (cleaned.startsWith('7') || cleaned.startsWith('8')) {
       cleaned = cleaned.slice(1);
     }
-    // Keep only up to 10 digits
     const next = cleaned.slice(0, 10);
     setDigits(next);
     if (error) setError(null);
@@ -66,111 +65,189 @@ export function PhoneScreen({ navigation }: Props): React.JSX.Element {
   const valid = isPhoneValid(digits);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         style={styles.inner}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>Вход в Mettig</Text>
-          <Text style={styles.subtitle}>Введите номер телефона, и мы отправим вам код подтверждения</Text>
+        {/* ── Brand mark ──────────────────────────────────── */}
+        <View style={styles.brandRow}>
+          <View style={styles.brandDot} />
+          <Text style={styles.brandLabel}>Mettig · v 0.1</Text>
+        </View>
 
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.label}>Номер телефона</Text>
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={() => inputRef.current?.focus()}
-              style={[styles.phoneBox, error ? styles.phoneBoxError : null]}
-              accessibilityLabel="Поле ввода номера телефона"
-            >
-              <Text style={[styles.phoneText, digits.length === 0 && styles.phonePlaceholder]}>
-                {digits.length === 0 ? '+7 (XXX) XXX-XX-XX' : formatPhoneDisplay(digits)}
-              </Text>
-            </TouchableOpacity>
-            <TextInput
-              ref={inputRef}
-              value={digits}
-              onChangeText={handleChangeText}
-              keyboardType="phone-pad"
-              maxLength={15}
-              style={styles.hiddenInput}
-              accessibilityLabel="Скрытый ввод номера телефона"
-              caretHidden
-            />
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          </View>
+        {/* ── Hero title ──────────────────────────────────── */}
+        <Text style={styles.heroTitle}>{'Всё рядом.\nЗа одну минуту.'}</Text>
+        <Text style={styles.heroSub}>
+          Введите номер телефона — отправим SMS с кодом. Без паролей.
+        </Text>
 
+        {/* ── Phone field ─────────────────────────────────── */}
+        <View style={styles.fieldBlock}>
+          <Text style={styles.fieldLabel}>Номер телефона</Text>
           <TouchableOpacity
-            style={[styles.button, (!valid || isLoading) && styles.buttonDisabled]}
-            onPress={handleSendCode}
+            activeOpacity={1}
+            onPress={() => inputRef.current?.focus()}
+            style={[styles.phoneCard, error != null && styles.phoneCardError]}
+            accessibilityLabel="Поле ввода номера телефона"
+          >
+            <View style={styles.prefixBox}>
+              <Text style={styles.prefixText}>+7</Text>
+            </View>
+            <View style={styles.phoneSep} />
+            <Text style={[styles.phoneDigits, digits.length === 0 && styles.phoneMuted]}>
+              {digits.length === 0 ? '___ ___ ____' : formatPhoneDisplay(digits)}
+            </Text>
+            <Text style={styles.phoneCountry}>RU</Text>
+          </TouchableOpacity>
+          <TextInput
+            ref={inputRef}
+            value={digits}
+            onChangeText={handleChangeText}
+            keyboardType="phone-pad"
+            maxLength={15}
+            style={styles.hiddenInput}
+            accessibilityLabel="Скрытый ввод номера телефона"
+            caretHidden
+          />
+          {error != null && <Text style={styles.errorText}>{error}</Text>}
+          <Text style={styles.legalText}>
+            Продолжая, вы соглашаетесь с{' '}
+            <Text style={styles.legalLink}>условиями</Text>
+            {' '}и{' '}
+            <Text style={styles.legalLink}>политикой</Text>.
+          </Text>
+        </View>
+
+        {/* ── CTA ─────────────────────────────────────────── */}
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
+          <Pressable
+            style={[styles.primaryBtn, (!valid || isLoading) && styles.primaryBtnDisabled]}
+            onPress={() => void handleSendCode()}
             disabled={!valid || isLoading}
             accessibilityLabel="Получить код подтверждения"
           >
             {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.surface} />
             ) : (
-              <Text style={styles.buttonText}>Получить код</Text>
+              <Text style={styles.primaryBtnText}>Получить код</Text>
             )}
+          </Pressable>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('EmailLoginScreen', { phone: digits ? `7${digits}` : '' })}
+            style={styles.emailLink}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.emailLinkText}>Войти по email</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAF8',
+    backgroundColor: colors.bg,
   },
   inner: {
     flex: 1,
+    paddingHorizontal: 18,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 48,
+  // Brand
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 32,
+    marginBottom: 18,
   },
-  title: {
-    fontSize: 28,
+  brandDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  brandLabel: {
+    fontFamily: monoFont,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+  },
+  // Hero
+  heroTitle: {
+    fontSize: 40,
     fontWeight: '700',
-    color: '#1A1A18',
-    marginBottom: 8,
+    letterSpacing: -1.4,
+    lineHeight: 44,
+    color: colors.text,
+    marginBottom: 12,
   },
-  subtitle: {
-    fontSize: 15,
-    color: '#5C5C58',
-    lineHeight: 22,
-    marginBottom: 40,
-  },
-  fieldWrapper: {
-    marginBottom: 24,
-  },
-  label: {
+  heroSub: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#5C5C58',
+    color: colors.textSecondary,
+    lineHeight: 21,
+    maxWidth: 280,
+    marginBottom: 36,
+  },
+  // Phone field
+  fieldBlock: {
+    flex: 1,
+  },
+  fieldLabel: {
+    fontFamily: monoFont,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
     marginBottom: 8,
   },
-  phoneBox: {
-    backgroundColor: '#FFFFFF',
+  phoneCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E8E8E4',
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  phoneCardError: {
+    borderColor: colors.coral,
+  },
+  prefixBox: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 18,
   },
-  phoneBoxError: {
-    borderColor: '#C4462A',
+  prefixText: {
+    fontFamily: monoFont,
+    fontSize: 14,
+    color: colors.text,
   },
-  phoneText: {
+  phoneSep: {
+    width: 1,
+    height: '100%',
+    backgroundColor: colors.border,
+  },
+  phoneDigits: {
+    flex: 1,
+    fontFamily: monoFont,
     fontSize: 18,
-    fontWeight: '500',
-    color: '#1A1A18',
-    letterSpacing: 1,
+    color: colors.text,
+    letterSpacing: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
   },
-  phonePlaceholder: {
-    color: '#8A8A86',
+  phoneMuted: {
+    color: colors.textMuted,
+  },
+  phoneCountry: {
+    fontFamily: monoFont,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: colors.textMuted,
+    paddingRight: 16,
   },
   hiddenInput: {
     position: 'absolute',
@@ -180,21 +257,45 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: 6,
-    fontSize: 13,
-    color: '#C4462A',
+    fontFamily: monoFont,
+    fontSize: 11,
+    color: colors.coral,
   },
-  button: {
-    backgroundColor: '#1D6B4F',
-    borderRadius: 12,
-    paddingVertical: 16,
+  legalText: {
+    marginTop: 10,
+    fontSize: 11,
+    color: colors.textMuted,
+    lineHeight: 17,
+  },
+  legalLink: {
+    color: colors.text,
+    textDecorationLine: 'underline',
+  },
+  // CTA
+  footer: {
+    paddingTop: 12,
+  },
+  primaryBtn: {
+    backgroundColor: colors.text,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtnDisabled: {
+    opacity: 0.45,
+  },
+  primaryBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.surface,
+  },
+  emailLink: {
+    marginTop: 12,
     alignItems: 'center',
   },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  emailLinkText: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
 });
