@@ -505,7 +505,7 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
       </ScrollView>
 
       {/* ── CTA ── */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm, marginBottom: 55 }]}> 
         <TouchableOpacity
           style={[styles.ctaBtn, !canConfirm && styles.ctaBtnDisabled]}
           onPress={() => void handleBook()}

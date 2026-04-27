@@ -320,7 +320,7 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
     return (
       <View style={[styles.centered, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹ Назад</Text>
+          <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.errorText}>Не удалось загрузить данные</Text>
       </View>
@@ -355,9 +355,9 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
             <View style={styles.heroPlaceholder} />
           )}
           {/* back + fav buttons over photo */}
-          <View style={[styles.photoOverlay, { top: 14 }]}>
+          <View style={[styles.photoOverlay, { top: 10 }]}>
             <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-              <Text style={styles.iconBtnText}>‹</Text>
+              <Text style={styles.iconBtnText}>←</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconBtn}
@@ -618,6 +618,7 @@ const styles = StyleSheet.create({
   ctaBar: {
     paddingHorizontal: 18,
     paddingTop: 14,
+    marginBottom: 50,
     backgroundColor: colors.bg,
     borderTopWidth: 0,
   },

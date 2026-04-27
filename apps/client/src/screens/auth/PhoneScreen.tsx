@@ -73,7 +73,7 @@ export function PhoneScreen({ navigation }: Props): React.JSX.Element {
         {/* ── Brand mark ──────────────────────────────────── */}
         <View style={styles.brandRow}>
           <View style={styles.brandDot} />
-          <Text style={styles.brandLabel}>Mettig · v 0.1</Text>
+          <Text style={styles.brandLabel}>Tesham · v 0.1</Text>
         </View>
 
         {/* ── Hero title ──────────────────────────────────── */}

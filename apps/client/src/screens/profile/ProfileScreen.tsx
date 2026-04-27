@@ -179,8 +179,8 @@ export function ProfileScreen({ navigation }: Props): React.JSX.Element {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Page header */}
       <View style={styles.topBar}>
-        <Text style={styles.topBarLeft}>09 / Я</Text>
-        <Text style={styles.topBarRight}>MTG</Text>
+        <Text style={styles.topBarLeft}>Я</Text>
+        <Text style={styles.topBarRight}>Tesham</Text>
       </View>
 
       <ScrollView

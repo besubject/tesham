@@ -533,7 +533,7 @@ export function CategoriesScreen({ navigation }: Props): React.JSX.Element {
     <View>
       {/* Page header */}
       <View style={styles.pageHeader}>
-        <MonoLabel>MTG · Грозный</MonoLabel>
+        <MonoLabel>Tesham · Грозный</MonoLabel>
         <MonoLabel>01 / Главная</MonoLabel>
       </View>
 
