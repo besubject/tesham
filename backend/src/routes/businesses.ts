@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
-import { listBusinesses, getBusiness } from '../controllers/business.controller';
+import { listBusinesses, getBusiness, getPopularBusinesses } from '../controllers/business.controller';
 import { getBusinessReviews } from '../controllers/review.controller';
 import { getSlots } from '../controllers/booking.controller';
 
@@ -9,14 +9,21 @@ const router = Router();
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
-const listQuerySchema = z.object({
-  query: z.string().min(1).optional(),
-  category_id: z.string().uuid().optional(),
-  lat: z.coerce.number().min(-90).max(90).optional(),
-  lng: z.coerce.number().min(-180).max(180).optional(),
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(50).default(20),
-});
+const listQuerySchema = z
+  .object({
+    query: z.string().min(1).optional(),
+    category_id: z.string().uuid().optional(),
+    sort: z.enum(['rating', 'distance']).default('rating'),
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lng: z.coerce.number().min(-180).max(180).optional(),
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(50).default(20),
+    cursor: z.string().optional(),
+  })
+  .refine((data) => data.sort !== 'distance' || (data.lat !== undefined && data.lng !== undefined), {
+    message: 'lat and lng are required when sort=distance',
+    path: ['lat'],
+  });
 
 const reviewsQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -33,7 +40,11 @@ const slotsQuerySchema = z.object({
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-// GET /businesses — list with search, filter, geo sort
+// GET /businesses/popular — top-N businesses by combined score (rating + bookings)
+// IMPORTANT: must be registered BEFORE /:id to avoid conflict
+router.get('/popular', getPopularBusinesses);
+
+// GET /businesses — list with search, filter, sort, cursor pagination
 router.get('/', validate({ query: listQuerySchema }), listBusinesses);
 
 // GET /businesses/:id/slots — available slots

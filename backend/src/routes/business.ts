@@ -24,6 +24,17 @@ import {
 } from '../controllers/business-profile.controller';
 import { replyToReview, reportReview } from '../controllers/review.controller';
 import { getBusinessStats } from '../controllers/business-stats.controller';
+import { getAnalyticsDashboard } from '../controllers/analytics-dashboard.controller';
+import {
+  getClientSegments,
+  getClientList,
+  getClientCard,
+} from '../controllers/clients.controller';
+import {
+  createBroadcast,
+  getBroadcasts,
+  getBroadcastDetail,
+} from '../controllers/broadcasts.controller';
 import { requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -126,12 +137,84 @@ const statsQuerySchema = z.object({
   staff_id: z.string().uuid().optional(),
 });
 
+const clientsQuerySchema = z.object({
+  segment: z.enum(['regulars', 'sleeping', 'lost', 'not_visited', 'new']).optional(),
+  search: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+});
+
+const clientCardQuerySchema = z.object({
+  booking_cursor: z.string().optional(),
+});
+
+const createBroadcastSchema = z.object({
+  audience: z.enum(['all', 'regulars', 'sleeping', 'lost', 'new']),
+  title: z.string().min(1).max(40),
+  body: z.string().min(1).max(160),
+});
+
+const broadcastsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+});
+
+const broadcastDetailQuerySchema = z.object({
+  recipient_cursor: z.string().optional(),
+});
+
+const analyticsDashboardQuerySchema = z.object({
+  period: z.enum(['day', 'week', 'month']).default('week'),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
+    .optional(),
+});
+
 const slotsQuerySchema = z.object({
   staff_id: z.string().uuid().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
+
+// GET /business/clients/segments — segment counts (admin=all, employee=own)
+router.get('/clients/segments', getClientSegments);
+
+// GET /business/clients — client list with filters and pagination
+router.get('/clients', validate({ query: clientsQuerySchema }), getClientList);
+
+// GET /business/clients/:clientId — client card with booking history
+router.get(
+  '/clients/:clientId',
+  validate({ query: clientCardQuerySchema }),
+  getClientCard,
+);
+
+// POST /business/broadcasts — create broadcast and send push notifications (admin only)
+router.post(
+  '/broadcasts',
+  requireRole('admin'),
+  validate({ body: createBroadcastSchema }),
+  createBroadcast,
+);
+
+// GET /business/broadcasts — list broadcasts with pagination
+router.get('/broadcasts', validate({ query: broadcastsQuerySchema }), getBroadcasts);
+
+// GET /business/broadcasts/:broadcastId — broadcast details + recipients
+router.get(
+  '/broadcasts/:broadcastId',
+  validate({ query: broadcastDetailQuerySchema }),
+  getBroadcastDetail,
+);
+
+// GET /business/analytics/dashboard — analytics dashboard (admin=all, employee=own)
+router.get(
+  '/analytics/dashboard',
+  validate({ query: analyticsDashboardQuerySchema }),
+  getAnalyticsDashboard,
+);
 
 // GET /business/stats — business statistics (admin=all, employee=own)
 router.get('/stats', validate({ query: statsQuerySchema }), getBusinessStats);

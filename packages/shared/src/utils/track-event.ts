@@ -21,7 +21,24 @@ export type EventType =
   | 'walk_in_form_opened'
   | 'walk_in_booking_created'
   | 'chat_opened'
-  | 'chat_message_sent';
+  | 'chat_message_sent'
+  | 'analytics_dashboard_opened'
+  | 'analytics_period_changed'
+  | 'clients_screen_opened'
+  | 'client_segment_filtered'
+  | 'client_card_opened'
+  | 'broadcast_wizard_opened'
+  | 'broadcast_audience_selected'
+  | 'broadcast_created'
+  | 'categories_screen_opened'
+  | 'category_selected'
+  | 'popular_business_clicked'
+  | 'catalog_screen_opened'
+  | 'catalog_search'
+  | 'catalog_sort_changed'
+  | 'catalog_geolocation_granted'
+  | 'catalog_geolocation_denied'
+  | 'popular_businesses_fetched';
 
 export interface EventPayload {
   [key: string]: unknown;

@@ -1313,6 +1313,392 @@
         "TASK-050"
       ],
       "status": "done"
+    },
+    {
+      "id": "TASK-052",
+      "category": "infrastructure",
+      "priority": "high",
+      "description": "Миграция БД: таблицы broadcasts и broadcast_recipients для рассылок, индексы для производительности аналитических запросов. Индексы на bookings(business_id, status, completed_at), bookings(staff_id, status, completed_at), bookings(business_id, user_id), bookings(business_id, client_phone). types.ts обновлён",
+      "acceptance_criteria": [
+        "Миграция 008_analytics_broadcasts.ts создана и применяется",
+        "Таблица broadcasts: id (uuid), business_id (FK), audience (enum: all|regulars|sleeping|lost|new), title (varchar 40), body (varchar 160), created_by_user_id (FK), created_at, sent_at, total_recipients (int), delivered_count (int), skipped_no_token (int), skipped_rate_limit (int)",
+        "Таблица broadcast_recipients: id (uuid), broadcast_id (FK), user_id (FK), status (enum: delivered|skipped_no_token|skipped_rate_limit|failed), error_message (nullable), sent_at",
+        "Индексы созданы: bookings(business_id, status, completed_at), bookings(staff_id, status, completed_at), bookings(business_id, user_id), bookings(business_id, client_phone) — для аналитических запросов",
+        "Уникальный индекс broadcast_recipients(broadcast_id, user_id)",
+        "Индекс broadcast_recipients(user_id, sent_at) для проверки лимита 1 push/неделю/клиент/бизнес",
+        "Rollback корректно удаляет таблицы и индексы",
+        "types.ts обновлён: BroadcastTable, BroadcastRecipientTable"
+      ],
+      "test_steps": [
+        "npm run db:migrate применяет миграцию без ошибок",
+        "npm run db:rollback откатывает корректно",
+        "npx tsc --noEmit в backend/ проходит",
+        "SELECT * FROM information_schema.tables WHERE table_name IN ('broadcasts', 'broadcast_recipients') возвращает 2 строки",
+        "EXPLAIN ANALYZE на тестовом запросе аналитики использует созданные индексы"
+      ],
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "TASK-053",
+      "category": "functional",
+      "priority": "high",
+      "description": "Backend API дашборда аналитики. GET /business/analytics/dashboard?period=day|week|month&date=YYYY-MM-DD — возвращает загруженность, метрики записей с разбивкой по источникам, свод по клиентам с сегментами. Реалтайм SQL без кеша. RBAC: admin — весь бизнес, employee — только свои записи",
+      "acceptance_criteria": [
+        "GET /business/analytics/dashboard принимает period (day|week|month) и date (опц., default — сегодня)",
+        "Бэкенд сам вычисляет from/to: day = весь календарный день, week = ISO-неделя пн-вс, month = календарный месяц",
+        "Ответ содержит: occupancy (percent: number, busy_minutes, total_minutes), bookings (count, sum_planned, by_source: { app, walk_in, link }), clients (visited, new, total, segments: { regulars, sleeping, lost, not_visited })",
+        "Для employee: фильтр staff_id = req.user.id применяется ко всем запросам",
+        "Для admin: данные по всему бизнесу",
+        "Реалтайм SQL — никакого кеша",
+        "Учитываются только bookings со status IN ('confirmed', 'completed') в количестве и сумме; занятые слоты — те же",
+        "Walk-in клиенты группируются по client_phone когда возможно",
+        "Event tracking: analytics_dashboard_opened с payload { period, role }",
+        "Zod-валидация period и date"
+      ],
+      "test_steps": [
+        "GET /business/analytics/dashboard?period=day без записей → occupancy 0%, bookings 0",
+        "Создать 5 записей разных source → ответ корректно разбивает по источникам",
+        "GET с period=week возвращает данные за всю текущую неделю",
+        "Employee видит только свои записи в counts",
+        "Admin видит весь бизнес",
+        "Тест на корректность сегментов клиентов (создать клиента с 2+ completed за последние 90 дней → попадает в regulars)",
+        "npm run lint && npm test проходят"
+      ],
+      "dependencies": [
+        "TASK-052"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "TASK-054",
+      "category": "functional",
+      "priority": "high",
+      "description": "Backend API клиентов и сегментов. GET /business/clients?segment=&search=&limit=&cursor= (список с фильтрами и пагинацией), GET /business/clients/segments (счётчики по сегментам), GET /business/clients/:clientId (карточка клиента с историей). clientId формат: 'user:{uuid}' для зарегистрированных, 'walkin:{first_booking_id}' для анонимов. RBAC: employee видит только своих",
+      "acceptance_criteria": [
+        "GET /business/clients/segments возвращает { regulars, sleeping, lost, not_visited, new, total }",
+        "GET /business/clients поддерживает фильтр segment (regulars|sleeping|lost|not_visited|new), search (по имени и телефону), пагинация cursor-based",
+        "GET /business/clients/:clientId возвращает client info (name, phone (только admin или owner записи), segment, total_visits, total_revenue, first_visit_at, last_visit_at) + bookings (last 20 с пагинацией)",
+        "Для employee: возвращаются только клиенты, у которых есть хотя бы 1 booking к этому employee",
+        "Анонимные walk-in группируются по client_phone когда указан, иначе остаются отдельно с id 'walkin:{booking_id}'",
+        "Сегментация определяется реалтайм SQL (CTE с агрегацией по bookings)",
+        "Поиск по телефону работает по точному substring match (без нормализации в MVP)",
+        "Event tracking: clients_screen_opened, client_segment_filtered (payload { segment }), client_card_opened (payload { client_id })",
+        "Zod-валидация всех query params"
+      ],
+      "test_steps": [
+        "GET /business/clients/segments на пустом бизнесе → все 0",
+        "Создать 3 клиентов с разными паттернами записей → segments возвращает корректные числа",
+        "GET /business/clients?segment=regulars возвращает только постоянных",
+        "GET /business/clients?search=Иван находит клиента по имени",
+        "GET /business/clients/user:{uuid} возвращает карточку с историей",
+        "Walk-in без user_id доступен как walkin:{booking_id}",
+        "Employee видит только своих клиентов (другие → не в списке)",
+        "Employee получает 403 при попытке открыть карточку чужого клиента",
+        "npm run lint && npm test проходят"
+      ],
+      "dependencies": [
+        "TASK-052"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "TASK-055",
+      "category": "functional",
+      "priority": "high",
+      "description": "Backend API рассылок Expo Push. POST /business/broadcasts (создание + немедленная отправка), GET /business/broadcasts (история), GET /business/broadcasts/:id (детали + получатели). Лимиты: 1 рассылка/день/бизнес, 1 push/неделю/клиент/бизнес. Только admin. Использует существующий Expo Push flow",
+      "acceptance_criteria": [
+        "POST /business/broadcasts принимает { audience: 'all'|'regulars'|'sleeping'|'lost'|'new', title (max 40), body (max 160) }",
+        "Бэкенд формирует список получателей по audience (использует ту же логику сегментации что в TASK-054)",
+        "Фильтрация: исключаются получатели без push_token и те, кому уже была рассылка от этого бизнеса за последние 7 дней",
+        "Подстановка placeholder'ов {first_name}, {business_name} per recipient",
+        "Отправка через существующий Expo Push сервис, в чанках по 100",
+        "Запись в broadcasts с total_recipients, delivered_count, skipped_no_token, skipped_rate_limit",
+        "Запись каждого получателя в broadcast_recipients со status",
+        "Лимит 1 рассылка/день/бизнес: 429 если уже была рассылка с created_at в текущем календарном дне (timezone — Europe/Moscow)",
+        "Только admin может создавать рассылки (employee → 403)",
+        "GET /business/broadcasts возвращает список с пагинацией",
+        "GET /business/broadcasts/:id возвращает детали + список получателей",
+        "Event tracking: broadcast_created (payload { audience, total_recipients }), broadcast_sent (payload { broadcast_id, delivered, skipped_no_token, skipped_rate_limit })",
+        "Zod-валидация на все поля включая длину title и body"
+      ],
+      "test_steps": [
+        "POST /business/broadcasts с audience=all создаёт запись и отправляет push клиентам с токеном",
+        "Клиент без push_token попадает в skipped_no_token",
+        "Повторная отправка тому же клиенту в течение 7 дней → skipped_rate_limit",
+        "Повторная рассылка в тот же день → 429",
+        "Employee получает 403",
+        "Title > 40 символов → 400",
+        "Placeholder'ы {first_name} корректно подставляются",
+        "GET /business/broadcasts возвращает историю",
+        "Event broadcast_sent записан с корректными числами",
+        "npm run lint && npm test проходят"
+      ],
+      "dependencies": [
+        "TASK-052",
+        "TASK-054"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "TASK-056",
+      "category": "ui",
+      "priority": "high",
+      "description": "Mettig Business: экран Аналитика (мобильное). Переключатель периода в шапке (Сегодня/Неделя/Месяц). Блок Загруженность с полукруговым gauge. Блок Записи с количеством, суммой, разбивкой по источникам. Блок Клиенты со сводкой и сегментами. Тап на сегмент → переход на экран Клиенты с фильтром",
+      "acceptance_criteria": [
+        "Экран AnalyticsScreen в apps/business доступен из раздела Управление",
+        "Шапка: заголовок 'Аналитика', подзаголовок с диапазоном дат текущего периода ('Сегодня, 25 апр.' / 'Неделя 21-27 апр.' / 'Апрель 2026')",
+        "Segmented control 'Сегодня | Неделя | Месяц' с persistent выбором (через Zustand store)",
+        "Блок Загруженность: кастомный полукруговой gauge компонент с процентом по центру",
+        "Блок Записи: 2 крупных метрики (количество, сумма-план), под ними цветные полоски с разбивкой по source",
+        "Блок Клиенты: 2 метрики (Посетили, Новые) сверху, число 'Все клиенты' под ними, далее 4 строки сегментов с цветной точкой и процентом",
+        "Тап на строку сегмента → навигация на ClientsScreen с предвыбранным фильтром",
+        "Pull-to-refresh обновляет данные",
+        "Loading state со скелетонами для каждого блока",
+        "Empty state: если в бизнесе 0 записей за всё время — заглушка 'Нет данных пока'",
+        "TanStack Query для запросов с staleTime 30 сек",
+        "i18n: все тексты через i18next (ru/ce)",
+        "Event tracking: analytics_dashboard_opened, analytics_period_changed"
+      ],
+      "test_steps": [
+        "Открыть AnalyticsScreen — отображаются 3 блока",
+        "Переключить период на 'Неделя' — данные обновляются, подзаголовок меняется",
+        "Тап на сегмент 'Постоянные' — открывается ClientsScreen с фильтром regulars",
+        "Pull-to-refresh обновляет данные",
+        "Свежесозданная запись отображается после refresh (реалтайм)",
+        "i18n: переключение на ce — все тексты переведены",
+        "npx tsc --noEmit в apps/business/ проходит"
+      ],
+      "dependencies": [
+        "TASK-053"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "TASK-057",
+      "category": "ui",
+      "priority": "high",
+      "description": "Mettig Business: экран Клиенты + карточка клиента (мобильное). Сетка из 5 карточек сегментов. Блоки Возвращаемость и Рассылки (тап → соответствующие экраны). Список клиентов с поиском, фильтрами, пагинацией. Тап на клиента → ClientCardScreen с метриками и историей записей",
+      "acceptance_criteria": [
+        "Экран ClientsScreen с заголовком 'Клиенты N'",
+        "Сетка 3×2 карточек сегментов (Постоянные/Спящие/Пропавшие/Не посещали/Новые) с цифрами и описаниями условий",
+        "Карточка-кнопка 'Возвращаемость' → ReturnRateScreen с простой метрикой '% возвращаются'",
+        "Карточка-кнопка 'Рассылки' → BroadcastsScreen (TASK-058)",
+        "Поиск по имени/телефону (debounced 300мс)",
+        "Chips-фильтры по сегментам (горизонтальный скролл)",
+        "Список клиентов с пагинацией (FlatList, infinite scroll)",
+        "Каждый элемент: круглая иконка с инициалом, имя или 'Аноним', стрелка >",
+        "Тап на клиента → ClientCardScreen",
+        "ClientCardScreen: имя, телефон (если admin или owner), сегмент бейджем, 4 метрики, история записей с пагинацией",
+        "Тап на запись из истории → стандартный BookingDetailsScreen",
+        "Empty state когда сегмент пуст",
+        "Loading skeletons",
+        "i18n ru/ce",
+        "Event tracking: clients_screen_opened, client_segment_filtered, client_card_opened"
+      ],
+      "test_steps": [
+        "Открыть ClientsScreen — сетка сегментов и список клиентов",
+        "Тап на сегмент 'Постоянные' — список фильтруется",
+        "Поиск 'Иван' — список фильтруется",
+        "Тап на клиента — открывается ClientCardScreen",
+        "В ClientCardScreen видна история записей",
+        "Тап на запись → BookingDetailsScreen",
+        "Walk-in без user_id отображается как 'Аноним'",
+        "Employee не видит чужих клиентов",
+        "npx tsc --noEmit в apps/business/ проходит"
+      ],
+      "dependencies": [
+        "TASK-054"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "TASK-058",
+      "category": "ui",
+      "priority": "high",
+      "description": "Mettig Business: экран Рассылок (мобильное). Пошаговый wizard создания рассылки (3 шага: аудитория → сообщение → превью). История рассылок отдельным табом. Только для admin. UI понятно объясняет лимиты и пропуски walk-in без приложения",
+      "acceptance_criteria": [
+        "Экран BroadcastsScreen с двумя табами: 'Создать' и 'История'",
+        "Таб 'Создать' — wizard из 3 шагов с прогресс-индикатором",
+        "Шаг 1 — Аудитория: 5 radio-опций (Все, Постоянные, Спящие, Пропавшие, Новые), под выбором счётчик 'Получат N клиентов, X без приложения будут пропущены'",
+        "Шаг 2 — Сообщение: title (max 40 с counter), body (max 160 с counter), hint про placeholder'ы {first_name}, {business_name}",
+        "Шаг 3 — Превью: визуальная имитация push-уведомления, кнопка 'Отправить'",
+        "После отправки — экран 'Готово' с числами (отправлено/пропущено)",
+        "Таб 'История': список рассылок с датой, аудиторией, текстом (первые 50 символов), статистикой доставки",
+        "Тап на рассылку из истории → детали с полным текстом",
+        "Лимит 1/день: при попытке создать вторую рассылку в день — toast 'Уже была рассылка сегодня'",
+        "Employee — экран недоступен (показано сообщение 'Доступно только администратору')",
+        "Loading и error states",
+        "i18n ru/ce",
+        "Event tracking: broadcast_wizard_opened, broadcast_audience_selected, broadcast_created"
+      ],
+      "test_steps": [
+        "Admin открывает BroadcastsScreen → видны 2 таба",
+        "Создание рассылки: шаг 1 → 2 → 3 → отправка → экран 'Готово'",
+        "Текст > 160 символов не даёт продолжить",
+        "Повторная попытка в тот же день — toast с ошибкой",
+        "Employee видит сообщение об отсутствии доступа",
+        "История рассылок отображается корректно",
+        "npx tsc --noEmit в apps/business/ проходит"
+      ],
+      "dependencies": [
+        "TASK-055"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "TASK-059",
+      "category": "ui",
+      "priority": "high",
+      "description": "Веб-панель mettig.ru: экраны Аналитика, Клиенты, Карточка клиента, Рассылки. Полная функциональная идентичность мобильному (TASK-056..058). Адаптивная вёрстка для десктопа (более широкие блоки, табличный список клиентов вместо мобильного списка)",
+      "acceptance_criteria": [
+        "Роуты: /analytics, /clients, /clients/:clientId, /broadcasts",
+        "Аналитика: те же 3 блока, расположены в 2-колоночной сетке на десктопе",
+        "Клиенты: сетка сегментов сверху, таблица клиентов с колонками (Имя | Телефон | Последний визит | Визиты | Сегмент)",
+        "Карточка клиента: 2-колоночная разметка (метрики слева, история справа)",
+        "Рассылки: wizard в модальном окне, история на основной странице",
+        "Все события tracking те же что в мобильном",
+        "i18n ru/ce",
+        "RBAC идентичен мобильному (employee — ограниченный доступ, admin — всё)",
+        "Адаптивная вёрстка: корректное отображение от 768px до 1920px",
+        "SCSS Modules для стилей",
+        "Использует тот же API что мобильное (не дублирует логику)"
+      ],
+      "test_steps": [
+        "Открыть /analytics — отображается дашборд",
+        "Переключение периода работает",
+        "Открыть /clients — таблица клиентов",
+        "Поиск и фильтры работают",
+        "Открыть карточку клиента — история записей",
+        "Создать рассылку через модальное окно",
+        "Employee не видит /broadcasts",
+        "Корректное отображение на 1280px и 1920px",
+        "npx tsc --noEmit в apps/web/ проходит"
+      ],
+      "dependencies": [
+        "TASK-053",
+        "TASK-054",
+        "TASK-055",
+        "TASK-056",
+        "TASK-057",
+        "TASK-058"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "TASK-060",
+      "category": "refactor",
+      "priority": "high",
+      "description": "Удаление карты из проекта (MapLibre + OSM). Решение продукта: карты не будет. Удалить вкладку 'Карта' из bottom tab bar клиентского приложения, удалить экран MapScreen, удалить блок карты с HomeScreen, удалить мини-карту из BusinessDetailsScreen, удалить зависимость @maplibre/maplibre-react-native, обновить PRD (разделы 3.3, 5 «Технический стек», 6.2, 6.3) и CLAUDE.md/README. Кнопки 'Яндекс.Карты' и '2ГИС' (deep links на внешние приложения) ОСТАЮТСЯ — это не карты, а кнопки навигации. Backend: удалить эндпоинт GET /businesses/map (bbox-based), если он есть, и связанный код из business-stats.service.ts если присутствует. Эта задача независима от TASK-052..059, можно делать параллельно",
+      "acceptance_criteria": [
+        "Удалена вкладка 'Карта' из bottom tab bar в apps/client (стало 3 таба: Главная, Записи, Профиль)",
+        "Удалён файл apps/client/src/screens/map/MapScreen.tsx и вся папка screens/map/",
+        "С HomeScreen удалён весь код, связанный с MapLibre: state mapLibre, mapRef, isMapLoading, fetchMapBusinesses, handleMapPress, mini-карточки выбранного бизнеса при тапе по маркеру и т.д. HomeScreen становится списком/grid карточек бизнесов с поиском и фильтрами без карты",
+        "С BusinessDetailsScreen удалены компоненты StaticMap и MiniMapSection. Адрес остаётся текстом. Кнопки 'Яндекс.Карты' и '2ГИС' остаются как deep links (intent / Linking.openURL) и переезжают в обычный блок 'Адрес и навигация'",
+        "Из apps/client/package.json удалена зависимость @maplibre/maplibre-react-native, выполнен npm install и обновлён package-lock.json",
+        "В PRD.md обновлены разделы: 3.3 (убрать упоминание мини-карты из карточки бизнеса, оставить только кнопки Яндекс/2ГИС как deep links), 5 (удалить строку про MapLibre + OpenStreetMap из таблицы технического стека), 6.2 (bottom tab bar клиента 3 вкладки), 6.3 (раздел 'Карта' удалён целиком). Все остальные секции PRD не трогать",
+        "В CLAUDE.md удалена строка '- **Карты:** MapLibre GL + OpenStreetMap' из раздела стека",
+        "В README.md удалены упоминания MapLibre и карт",
+        "Backend: удалён эндпоинт GET /businesses/map если он существует (проверить routes/businesses.routes.ts) и related-логика из services/business-stats.service.ts. Удалены тесты на этот эндпоинт",
+        "Удалены i18n-ключи, относящиеся к карте (map.*, навигационные строки 'Карта', 'На карте'). Перевод оставшихся строк в ru/ce проверен",
+        "Прямые упоминания карты в коде через grep отсутствуют: 'maplibre', 'MapLibre', 'MapView', '<Map' не находят результатов в apps/client/src и backend/src",
+        "Event tracking: удалены события map_opened, map_business_marker_clicked если есть",
+        "Размер бандла apps/client уменьшается (зафиксировать до/после в progress.txt)"
+      ],
+      "test_steps": [
+        "npx tsc --noEmit в apps/client/ проходит без ошибок",
+        "npm run lint в apps/client/ проходит",
+        "Запустить приложение на iOS и Android — bottom bar показывает 3 вкладки, нет ошибок про missing native module",
+        "Открыть BusinessDetailsScreen — нет блока карты, есть адрес и кнопки навигации",
+        "Тап 'Яндекс.Карты' на BusinessDetailsScreen открывает Яндекс.Карты с маршрутом",
+        "Тап '2ГИС' открывает 2ГИС",
+        "grep -r 'maplibre' apps/client/src возвращает 0 результатов",
+        "grep -r '@maplibre' apps/client/package.json возвращает 0 результатов",
+        "Backend: GET /businesses/map возвращает 404",
+        "npm run lint && npm test в backend/ проходят",
+        "npm run build в apps/client успешен (Expo prebuild)"
+      ],
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "TASK-061",
+      "category": "functional",
+      "priority": "high",
+      "description": "Backend API для новой главной навигации. GET /businesses/popular?limit=10 — top-N бизнесов по комбинированному score (70% рейтинг + 30% число completed bookings за 30 дней, нормализованные). GET /businesses?search=&category_id=&sort=rating|distance&lat=&lng=&limit=&cursor= — расширение существующего listing с сортировкой по расстоянию через PostGIS. GET /categories/search?q= — поиск по категориям и бизнесам с группировкой",
+      "acceptance_criteria": [
+        "GET /businesses/popular возвращает top-N бизнесов (по умолчанию 10) с полями: id, name, photo_url, rating_avg, rating_count, category_id, category_name",
+        "Score = 0.7 * (rating_avg / 5) + 0.3 * (bookings_30d_normalized) где bookings_30d_normalized = bookings_count_30d / max(bookings_count_30d по всем бизнесам)",
+        "Учитываются только bookings со status='completed' и completed_at > now() - 30 days",
+        "GET /businesses расширен новым параметром sort=rating|distance (default rating). При sort=distance обязательны lat и lng в query — иначе 400",
+        "При sort=distance используется ST_Distance из PostGIS (поле location уже есть в таблице businesses), результат включает поле distance_meters",
+        "Существующая фильтрация по category_id и поиск по search сохраняются",
+        "Пагинация cursor-based, limit (default 20, max 50)",
+        "GET /categories/search?q= возвращает { categories: [...], businesses: [...] } — поиск по category.name (Accept-Language) и по business.name. Лимит 5+5 в ответе для быстрого поиска в шапке",
+        "Все эндпоинты публичные (без авторизации), поддерживают Accept-Language: ru|ce",
+        "Rate limiting на публичные эндпоинты",
+        "Zod-валидация всех query params (включая lat/lng как float в диапазоне)",
+        "Event tracking на бэке: popular_businesses_fetched, catalog_search (агрегированные метрики)"
+      ],
+      "test_steps": [
+        "GET /businesses/popular на пустом seed → пустой массив",
+        "Создать 3 бизнеса с разными рейтингами и числом bookings → /businesses/popular возвращает их в порядке score DESC",
+        "GET /businesses?sort=rating возвращает бизнесы по рейтингу DESC",
+        "GET /businesses?sort=distance&lat=43.318&lng=45.694 возвращает бизнесы с distance_meters, отсортированные по возрастанию",
+        "GET /businesses?sort=distance без lat/lng → 400",
+        "GET /businesses?category_id=X&sort=rating возвращает бизнесы только этой категории",
+        "GET /categories/search?q=ба находит и категорию 'Барбершоп', и бизнесы, начинающиеся на 'ба'",
+        "Accept-Language: ce возвращает названия категорий на чеченском",
+        "npm run lint && npm test проходят",
+        "npx tsc --noEmit в backend/ проходит"
+      ],
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "TASK-062",
+      "category": "ui",
+      "priority": "high",
+      "description": "Mettig (клиент): новая главная навигация. Замена HomeScreen на два top-level экрана: CategoriesScreen (сетка категорий + блок 'Популярные бизнесы') и CatalogScreen (плоский список всех бизнесов с поиском и сортировкой по рейтингу/расстоянию). Универсальный BusinessListScreen — выделен из существующего HomeScreen, используется и для drill-down с категории, и как базовый компонент CatalogScreen. Bottom tab bar: Категории | Каталог | Записи | Профиль (4 вкладки). Запрос геолокации через expo-location для сортировки по расстоянию",
+      "acceptance_criteria": [
+        "Bottom tab bar содержит 4 вкладки в порядке: Категории, Каталог, Записи, Профиль (после TASK-060)",
+        "Стартовая вкладка после авторизации — Категории",
+        "CategoriesScreen: SearchBar в шапке (поиск по категориям и бизнесам с группировкой результатов через GET /categories/search)",
+        "Блок 'Популярные бизнесы': горизонтальный FlatList с карточками (фото, название, рейтинг, категория), тап → BusinessDetailsScreen",
+        "Сетка 2 колонки категорий: карточка с иконкой (resolveCategoryIcon), названием, счётчиком бизнесов. Тап → BusinessListScreen с предвыбранным categoryId",
+        "CatalogScreen: SearchBar в шапке (debounced 300мс), переключатель сортировки 'По рейтингу | По расстоянию'",
+        "При первом выборе 'По расстоянию' — запрос permission через expo-location. Если отказ — toast и переключение обратно на 'По рейтингу'",
+        "Список бизнесов: фото, название, категория, рейтинг, расстояние (если доступно)",
+        "Тап на бизнес → BusinessDetailsScreen (стандартный flow выбора услуги внутри)",
+        "Архитектурно: CatalogScreen и BusinessListScreen используют один и тот же компонент BusinessList с разными props (categoryId, showSortToggle, etc.). Old HomeScreen удалён, его логика разделена между этим компонентом и CategoriesScreen",
+        "Навигация: HomeStackNavigator → CategoriesScreen, BusinessListScreen, BusinessDetailsScreen, BookingConfirmScreen. CatalogStackNavigator → CatalogScreen, BusinessDetailsScreen, BookingConfirmScreen",
+        "Empty states: нет популярных бизнесов ('Скоро появятся'), ничего не найдено в поиске, нет бизнесов в категории",
+        "Loading skeletons на всех экранах",
+        "TanStack Query для запросов с staleTime",
+        "Зависимость expo-location добавлена в apps/client/package.json",
+        "i18n ключи: home.categories.title, home.catalog.title, home.popular.businesses, catalog.sort.rating, catalog.sort.distance, catalog.permission.denied и т.д.",
+        "Event tracking: categories_screen_opened, category_selected, popular_business_clicked, catalog_screen_opened, catalog_search, catalog_sort_changed, catalog_geolocation_granted, catalog_geolocation_denied"
+      ],
+      "test_steps": [
+        "После авторизации открывается вкладка Категории",
+        "Bottom bar показывает 4 вкладки в правильном порядке",
+        "Тап на категорию → BusinessListScreen с отфильтрованным списком и названием категории в шапке",
+        "Тап на популярный бизнес → BusinessDetailsScreen",
+        "Поиск на CategoriesScreen 'Бар' находит и категорию, и бизнесы (группированно)",
+        "CatalogScreen открывается со списком всех бизнесов, отсортированных по рейтингу",
+        "Переключение на 'По расстоянию' запрашивает permission, после согласия список пересортируется и показывает расстояние",
+        "Отказ от permission возвращает к сортировке по рейтингу",
+        "Поиск на CatalogScreen работает (debounced)",
+        "Тап на бизнес из любого экрана → BusinessDetailsScreen → выбор услуги → запись",
+        "Все экраны корректно отображают empty / loading / error states",
+        "npx tsc --noEmit в apps/client/ проходит",
+        "npm run lint в apps/client/ проходит"
+      ],
+      "dependencies": [
+        "TASK-060",
+        "TASK-061"
+      ],
+      "status": "done"
     }
   ]
 }

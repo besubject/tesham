@@ -19,7 +19,6 @@ Mettig — локальный маркетплейс услуг с онлайн-
 - **Валидация:** Zod
 - **State management:** Zustand + TanStack Query
 - **i18n:** i18next (русский + чеченский)
-- **Карты:** MapLibre GL + OpenStreetMap
 - **SMS:** SMS.ru
 - **Уведомления:** WhatsApp Business API + Expo Push Notifications
 

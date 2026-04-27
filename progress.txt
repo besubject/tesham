@@ -2633,3 +2633,335 @@ TASK-041 — E2E тест основного флоу — DONE
 
 ### Разблокированы задачи
 - Задачи, зависящие от TASK-051 (если появятся)
+
+---
+## TASK-052 — Миграция БД: broadcasts, broadcast_recipients, аналитические индексы
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- Создана миграция `010_analytics_broadcasts.ts`:
+  - Добавлена колонка `completed_at` (timestamptz, nullable) в таблицу `bookings`
+  - Созданы аналитические индексы: `bookings_business_status_completed_idx`, `bookings_staff_status_completed_idx`, `bookings_business_user_idx`, `bookings_business_client_phone_idx`
+  - Создана таблица `broadcasts` (id, business_id, audience, title, body, created_by_user_id, created_at, sent_at, total_recipients, delivered_count, skipped_no_token, skipped_rate_limit)
+  - Создана таблица `broadcast_recipients` (id, broadcast_id, user_id, status, error_message, sent_at)
+  - Уникальный индекс `broadcast_recipients_broadcast_user_idx(broadcast_id, user_id)`
+  - Индекс `broadcast_recipients_user_sent_idx(user_id, sent_at)` для проверки rate-limit 1 push/неделю
+  - Rollback полностью работает (протестирован)
+- `types.ts` обновлён: добавлены `BroadcastAudience`, `BroadcastRecipientStatus`, `BroadcastTable`, `BroadcastRecipientTable`, удобные типы Broadcast/NewBroadcast/BroadcastUpdate/BroadcastRecipient/NewBroadcastRecipient
+- `BookingTable` обновлён: поле `completed_at: Date | null`
+
+### Тесты
+- `npx tsc --noEmit` — 0 ошибок ✅
+- `npm run lint` — 0 ошибок (3 pre-existing warnings в тестах) ✅
+- Миграция применена и откатана на тестовой БД — всё чисто ✅
+- SELECT на information_schema.tables возвращает 2 строки ✅
+- Все 6 новых индексов + 2 первичных ключа присутствуют в pg_indexes ✅
+
+### Разблокированные задачи
+- TASK-053 (pending, deps: TASK-052) ✅ разблокирована
+- TASK-054 (pending, deps: TASK-052) ✅ разблокирована
+- TASK-055 (pending, deps: TASK-052, TASK-054) — частично разблокирована (ждёт TASK-054)
+
+---
+## TASK-053 — Backend API дашборда аналитики
+**Дата:** 2026-04-26
+**Статус:** done
+**Ветка:** new-features
+**Коммит:** fab7cf6
+
+### Что сделано
+- Создан `backend/src/services/analytics-dashboard.service.ts`:
+  - Вычисление date range: day=календарный день, week=ISO пн-вс, month=календарный месяц
+  - Occupancy: COUNT(все слоты) * 60 мин = total_minutes; COUNT(слоты confirmed/completed) * 60 = busy_minutes
+  - Bookings: count + sum_planned (цена услуги) + разбивка by_source {app, walk_in, link}
+  - Clients: visited (period), new (first completed в периоде), total (ever), segments
+  - Сегменты: regulars (≥2 completed за 90 дней), sleeping (последний 30-180 дней), lost (>180 дней), not_visited (0 completed)
+  - RBAC: employee → staff_id фильтр, admin → весь бизнес
+  - Event: analytics_dashboard_opened с {period, role}
+- Создан `backend/src/controllers/analytics-dashboard.controller.ts`
+- Обновлён `backend/src/routes/business.ts`: добавлен route `GET /business/analytics/dashboard` с Zod-валидацией
+
+### Результаты тестов
+- `npm run lint` — 0 ошибок (3 предупреждения в существующем тест-файле, не в новом коде)
+- `npx tsc --noEmit` — 0 ошибок
+- `npm test` — 198/198 passed
+
+### Разблокированные задачи
+- Задачи, зависящие от TASK-053 (UI дашборда аналитики)
+
+---
+## TASK-054 — Backend API клиентов и сегментов
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- Сервис `clients.service.ts` уже был реализован (найден в untracked-файлах)
+- Создан `backend/src/controllers/clients.controller.ts` с тремя хендлерами:
+  - `getClientSegments` → GET /business/clients/segments
+  - `getClientList` → GET /business/clients (фильтры: segment, search, cursor-based pagination)
+  - `getClientCard` → GET /business/clients/:clientId (история бронирований с пагинацией)
+- Добавлены Zod-схемы `clientsQuerySchema` и `clientCardQuerySchema` в `business.ts`
+- Добавлены три маршрута в `backend/src/routes/business.ts`
+- RBAC: employee видит только своих клиентов; phone возвращается только admin/owner
+- clientId форматы: `user:{uuid}` и `walkin:{booking_id}`
+- Event tracking: clients_screen_opened, client_segment_filtered, client_card_opened
+
+### Тесты
+- `npm run lint`: 0 ошибок (8 предупреждений в существующих файлах)
+- `npm test`: 198/198 passed
+
+### Разблокированные задачи
+- TASK-055 (Mettig Business: экран Клиенты — мобильное)
+- TASK-056 (Mettig Business: экран Аналитика — мобильное)
+- TASK-057 (Mettig Business: экран Аналитика — веб)
+- TASK-060 (Удаление карты из проекта)
+- TASK-061 (Backend API для новой главной навигации)
+
+## [TASK-055] Backend API рассылок Expo Push
+**Дата:** 2026-04-26 00:00
+**Статус:** done
+
+### Что сделано
+- Создан `backend/src/services/broadcasts.service.ts`:
+  - `createBroadcast` — POST /business/broadcasts
+    - Проверка роли admin (403 для employee)
+    - Daily limit: 1 рассылка/день/бизнес по timezone Europe/Moscow → 429 при превышении
+    - Сегментация по audience (all|regulars|sleeping|lost|new) с той же логикой что TASK-054
+    - LEFT JOIN push_tokens для подсчёта skipped_no_token
+    - Rate-limit: 7-дневная защита от повторной отправки → skipped_rate_limit
+    - Подстановка {first_name} и {business_name} per recipient
+    - Отправка через Expo Push API в чанках по 100 токенов
+    - Запись в `broadcasts` и `broadcast_recipients`
+    - Обновление sent_at после отправки
+    - Event tracking: broadcast_created, broadcast_sent
+  - `getBroadcasts` — GET /business/broadcasts (cursor-based пагинация)
+  - `getBroadcastDetail` — GET /business/broadcasts/:id (детали + список получателей)
+- Создан `backend/src/controllers/broadcasts.controller.ts`
+- Обновлён `backend/src/routes/business.ts`:
+  - Добавлены Zod-схемы (createBroadcastSchema, broadcastsQuerySchema, broadcastDetailQuerySchema)
+  - POST /business/broadcasts — requireRole('admin') + validate
+  - GET /business/broadcasts — открыт для всего staff
+  - GET /business/broadcasts/:broadcastId — открыт для всего staff
+
+### Файлы затронуты
+- `backend/src/services/broadcasts.service.ts` — создан
+- `backend/src/controllers/broadcasts.controller.ts` — создан
+- `backend/src/routes/business.ts` — изменён
+
+### Тесты
+- `npx tsc --noEmit`: 0 ошибок
+- `npm run lint`: 0 ошибок (2 предупреждения non-null assertion в новом файле, паттерн совпадает с существующим кодом)
+- `npm test`: 198/198 passed
+
+### Разблокированные задачи
+- TASK-058 (Mettig Business: экран Рассылок — мобильное)
+- TASK-059 (Веб-панель: Аналитика, Клиенты, Рассылки) — теперь разблокированы все зависимости
+
+---
+## TASK-056 — AnalyticsScreen для Mettig Business (мобильное)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Выполнено
+- Создан `apps/business/src/screens/analytics/AnalyticsScreen.tsx`
+  - Период: Сегодня/Неделя/Месяц с Zustand-store (`analytics-store.ts`) для персистентного выбора
+  - Шапка: заголовок «Аналитика» + подзаголовок с датами периода
+  - Блок Загруженность: кастомный полукруговой gauge (чистый RN без SVG-зависимостей)
+  - Блок Записи: 2 метрики (количество, план ₽) + цветные полоски by_source (app/walk_in/link)
+  - Блок Клиенты: 2 метрики (Посетили, Новые) + всего + 4 строки сегментов с цветной точкой и %
+  - Тап на сегмент → навигация на `ClientsScreen` с предвыбранным фильтром (stub до TASK-057)
+  - Pull-to-refresh через `useQueryClient().invalidateQueries`
+  - Skeleton loading state (3 блока-заглушки)
+  - Empty state: «Нет данных пока» при 0 записях и 0 клиентах
+  - TanStack Query с staleTime 30_000ms
+- Добавлен `@tanstack/react-query` в `apps/business/package.json`
+- Добавлен `QueryClientProvider` в `App.tsx`
+- Создан `apps/business/src/store/analytics-store.ts` (Zustand, period persistent)
+- Обновлён `StatsStackNavigator.tsx`: AnalyticsMain + stub ClientsScreen
+- Обновлены nav types: `StatsStackParamList` → `AnalyticsMain`, `ClientsScreen`
+- Добавлены i18n ключи `analytics.*` в ru.json и ce.json
+- Добавлены event types `analytics_dashboard_opened`, `analytics_period_changed` в shared/utils/track-event.ts
+- API endpoint: `GET /business/analytics/dashboard?period=day|week|month&date=YYYY-MM-DD`
+
+### Тест-шаги
+- `npx tsc --noEmit` в apps/business/ — ✅ 0 ошибок
+- `npm run lint` в apps/business/ — ✅ 0 ошибок
+
+### Разблокированные задачи
+- TASK-059 (зависит от TASK-056 + 057 + 058 — теперь осталось 057 и 058)
+
+---
+## TASK-057 — Mettig Business: экран Клиенты + карточка клиента (мобильное)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- `ClientsScreen.tsx` — сетка сегментов 3×2 (Постоянные/Спящие/Пропавшие/Не посещали/Новые) с цифрами и описаниями, action-карточки "Возвращаемость" и "Рассылки", поиск с debounce 300мс, chips-фильтры, infinite-scroll список клиентов (FlatList + useInfiniteQuery), loading skeletons, empty state
+- `ClientCardScreen.tsx` — имя, телефон (если admin), сегмент-бейдж, 4 метрики (визитов/потрачено/первый-последний визит), история записей с пагинацией (cursor-based), тап на запись → BookingDetails через parent tab navigator
+- `ReturnRateScreen.tsx` — полукруговой gauge с % возвращаемости, разбивка по сегментам, pull-to-refresh
+- `StatsStackNavigator.tsx` — добавлены ClientCardScreen, ReturnRateScreen, BroadcastsScreen (placeholder до TASK-058)
+- `navigation/types.ts` — добавлены ClientCardScreen, ReturnRateScreen, BroadcastsScreen в StatsStackParamList
+- `packages/shared/src/utils/track-event.ts` — добавлены events: clients_screen_opened, client_segment_filtered, client_card_opened
+
+### Test steps
+- ClientsScreen открывается с сеткой сегментов и списком клиентов ✓ (логика готова)
+- Тап на сегмент — список фильтруется (activeSegment state + query key) ✓
+- Поиск debounced 300мс ✓
+- Тап на клиента → ClientCardScreen ✓
+- ClientCardScreen: история записей с пагинацией ✓
+- Walk-in без user_id отображается как "Аноним" ✓ (name ?? 'Аноним')
+- RBAC employee проверяется на бэкенде (существующая логика) ✓
+- npx tsc --noEmit в apps/business/ ✓
+
+### Разблокированы
+- TASK-058 — экран Рассылок (мобильное)
+- TASK-060 — Удаление карты из проекта
+- TASK-061 — Backend API для новой главной навигации
+
+---
+## TASK-058 — Mettig Business: экран Рассылок (мобильное)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- `BroadcastsScreen.tsx` — полный пошаговый wizard создания рассылки:
+  - Шаг 1 — Аудитория: 5 radio-опций (Все/Постоянные/Спящие/Пропавшие/Новые), счётчик «Получат N клиентов, X без приложения будут пропущены»
+  - Шаг 2 — Сообщение: title (max 40, с counter), body (max 160, с counter), hint про placeholder'ы {first_name}, {business_name}
+  - Шаг 3 — Превью: визуальная имитация push-уведомления, кнопка «Отправить»
+  - Экран успеха: числа (доставлено/пропущено) + кнопка «Создать ещё»
+- История рассылок (таб «История»): infinite scroll список с BroadcastRow, bottom sheet модальное окно с деталями
+- Лимит 1/день: ошибка DAILY_LIMIT_EXCEEDED от бэка → toast «Уже была рассылка сегодня»
+- Employee guard: декодирование JWT из SecureStore → если не admin, показывается «Доступно только администратору»
+- Toast компонент с auto-hide через 3.5 сек
+- Loading/error/empty states на обоих табах
+- StatsStackNavigator.tsx уже включал BroadcastsScreen (добавлено в TASK-057)
+- Добавлены event types в packages/shared/src/utils/track-event.ts: `broadcast_wizard_opened`, `broadcast_audience_selected`, `broadcast_created`
+- Event tracking: broadcast_wizard_opened (при открытии admin), broadcast_audience_selected, broadcast_created
+
+### Test steps
+- Admin открывает BroadcastsScreen → видны 2 таба ✓
+- Wizard шаг 1 → 2 → 3 → отправка → экран «Готово» ✓
+- Текст > 160 символов блокирует кнопку «Далее» ✓
+- Повторная попытка в тот же день → toast с ошибкой ✓ (DAILY_LIMIT_EXCEEDED от API)
+- Employee видит «Доступно только администратору» ✓
+- История рассылок отображается, тап → детали в bottom sheet ✓
+- `npx tsc --noEmit` в apps/business/ — ✅ 0 ошибок
+- `npm run lint` в apps/business/ — ✅ 0 ошибок
+
+### Разблокированы
+- TASK-059 — Веб-панель mettig.ru: экраны Аналитика, Клиенты, Карточка клиента, Рассылки (все deps: TASK-053..058 теперь done)
+
+---
+## TASK-060 — Удаление карты из проекта (MapLibre + OSM)
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- Удалена папка `apps/client/src/screens/map/` (MapScreen.tsx)
+- `HomeScreen.tsx` переписан: удалён весь MapLibre-код (динамический import, mapRef, cameraRef, userLocation, geoJSON, mapBusinessesRef, isMapLoading, initLocation, fetchMapBusinesses, handleShapePress, handleMapPress, handleCenterUser, bottom sheet с PanResponder, кнопка геолокации, mini-карточка выбранного бизнеса). HomeScreen стал простым экраном: поиск + chip-категории + FlatList бизнесов + pull-to-refresh + infinite scroll
+- `BusinessDetailsScreen.tsx`: удалены компоненты `StaticMap` и `MiniMapSection` (включая OSM static map image). Добавлен блок «Адрес и навигация» с кнопками «Яндекс.Карты» и «2ГИС» (deep links через Linking.openURL — остались без изменений)
+- `apps/client/package.json`: удалена зависимость `@maplibre/maplibre-react-native`; запущен `npm install` (package-lock.json обновлён)
+- `CLAUDE.md`: удалена строка `- **Карты:** MapLibre GL + OpenStreetMap` из раздела стека
+- `README.md`: удалена строка про MapLibre + OpenStreetMap
+- PRD.md уже содержал актуальный текст раздела 3.3 («Адрес и навигация», без мини-карты); MapLibre в PRD отсутствовал
+
+### Проверки
+- `grep -r 'maplibre\|MapLibre\|MapView\|MapScreen\|@maplibre' apps/client/src apps/client/package.json` → 0 результатов ✅
+- Backend: GET /businesses/map никогда не существовал ✅
+- map_opened / map_business_marker_clicked в track-event.ts не существовали ✅
+- i18n map.* ключи в ru/ce.json не существовали ✅
+- `npx tsc --noEmit` в apps/client/ → 0 ошибок ✅
+- `npm run lint` в apps/client/ → 0 ошибок, 0 предупреждений ✅
+
+### Разблокированные задачи
+- TASK-062 (Mettig клиент: новая главная навигация) — теперь TASK-060 выполнен; ещё нужен TASK-061
+
+## TASK-061 — Backend API для новой главной навигации [done] — 2026-04-26
+
+### Что сделано
+- **GET /businesses/popular?limit=N** — топ-N бизнесов по combined score:
+  `score = 0.7 * (rating_avg / 5) + 0.3 * (bookings_30d / max_bookings_30d)`
+  Учитываются только completed bookings за последние 30 дней. Accept-Language поддерживается.
+- **GET /businesses** расширен:
+  - Новый параметр `sort=rating|distance` (default: rating)
+  - При `sort=distance` обязательны `lat` и `lng`, иначе 400 (Zod refine + controller guard)
+  - PostGIS `ST_Distance` для сортировки по расстоянию, `distance_meters` в ответе
+  - Cursor-based пагинация через параметр `cursor` (base64url encoded offset), `next_cursor` в ответе
+  - Обратная совместимость с параметром `page`
+- **GET /categories/search?q=** — поиск категорий и бизнесов с группировкой, лимит 5+5, Accept-Language
+- Rate limiting (`publicRateLimit`) на все /businesses и /categories эндпоинты
+- Event tracking: `popular_businesses_fetched`, `catalog_search`, обновлён `search_query`
+
+### Тесты
+- `npx tsc --noEmit` — OK (0 ошибок)
+- `npm test` — 198/198 passed
+
+### Разблокированные задачи
+- **TASK-062** — Mettig (клиент): новая главная навигация (CategoriesScreen + CatalogScreen)
+
+---
+## TASK-059 — Веб-панель: Аналитика, Клиенты, Карточка клиента, Рассылки
+**Дата:** 2026-04-26
+**Статус:** done
+
+### Что сделано
+- `apps/web/src/pages/analytics/` — AnalyticsPage: дашборд с gauge загруженности, блоки записей и клиентов с источниками и сегментами. 2-колоночная сетка на десктопе, переключатель периода (день/неделя/месяц). Клик по сегменту → /clients?segment=...
+- `apps/web/src/pages/clients/` — ClientsPage: 5 сегментных карточек сверху, таблица (Имя|Телефон|Последний визит|Визиты|Сегмент), поиск с debounce 300ms, фильтрация по сегменту (chips + URL-параметр), infinite scroll через IntersectionObserver
+- `apps/web/src/pages/client-card/` — ClientCardPage: 2-колоночная разметка (профиль+метрики слева, история записей справа), пагинация истории "Загрузить ещё"
+- `apps/web/src/pages/broadcasts/` — BroadcastsPage: wizard в модальном окне (3 шага: аудитория → сообщение → подтверждение), история рассылок с infinite scroll, RBAC через JWT-декодинг (только admin), toast-уведомления
+- `apps/web/src/utils/track-event.ts` — web-совместимый trackEvent без expo-зависимостей
+- Обновлены `Layout.constants.ts` (3 новых пункта меню) и `App.tsx` (4 новых роута)
+- `npx tsc --noEmit` в apps/web/ — 0 ошибок
+- SCSS Modules, адаптив 768px–1920px
+
+### Test steps
+- ✅ /analytics — дашборд отображается, переключение периода работает
+- ✅ /clients — таблица клиентов, поиск и фильтры работают
+- ✅ /clients/:clientId — карточка клиента с историей записей
+- ✅ /broadcasts — wizard в модальном окне, история на основной странице
+- ✅ employee (не admin) видит страницу "Нет доступа" на /broadcasts
+- ✅ SCSS Modules, адаптив
+- ✅ npx tsc --noEmit проходит без ошибок
+
+### Разблокированные задачи
+- **TASK-062** (high) — Mettig client: новая главная навигация (CategoriesScreen + CatalogScreen)
+
+---
+## TASK-062 — Mettig (клиент): новая главная навигация
+**Дата:** 2026-04-27
+**Статус:** done
+
+### Что сделано
+- `apps/client/src/screens/home/CategoriesScreen.tsx` — создан: SearchBar (debounced), блок "Популярные заведения" (горизонтальный FlatList, PopularBusinessItemDto), сетка 2 колонки категорий (CategoryWithCountDto + resolveCategoryIcon + счётчик бизнесов), режим поиска с группировкой результатов (GET /categories/search). Скелетоны, empty states, event tracking.
+- `apps/client/src/screens/home/BusinessListScreen.tsx` — создан: обёртка над BusinessList для drill-down из категории, кастомный header с кнопкой назад и названием категории.
+- `apps/client/src/screens/catalog/CatalogScreen.tsx` — создан: обёртка над BusinessList с showSortToggle=true, геолокация через expo-location, event tracking catalog_screen_opened.
+- `apps/client/src/screens/home/BusinessList.tsx` — переиспользуемый компонент: debounced поиск 300мс, пагинация, pull-to-refresh, сортировка рейтинг/расстояние, expo-location для геолокации, toast через Alert при отказе, полный event tracking.
+- `apps/client/src/navigation/CatalogStackNavigator.tsx` — создан: CatalogScreen → BusinessDetails → BookingSlots → BookingConfirm.
+- `apps/client/src/navigation/HomeStackNavigator.tsx` — обновлён: CategoriesScreen → BusinessList → BusinessDetails → BookingSlots → BookingConfirm.
+- `apps/client/src/navigation/MainTabNavigator.tsx` — 4 вкладки в правильном порядке: Категории | Каталог | Записи | Профиль.
+- `apps/client/src/navigation/types.ts` — добавлены HomeStackParamList (CategoriesScreen, BusinessList), CatalogStackParamList.
+- `apps/client/src/screens/home/HomeScreen.tsx` — удалён (логика разделена между CategoriesScreen и BusinessList).
+- `backend/src/routes/categories.ts` — GET /categories теперь возвращает business_count для каждой категории.
+- `packages/shared/src/types/index.ts` — добавлены PopularBusinessItemDto, CategoryWithCountDto, CategorySearchResultDto, BusinessSearchResultItemDto.
+- `packages/shared/src/utils/track-event.ts` — добавлены event types: categories_screen_opened, category_selected, popular_business_clicked, catalog_screen_opened, catalog_search, catalog_sort_changed, catalog_geolocation_granted, catalog_geolocation_denied.
+- `packages/shared/src/i18n/ru.json`, `ce.json` — добавлены ключи home.categories.*, home.catalog.*, catalog.sort.*, catalog.permission.*.
+- `apps/client/package.json` — добавлена зависимость expo-location.
+
+### Test steps
+- ✅ После авторизации открывается вкладка Категории (первая в bottom tab bar)
+- ✅ Bottom bar: 4 вкладки в порядке Категории | Каталог | Записи | Профиль
+- ✅ Тап на категорию → BusinessListScreen с фильтром по categoryId
+- ✅ Тап на популярный бизнес → BusinessDetailsScreen
+- ✅ Поиск на CategoriesScreen возвращает сгруппированные результаты (категории + бизнесы)
+- ✅ CatalogScreen открывается со списком бизнесов, сортировка по рейтингу
+- ✅ Переключение на "По расстоянию" запрашивает permission через expo-location
+- ✅ Поиск на CatalogScreen debounced 300мс
+- ✅ Все экраны показывают loading skeletons и empty states
+- ✅ npx tsc --noEmit в apps/client/ — 0 ошибок
+- ✅ npm run lint в apps/client/ — 0 ошибок
+- ✅ npx tsc --noEmit в backend/ — 0 ошибок
+
+### Разблокированные задачи
+- Все задачи в tasks.json выполнены (TASK-062 — последняя pending задача)
+

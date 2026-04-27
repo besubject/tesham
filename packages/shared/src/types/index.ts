@@ -153,6 +153,40 @@ export interface ApiErrorDto {
   };
 }
 
+export interface PopularBusinessItemDto {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  rating_avg: number;
+  rating_count: number;
+  category_id: string;
+  category_name: string;
+  category_icon: string;
+}
+
+export interface CategoryWithCountDto {
+  id: string;
+  name: string;
+  name_ru: string;
+  name_ce: string;
+  icon: string;
+  business_count: number;
+}
+
+export interface BusinessSearchResultItemDto {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  category_id: string;
+  category_name: string;
+  avg_rating: number | null;
+}
+
+export interface CategorySearchResultDto {
+  categories: CategoryWithCountDto[];
+  businesses: BusinessSearchResultItemDto[];
+}
+
 export type ChatMessageType = 'text' | 'image';
 export type ChatSenderRole = 'client' | 'staff';
 

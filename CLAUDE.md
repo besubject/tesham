@@ -13,7 +13,6 @@ Mettig — локальный маркетплейс услуг с онлайн-
 - **Стейт (мобильные):** Zustand + TanStack Query
 - **Стили (веб):** SCSS Modules (`.module.scss`)
 - **i18n:** i18next (русский + чеченский)
-- **Карты:** MapLibre GL + OpenStreetMap
 - **SMS:** SMS.ru (OTP-коды + fallback уведомлений)
 - **Уведомления бизнесу:** WhatsApp Business API (основной) → SMS.ru (fallback)
 - **Пуши клиенту:** Expo Push Notifications

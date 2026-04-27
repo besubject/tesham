@@ -16,6 +16,8 @@
   },
   "tabs": {
     "home": "ТIегӀа",
+    "categories": "Категориш",
+    "catalog": "Каталог",
     "map": "Карта",
     "bookings": "Язбинарш",
     "profile": "Профиль",
@@ -43,7 +45,33 @@
     "nearYou": "Хьан гонаха",
     "allCategories": "Дерриге",
     "noResults": "Схьалацаш хIума дац",
-    "noResultsHint": "ЖамӀ хийцахьа"
+    "noResultsHint": "ЖамӀ хийцахьа",
+    "categories": {
+      "title": "Категориш",
+      "searchPlaceholder": "Барбер, маникюр, стоматолог...",
+      "popular": "ЦIенгаллах дика компаниаш",
+      "popularEmpty": "Сиха хила де",
+      "searchNoResults": "Схьалацаш хIума дац",
+      "businessesLabel": "Компаниаш",
+      "categoriesLabel": "Категориш",
+      "businessesCount": "компани"
+    },
+    "catalog": {
+      "title": "Каталог"
+    }
+  },
+  "catalog": {
+    "searchPlaceholder": "Барбер, маникюр, стоматолог...",
+    "sort": {
+      "rating": "Ненан хьекъалехь",
+      "distance": "Гергарлонехь"
+    },
+    "permission": {
+      "denied": "Геолокация яц. Ненан хьекъалехь"
+    },
+    "noResults": "Схьалацаш хIума дац",
+    "noResultsHint": "ЖамӀ хийцахьа",
+    "emptyCategory": "Категорехь компаниаш яц"
   },
   "business": {
     "book": "Яздан",
@@ -195,6 +223,40 @@
       "staffLink": "Мастеран хьажар",
       "businessLink": "Компанин хьажар",
       "noSlug": "Хьажар дузуш яц"
+    }
+  },
+  "analytics": {
+    "title": "Аналитика",
+    "noData": "ЖамӀаш яц хIинца",
+    "noDataHint": "Хьалха язбинарг кхолла, жамӀаш хьажа",
+    "period": {
+      "today": "Де",
+      "week": "Kиллсо",
+      "month": "Бутт"
+    },
+    "occupancy": {
+      "title": "Схьалацар",
+      "busy": "дозуш ду"
+    },
+    "bookings": {
+      "title": "Язбинарш",
+      "count": "язбинарш",
+      "planned": "план ₽",
+      "sourceApp": "Mettig-чул",
+      "sourceWalkIn": "Walk-in",
+      "sourceLink": "Хьажарчул"
+    },
+    "clients": {
+      "title": "Клиенташ",
+      "visited": "Баьхна",
+      "new": "КерланиIа",
+      "allClients": "Дерриге клиенташ",
+      "segments": {
+        "regulars": "Бевзаш берш",
+        "sleeping": "Малкхина берш",
+        "lost": "ДӀагIерта берш",
+        "not_visited": "Ца баьхнарш"
+      }
     }
   },
   "chat": {

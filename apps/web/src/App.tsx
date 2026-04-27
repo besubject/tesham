@@ -5,6 +5,10 @@ import { useAuthStore } from '@mettig/shared';
 import { LoginPage } from './pages/login';
 import { BookingsPage } from './pages/bookings';
 import { StatsPage } from './pages/stats';
+import { AnalyticsPage } from './pages/analytics';
+import { ClientsPage } from './pages/clients';
+import { ClientCardPage } from './pages/client-card';
+import { BroadcastsPage } from './pages/broadcasts';
 import { ProfilePage } from './pages/profile';
 import { BusinessLinkPage } from './pages/link';
 import { PublicBookingPage } from './pages/public-booking';
@@ -63,6 +67,10 @@ const App = (): React.JSX.Element => {
             <Route element={<Layout />}>
               <Route path="/bookings" element={<BookingsPage />} />
               <Route path="/stats" element={<StatsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
+              <Route path="/clients/:clientId" element={<ClientCardPage />} />
+              <Route path="/broadcasts" element={<BroadcastsPage />} />
               <Route path="/link" element={<BusinessLinkPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/" element={<Navigate to="/bookings" replace />} />

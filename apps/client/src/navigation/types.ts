@@ -19,13 +19,31 @@ export type AuthStackParamList = {
 // Bottom tab navigator params
 export type RootTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList> | undefined;
+  Catalog: NavigatorScreenParams<CatalogStackParamList> | undefined;
   Bookings: NavigatorScreenParams<BookingsStackParamList> | undefined;
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
-// Home stack navigator params
+// Home stack navigator params (CategoriesScreen + drill-down)
 export type HomeStackParamList = {
-  HomeScreen: undefined;
+  CategoriesScreen: undefined;
+  BusinessList: { categoryId: string; categoryName: string };
+  BusinessDetails: { businessId: string };
+  BookingSlots: { businessId: string; staffId?: string };
+  BookingConfirm: {
+    bookingId: string;
+    businessName: string;
+    staffName: string;
+    serviceName: string;
+    date: string;
+    startTime: string;
+    price: number;
+  };
+};
+
+// Catalog stack navigator params
+export type CatalogStackParamList = {
+  CatalogScreen: undefined;
   BusinessDetails: { businessId: string };
   BookingSlots: { businessId: string; staffId?: string };
   BookingConfirm: {
@@ -82,6 +100,11 @@ export type HomeTabScreenProps<T extends keyof RootTabParamList> = BottomTabScre
 
 export type HomeStackScreenProps<T extends keyof HomeStackParamList> = CompositeScreenProps<
   NativeStackScreenProps<HomeStackParamList, T>,
+  BottomTabScreenProps<RootTabParamList>
+>;
+
+export type CatalogStackScreenProps<T extends keyof CatalogStackParamList> = CompositeScreenProps<
+  NativeStackScreenProps<CatalogStackParamList, T>,
   BottomTabScreenProps<RootTabParamList>
 >;
 
