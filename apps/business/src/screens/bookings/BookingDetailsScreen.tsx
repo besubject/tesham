@@ -133,7 +133,7 @@ export function BookingDetailsScreen({ route, navigation }: Props): React.JSX.El
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>{'←'}</Text>
+          <Text style={styles.backButtonText}>{'← Назад'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Детали записи</Text>
         <View style={styles.headerRight} />
