@@ -357,7 +357,7 @@ export function BusinessDetailsScreen({ navigation, route }: Props): React.JSX.E
           {/* back + fav buttons over photo */}
           <View style={[styles.photoOverlay, { top: 10 }]}>
             <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-              <Text style={styles.iconBtnText}>←</Text>
+              <Text style={styles.iconBtnText}>‹</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconBtn}
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconBtnText: { fontSize: 18, color: colors.text, lineHeight: 22 },
+  iconBtnText: { fontSize: 18, color: colors.text, lineHeight: 20 },
 
   // Title block
   titleBlock: { paddingHorizontal: 18, paddingBottom: 14 },

@@ -369,7 +369,7 @@ export function BookingSlotsScreen({ navigation, route }: Props): React.JSX.Elem
           <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backBtn}>
             <Text style={styles.backBtnText}>‹</Text>
           </TouchableOpacity>
-          <MonoLabel>04 / Слот</MonoLabel>
+          <MonoLabel>Слот</MonoLabel>
         </View>
 
         {/* ── Progress bar ── */}
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backBtnText: { fontSize: 20, color: colors.text, lineHeight: 24 },
+  backBtnText: { fontSize: 20, color: colors.text, lineHeight: 22 },
 
   // Progress
   progressWrap: {
